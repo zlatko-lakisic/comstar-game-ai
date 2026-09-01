@@ -1,0 +1,28 @@
+# Append to descr_strat.txt (bottom of file, before closing)
+# Comstar Game AI telemetry mod — Phase 1
+
+script comstar_telemetry
+
+declare_counter turn_counter
+
+while not is_game_over
+    if NewTurnStart
+        increment turn_counter
+        if turn_counter mod 5 == 0
+            script_log "event=full_dump turn=" turn_counter
+        else
+            script_log "event=NewTurnStart turn=" turn_counter
+        end_if
+    end_if
+    if I_BattleEndPending
+        script_log "event=I_BattleEndPending"
+    end_if
+    if I_BattleEnd
+        script_log "event=I_BattleEnd"
+    end_if
+    if I_BattleFinished
+        script_log "event=I_BattleFinished"
+    end_if
+end_while
+
+end_script

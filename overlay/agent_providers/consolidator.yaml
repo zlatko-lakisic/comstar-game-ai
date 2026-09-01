@@ -1,0 +1,8 @@
+id: consolidator
+type: ollama
+model: llama3.1:8b
+description: Offline experience consolidation into doctrine proposals
+goal: Read after-action records and propose generalised doctrine updates
+backstory: |
+  You consolidate accumulated experience records into concise doctrine
+  generalisations suitable for retrieval. Output structured markdown sections.

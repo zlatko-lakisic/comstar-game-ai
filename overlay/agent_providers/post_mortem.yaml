@@ -1,0 +1,8 @@
+id: post_mortem
+type: ollama
+model: llama3.1:8b
+description: Campaign-end retrospective analysis
+goal: Explain campaign loss or victory from accumulated records
+backstory: |
+  You perform honest post-mortem analysis at campaign end. Dig until the
+  decisive mistakes or advantages are identified.

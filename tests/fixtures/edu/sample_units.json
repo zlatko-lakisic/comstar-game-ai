@@ -1,0 +1,54 @@
+{
+  "units": [
+    {
+      "unit_type": "roman_hastati",
+      "attack": 7,
+      "defence": 4,
+      "morale": 55,
+      "charge_bonus": 2,
+      "armour": 2,
+      "weapon": "sword",
+      "category": "infantry"
+    },
+    {
+      "unit_type": "roman_principes",
+      "attack": 8,
+      "defence": 5,
+      "morale": 60,
+      "charge_bonus": 2,
+      "armour": 3,
+      "weapon": "sword",
+      "category": "infantry"
+    },
+    {
+      "unit_type": "greek_hoplites",
+      "attack": 6,
+      "defence": 8,
+      "morale": 65,
+      "charge_bonus": 1,
+      "armour": 4,
+      "weapon": "spear",
+      "category": "infantry"
+    },
+    {
+      "unit_type": "barbarian_warband",
+      "attack": 5,
+      "defence": 2,
+      "morale": 40,
+      "charge_bonus": 4,
+      "armour": 0,
+      "weapon": "axe",
+      "category": "infantry"
+    },
+    {
+      "unit_type": "roman_equites",
+      "attack": 6,
+      "defence": 3,
+      "morale": 50,
+      "charge_bonus": 8,
+      "armour": 2,
+      "weapon": "lance",
+      "category": "cavalry"
+    }
+  ]
+}

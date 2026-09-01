@@ -1,0 +1,32 @@
+# Secrets and credentials
+.cursor/secrets/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+dist/
+build/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+
+# IDE
+.idea/
+*.swp
+*.swo
+
+# Runtime / local config overrides
+config/local.yaml
+*.local.yaml
+data/
+
+# mTLS material fallback path
+.ao-mtls/
+
+# Runtime data
+data/

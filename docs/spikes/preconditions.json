@@ -1,0 +1,10 @@
+{
+  "build": "Windows build 26200",
+  "pre": {
+    "ok": true,
+    "failures": [],
+    "warnings": [
+      "game window not found (skipped \u2014 not required)"
+    ]
+  }
+}
