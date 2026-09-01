@@ -57,10 +57,13 @@ def run_self_tests(*, require_game: bool = False) -> SelfTestResult:
     overlay = None
     try:
         overlay = OverlayStub.create(game.hwnd, test_pattern=True)
-        result.tests["non_activation"] = foreground_is(game.hwnd) or True
+        result.tests["non_activation"] = foreground_is(game.hwnd)
         cap2 = WindowCapture(game.hwnd)
         frame2 = cap2.grab()
         result.tests["capture_with_overlay"] = frame2 is not None
+        if not result.tests["non_activation"]:
+            result.ok = False
+            result.messages.append("overlay stole foreground")
     except Exception as exc:
         result.tests["overlay_stub"] = False
         result.messages.append(f"overlay stub skipped: {exc}")

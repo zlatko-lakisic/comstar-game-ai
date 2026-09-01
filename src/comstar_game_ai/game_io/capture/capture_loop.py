@@ -20,8 +20,14 @@ class CaptureLoop:
     ) -> None:
         cfg = load_config()
         cap_cfg = cfg.get("capture") or {}
+        backend = str(cap_cfg.get("backend", "wgc")).lower()
+        if backend == "wgc":
+            from comstar_game_ai.game_io.capture.wgc_capture import WgcCapture
+
+            self._capture = WgcCapture(hwnd)
+        else:
+            self._capture = WindowCapture(hwnd)
         self._ring = ring or RingBuffer(max_seconds=float(cap_cfg.get("ring_buffer_seconds", 5)))
-        self._capture = WindowCapture(hwnd)
         self._fps = float(cap_cfg.get("target_fps", 30))
         self._on_frame = on_frame
         self._stop = threading.Event()

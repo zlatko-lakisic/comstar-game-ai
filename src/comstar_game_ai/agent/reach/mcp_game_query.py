@@ -119,8 +119,14 @@ class GameQueryMcpBootstrap:
             python_module=GAME_QUERY_MODULE,
         )
 
-        if not host.is_alias_running(spec.alias):
-            await host.start_python_module(alias=spec.alias, module=spec.python_module or GAME_QUERY_MODULE)
+        try:
+            if not host.is_alias_running(spec.alias):
+                await host.start_python_module(alias=spec.alias, module=spec.python_module or GAME_QUERY_MODULE)
+        except RuntimeError as exc:
+            _LOGGER.warning("game_query MCP unavailable: %s", exc)
+            return SessionMcpBootstrapResult(
+                warnings=[f"client.game_query unavailable: {exc}"],
+            )
 
         return SessionMcpBootstrapResult(
             mcps=[

@@ -121,3 +121,17 @@ class HardcodedCampaignDriver:
 
         self.intent_writer.complete(record, observed_effect={"state": self.state.state.value}, latency_ms=0.0)
         return ok
+
+    def run_turns(self, n: int, *, require_ok: bool = True) -> dict[str, int]:
+        """Run n campaign turn stubs; return success counts."""
+        ok_count = 0
+        fail_count = 0
+        for _ in range(n):
+            self.poll_observation()
+            if self.run_turn_stub():
+                ok_count += 1
+            else:
+                fail_count += 1
+                if require_ok:
+                    break
+        return {"turns_ok": ok_count, "turns_failed": fail_count, "requested": n}
