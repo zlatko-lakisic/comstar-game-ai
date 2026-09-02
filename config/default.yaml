@@ -1,0 +1,49 @@
+# Comstar Game AI — default configuration (no secrets; see .cursor/secrets/)
+
+ao:
+  base_url: "https://10.0.10.16:8765"
+  app_id: comstar-game-ai
+  mtls_material_dir: ".cursor/secrets/mtls/comstar-game-ai"
+  model: null  # pinned after ada survey in docs/ada-model.md
+
+game:
+  window_title_substrings:
+    - "Rome"
+    - "Total War"
+  pinned_version: null
+  steam_app_id: 885970
+  launch_args:
+    - "-windowed"
+    - "-enable_logging"
+    - "-verbose_script_logging"
+
+display:
+  game_monitor_index: 2
+  cursor_monitor_index: 1
+  launch_on_game_monitor: true
+
+capture:
+  ring_buffer_seconds: 5
+  target_fps: 30
+  backend: wgc  # wgc | printwindow
+
+campaign:
+  mode: grand_campaign
+  player_faction: julii
+  acceptance_turns: 20
+  save_slug: comstar-julii
+  save_path: null
+
+safety:
+  deadman_seconds: 10
+  kill_hotkey: "ctrl+shift+end"
+  takeover_hotkey: "ctrl+shift+home"
+  handback_hotkey: "ctrl+shift+pause"
+
+paths:
+  rome_logs: "%USERPROFILE%/AppData/Local/Feral Interactive/Rome/logs"
+  rome_data: null  # discovered at runtime
+
+ipc:
+  event_socket_host: "127.0.0.1"
+  event_socket_port: 9876

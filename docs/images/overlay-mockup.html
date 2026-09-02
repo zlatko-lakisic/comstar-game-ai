@@ -1,0 +1,542 @@
+<title>Comstar Overlay</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&family=Cinzel:wght@600&display=swap">
+<style>
+  :root{
+    --ink:#e6ecef;
+    --ink-dim:#8d9aa2;
+    --ink-faint:#5d6a72;
+    --page:#0c1012;
+    --panel:#141a1d;
+    --rule:#232c31;
+
+    --cyan:#5fd0e0;
+    --cyan-deep:#2b8b9c;
+    --amber:#e8a33d;
+    --rose:#e0685f;
+    --sage:#7fc08a;
+
+    --glass:rgba(9,14,17,.74);
+    --glass-edge:rgba(120,200,215,.26);
+
+    --scr-w:1140px;
+  }
+
+  *{box-sizing:border-box}
+
+  body{
+    margin:0;
+    background:var(--page);
+    color:var(--ink);
+    font-family:"IBM Plex Sans",system-ui,-apple-system,Segoe UI,sans-serif;
+    font-size:15px;
+    line-height:1.55;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  .wrap{
+    max-width:var(--scr-w);
+    margin:0 auto;
+    padding:40px 24px 72px;
+    display:flex;
+    flex-direction:column;
+    gap:28px;
+  }
+
+  /* ---------- masthead ---------- */
+  header{display:flex;flex-direction:column;gap:8px}
+  .eyebrow{
+    font-family:"IBM Plex Mono",monospace;
+    font-size:11px;letter-spacing:.16em;text-transform:uppercase;
+    color:var(--cyan-deep);
+  }
+  h1{
+    margin:0;font-size:30px;font-weight:600;letter-spacing:-.015em;
+    text-wrap:balance;
+  }
+  .standfirst{margin:0;max-width:66ch;color:var(--ink-dim)}
+
+  /* ---------- monitor ---------- */
+  .monitor{
+    position:relative;
+    border-radius:6px;
+    padding:9px;
+    background:linear-gradient(180deg,#1b2124,#0e1315);
+    box-shadow:0 24px 60px -20px rgba(0,0,0,.9), 0 0 0 1px #262f34;
+  }
+  .screen{
+    position:relative;
+    aspect-ratio:16/9;
+    width:100%;
+    overflow:hidden;
+    border-radius:2px;
+    background:#0a0d0a;
+    isolation:isolate;
+  }
+  .screen svg{position:absolute;inset:0;width:100%;height:100%;display:block}
+
+  .disclaimer{
+    font-family:"IBM Plex Mono",monospace;
+    font-size:11px;color:var(--ink-faint);
+    text-align:right;
+  }
+
+  /* ---------- overlay: edge glow ---------- */
+  .glow{
+    position:absolute;inset:0;pointer-events:none;z-index:5;
+    border:1px solid rgba(95,208,224,.5);
+    box-shadow:inset 0 0 46px 4px rgba(95,208,224,.20),
+               inset 0 0 120px 30px rgba(95,208,224,.07);
+    animation:breathe 4.5s ease-in-out infinite;
+  }
+  @keyframes breathe{
+    0%,100%{box-shadow:inset 0 0 40px 3px rgba(95,208,224,.15),inset 0 0 110px 26px rgba(95,208,224,.05)}
+    50%{box-shadow:inset 0 0 56px 6px rgba(95,208,224,.28),inset 0 0 130px 34px rgba(95,208,224,.10)}
+  }
+  .corner{position:absolute;width:44px;height:44px;border:2px solid var(--cyan);opacity:.85}
+  .corner.tl{top:-1px;left:-1px;border-right:0;border-bottom:0}
+  .corner.tr{top:-1px;right:-1px;border-left:0;border-bottom:0}
+  .corner.bl{bottom:-1px;left:-1px;border-right:0;border-top:0}
+  .corner.br{bottom:-1px;right:-1px;border-left:0;border-top:0}
+
+  .statechip{
+    position:absolute;top:14px;left:14px;z-index:7;
+    display:flex;align-items:center;gap:8px;
+    padding:6px 11px;
+    background:var(--glass);
+    border:1px solid var(--glass-edge);
+    border-radius:3px;
+    font-family:"IBM Plex Mono",monospace;
+    font-size:11px;letter-spacing:.11em;text-transform:uppercase;
+    color:var(--cyan);
+    backdrop-filter:blur(6px);
+  }
+  .dot{width:7px;height:7px;border-radius:50%;background:var(--cyan);
+       box-shadow:0 0 8px var(--cyan);animation:blink 1.6s ease-in-out infinite}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:.35}}
+
+  /* ---------- overlay: chat ---------- */
+  .chat{
+    position:absolute;top:14px;right:14px;z-index:7;
+    width:310px;
+    background:var(--glass);
+    border:1px solid var(--glass-edge);
+    border-radius:3px;
+    backdrop-filter:blur(7px);
+    font-family:"IBM Plex Mono",monospace;
+    font-size:10.5px;line-height:1.5;
+    overflow:hidden;
+  }
+  .chat-hd{
+    display:flex;justify-content:space-between;align-items:center;
+    padding:6px 9px;
+    border-bottom:1px solid rgba(120,200,215,.16);
+    color:var(--cyan);letter-spacing:.1em;text-transform:uppercase;font-size:9.5px;
+  }
+  .chat-body{padding:7px 9px 9px;display:flex;flex-direction:column;gap:5px}
+  .ln{display:grid;grid-template-columns:44px 12px 1fr;gap:6px;align-items:start}
+  .t{color:var(--ink-faint);font-variant-numeric:tabular-nums}
+  .g{text-align:center}
+  .out .g{color:var(--cyan)}
+  .in .g{color:var(--sage)}
+  .st .g{color:var(--ink-faint)}
+  .act .g{color:var(--amber)}
+  .m{color:var(--ink-dim)}
+  .m b{color:var(--ink);font-weight:500}
+  .m .q{color:var(--cyan-deep)}
+  .quote{color:#cfe6ea;font-style:italic}
+  .lat{color:var(--sage)}
+
+  /* ---------- overlay: keyboard ---------- */
+  .kbd{
+    position:absolute;left:26px;bottom:96px;z-index:7;
+    display:flex;flex-direction:column;gap:5px;
+    padding:9px;
+    background:var(--glass);
+    border:1px solid var(--glass-edge);
+    border-radius:3px;
+    backdrop-filter:blur(6px);
+    animation:kbdfade 9s ease-in-out infinite;
+  }
+  @keyframes kbdfade{
+    0%{opacity:0}
+    4%{opacity:1}
+    18%{opacity:1}
+    30%{opacity:0}
+    100%{opacity:0}
+  }
+  .krow{display:flex;gap:5px}
+  .k{
+    min-width:26px;height:26px;padding:0 7px;
+    display:flex;align-items:center;justify-content:center;
+    border:1px solid rgba(140,170,180,.28);
+    border-radius:2px;
+    background:rgba(255,255,255,.03);
+    font-family:"IBM Plex Mono",monospace;
+    font-size:10.5px;color:var(--ink-dim);
+  }
+  .k.wide{min-width:64px}
+  .k.hold{animation:khold 9s ease-in-out infinite}
+  .k.tap{animation:ktap 9s ease-in-out infinite}
+  @keyframes khold{
+    0%,3%{background:rgba(255,255,255,.03);color:var(--ink-dim);border-color:rgba(140,170,180,.28);box-shadow:none}
+    5%,16%{background:rgba(95,208,224,.22);color:#eafbff;border-color:var(--cyan);box-shadow:0 0 10px rgba(95,208,224,.35)}
+    19%,100%{background:rgba(255,255,255,.03);color:var(--ink-dim);border-color:rgba(140,170,180,.28);box-shadow:none}
+  }
+  @keyframes ktap{
+    0%,7%{background:rgba(255,255,255,.03);color:var(--ink-dim);border-color:rgba(140,170,180,.28);box-shadow:none}
+    9%,13%{background:rgba(95,208,224,.22);color:#eafbff;border-color:var(--cyan);box-shadow:0 0 10px rgba(95,208,224,.35)}
+    15%,100%{background:rgba(255,255,255,.03);color:var(--ink-dim);border-color:rgba(140,170,180,.28);box-shadow:none}
+  }
+
+  /* ---------- overlay: cursor ---------- */
+  .ghost{
+    position:absolute;z-index:6;left:70.5%;top:47%;
+    width:38px;height:38px;margin:-19px 0 0 -19px;
+    border:1.5px dashed var(--cyan);border-radius:50%;
+    animation:ghost 9s ease-in-out infinite;
+  }
+  .ghost::after{
+    content:"";position:absolute;inset:15px;border-radius:50%;background:var(--cyan);opacity:.55;
+  }
+  @keyframes ghost{
+    0%,12%{opacity:0;transform:scale(1.5)}
+    14%,38%{opacity:.9;transform:scale(1)}
+    44%,100%{opacity:0;transform:scale(.85)}
+  }
+  .leash{
+    position:absolute;z-index:6;left:57%;top:47%;
+    width:13.5%;height:18%;
+    border-left:0;pointer-events:none;
+    animation:ghost 9s ease-in-out infinite;
+  }
+  .leash svg{position:absolute;inset:0}
+
+  .cursor{
+    position:absolute;z-index:8;
+    left:57%;top:65%;
+    animation:travel 9s cubic-bezier(.5,0,.2,1) infinite;
+  }
+  @keyframes travel{
+    0%,16%{left:57%;top:65%}
+    34%,100%{left:70.5%;top:47%}
+  }
+  .ring{
+    position:absolute;width:26px;height:26px;margin:-13px 0 0 -13px;
+    border:1.5px solid var(--cyan);border-radius:50%;
+    box-shadow:0 0 12px rgba(95,208,224,.5);
+  }
+  .ring::before{
+    content:"";position:absolute;inset:9px;border-radius:50%;background:var(--cyan);
+  }
+  .pulse{
+    position:absolute;width:26px;height:26px;margin:-13px 0 0 -13px;
+    border:2px solid var(--cyan);border-radius:50%;
+    animation:pulse 9s ease-out infinite;opacity:0;
+  }
+  @keyframes pulse{
+    0%,34%{transform:scale(1);opacity:0}
+    36%{transform:scale(1);opacity:.9}
+    44%,100%{transform:scale(3.2);opacity:0}
+  }
+  .arrow{
+    position:absolute;left:8px;top:6px;
+    font-size:15px;color:#fff;
+    text-shadow:0 1px 3px rgba(0,0,0,.9);
+    line-height:1;
+  }
+
+  /* ---------- keyed markers ---------- */
+  .mk{
+    position:absolute;z-index:9;
+    width:19px;height:19px;border-radius:50%;
+    background:var(--cyan);color:#06181c;
+    font-family:"IBM Plex Mono",monospace;font-size:11px;font-weight:500;
+    display:flex;align-items:center;justify-content:center;
+    box-shadow:0 2px 8px rgba(0,0,0,.6);
+  }
+
+  /* ---------- legend ---------- */
+  .legend{display:grid;grid-template-columns:repeat(auto-fit,minmax(228px,1fr));gap:1px;background:var(--rule)}
+  .item{background:var(--panel);padding:15px 16px;display:flex;flex-direction:column;gap:6px}
+  .item h3{
+    margin:0;font-size:13px;font-weight:600;
+    display:flex;align-items:center;gap:8px;
+  }
+  .num{
+    width:18px;height:18px;flex:0 0 18px;border-radius:50%;
+    background:var(--cyan);color:#06181c;
+    font-family:"IBM Plex Mono",monospace;font-size:10.5px;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .item p{margin:0;font-size:12.5px;color:var(--ink-dim);line-height:1.5}
+  .item p em{color:var(--ink);font-style:normal}
+
+  /* ---------- state key ---------- */
+  .states{
+    display:flex;flex-wrap:wrap;gap:0;
+    border:1px solid var(--rule);
+  }
+  .state{
+    flex:1 1 168px;padding:12px 14px;
+    border-right:1px solid var(--rule);
+    display:flex;flex-direction:column;gap:5px;
+  }
+  .state:last-child{border-right:0}
+  .swatch{height:3px;width:34px;border-radius:2px}
+  .state .nm{font-family:"IBM Plex Mono",monospace;font-size:10.5px;letter-spacing:.1em;text-transform:uppercase}
+  .state .ds{font-size:12px;color:var(--ink-dim)}
+
+  .sechd{
+    font-family:"IBM Plex Mono",monospace;
+    font-size:11px;letter-spacing:.15em;text-transform:uppercase;
+    color:var(--ink-faint);
+    padding-bottom:9px;border-bottom:1px solid var(--rule);
+    margin:0;
+  }
+  section{display:flex;flex-direction:column;gap:14px}
+
+  @media (prefers-reduced-motion:reduce){
+    .glow,.dot,.kbd,.k.hold,.k.tap,.ghost,.leash,.cursor,.pulse{animation:none}
+    .kbd{opacity:1}
+    .ghost{opacity:.9}
+    .k.hold{background:rgba(95,208,224,.22);color:#eafbff;border-color:var(--cyan)}
+  }
+</style>
+
+<div class="wrap">
+
+  <header>
+    <div class="eyebrow">Comstar Game AI · host overlay</div>
+    <h1>What the screen looks like while the agent plays</h1>
+    <p class="standfirst">Battle in progress, agent holding control, one deliberation cycle in flight. The four overlay surfaces sit over the game and none of them appear in the frames sent to AO.</p>
+  </header>
+
+  <div class="monitor">
+    <div class="screen">
+
+      <!-- ============ faked Rome battle scene ============ -->
+      <svg viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice" aria-label="Stylised representation of a Total War battle">
+        <defs>
+          <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#6b7b86"/><stop offset="1" stop-color="#c2a882"/>
+          </linearGradient>
+          <linearGradient id="far" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#4c5748"/><stop offset="1" stop-color="#3b4539"/>
+          </linearGradient>
+          <linearGradient id="mid" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#46523a"/><stop offset="1" stop-color="#3c4732"/>
+          </linearGradient>
+          <linearGradient id="near" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#414c33"/><stop offset="1" stop-color="#2f3826"/>
+          </linearGradient>
+          <linearGradient id="chrome" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#2b2219"/><stop offset="1" stop-color="#181310"/>
+          </linearGradient>
+          <radialGradient id="dust" cx="0.5" cy="0.5" r="0.5">
+            <stop offset="0" stop-color="#c9b590" stop-opacity="0.34"/>
+            <stop offset="1" stop-color="#c9b590" stop-opacity="0"/>
+          </radialGradient>
+        </defs>
+
+        <rect x="0" y="0" width="1600" height="330" fill="url(#sky)"/>
+        <path d="M0 300 L180 244 L360 288 L560 230 L760 282 L980 236 L1210 286 L1420 248 L1600 292 L1600 340 L0 340 Z" fill="url(#far)"/>
+        <path d="M0 336 L1600 336 L1600 560 L0 560 Z" fill="url(#mid)"/>
+        <path d="M0 470 Q 420 430 780 476 T 1600 452 L1600 900 L0 900 Z" fill="url(#near)"/>
+        <path d="M980 470 Q 1180 392 1420 448 L1600 440 L1600 560 L980 560 Z" fill="#4a5639" opacity="0.85"/>
+
+        <!-- treeline -->
+        <g fill="#26301f" opacity="0.9">
+          <circle cx="60" cy="352" r="24"/><circle cx="96" cy="342" r="19"/><circle cx="130" cy="356" r="22"/>
+          <circle cx="1490" cy="356" r="26"/><circle cx="1536" cy="344" r="20"/><circle cx="1572" cy="358" r="24"/>
+        </g>
+        <!-- dirt road -->
+        <path d="M300 900 Q 470 640 640 512 L700 512 Q 540 646 400 900 Z" fill="#7d6c50" opacity="0.42"/>
+
+        <!-- dust clouds at the contact line -->
+        <ellipse cx="720" cy="520" rx="240" ry="80" fill="url(#dust)"/>
+        <ellipse cx="1060" cy="470" rx="180" ry="62" fill="url(#dust)"/>
+
+        <!-- ENEMY line (red) -->
+        <g fill="#8f3b34" stroke="#5d221d" stroke-width="2">
+          <rect x="560" y="430" width="86" height="26" rx="2"/>
+          <rect x="664" y="426" width="86" height="26" rx="2"/>
+          <rect x="768" y="430" width="86" height="26" rx="2"/>
+          <rect x="872" y="424" width="86" height="26" rx="2"/>
+          <rect x="978" y="420" width="86" height="26" rx="2"/>
+        </g>
+        <!-- enemy left flank, exposed -->
+        <g fill="#a04a41" stroke="#5d221d" stroke-width="2">
+          <rect x="1092" y="416" width="78" height="24" rx="2"/>
+        </g>
+        <!-- enemy general -->
+        <rect x="800" y="386" width="46" height="20" rx="2" fill="#c25e52" stroke="#5d221d" stroke-width="2"/>
+
+        <!-- OUR line (blue) -->
+        <g fill="#3d5c80" stroke="#22364d" stroke-width="2">
+          <rect x="556" y="556" width="90" height="28" rx="2"/>
+          <rect x="664" y="560" width="90" height="28" rx="2"/>
+          <rect x="772" y="556" width="90" height="28" rx="2"/>
+          <rect x="880" y="562" width="90" height="28" rx="2"/>
+        </g>
+        <!-- our cavalry, group 2, right flank -->
+        <g fill="#4e79a8" stroke="#22364d" stroke-width="2">
+          <rect x="1010" y="596" width="64" height="22" rx="2"/>
+          <rect x="1082" y="600" width="64" height="22" rx="2"/>
+        </g>
+        <!-- our general -->
+        <rect x="742" y="640" width="50" height="22" rx="2" fill="#6b93c4" stroke="#22364d" stroke-width="2"/>
+
+        <!-- ============ game UI chrome ============ -->
+        <rect x="0" y="752" width="1600" height="148" fill="url(#chrome)"/>
+        <rect x="0" y="750" width="1600" height="2" fill="#a88a4e" opacity="0.75"/>
+
+        <!-- minimap -->
+        <rect x="18" y="768" width="118" height="118" rx="3" fill="#101a12" stroke="#a88a4e" stroke-width="1.5" opacity="0.95"/>
+        <rect x="30" y="800" width="42" height="7" fill="#8f3b34"/>
+        <rect x="56" y="846" width="52" height="7" fill="#3d5c80"/>
+        <rect x="86" y="856" width="26" height="6" fill="#4e79a8"/>
+
+        <!-- unit cards -->
+        <g>
+          <rect x="164" y="782" width="52" height="66" rx="2" fill="#241d15" stroke="#8a7245" stroke-width="1.2"/>
+          <rect x="224" y="782" width="52" height="66" rx="2" fill="#241d15" stroke="#8a7245" stroke-width="1.2"/>
+          <rect x="284" y="782" width="52" height="66" rx="2" fill="#241d15" stroke="#8a7245" stroke-width="1.2"/>
+          <rect x="344" y="782" width="52" height="66" rx="2" fill="#241d15" stroke="#8a7245" stroke-width="1.2"/>
+          <rect x="416" y="782" width="52" height="66" rx="2" fill="#2b2a18" stroke="#d8b45e" stroke-width="2"/>
+          <rect x="476" y="782" width="52" height="66" rx="2" fill="#2b2a18" stroke="#d8b45e" stroke-width="2"/>
+          <rect x="548" y="782" width="52" height="66" rx="2" fill="#241d15" stroke="#8a7245" stroke-width="1.2"/>
+          <rect x="608" y="782" width="52" height="66" rx="2" fill="#241d15" stroke="#8a7245" stroke-width="1.2"/>
+        </g>
+        <g fill="#5e8f5e">
+          <rect x="168" y="840" width="44" height="4"/><rect x="228" y="840" width="40" height="4"/>
+          <rect x="288" y="840" width="46" height="4"/><rect x="348" y="840" width="30" height="4"/>
+          <rect x="420" y="840" width="44" height="4"/><rect x="480" y="840" width="44" height="4"/>
+          <rect x="552" y="840" width="22" height="4"/><rect x="612" y="840" width="38" height="4"/>
+        </g>
+
+        <text x="1432" y="800" font-family="Cinzel,serif" font-size="19" fill="#c9a961" letter-spacing="3">JULII</text>
+        <rect x="1400" y="816" width="176" height="1" fill="#a88a4e" opacity="0.5"/>
+        <g fill="#3a3024" stroke="#8a7245" stroke-width="1.2">
+          <rect x="1400" y="830" width="38" height="30" rx="2"/>
+          <rect x="1446" y="830" width="38" height="30" rx="2"/>
+          <rect x="1492" y="830" width="38" height="30" rx="2"/>
+          <rect x="1538" y="830" width="38" height="30" rx="2"/>
+        </g>
+      </svg>
+
+      <!-- ============ overlay ============ -->
+      <div class="glow">
+        <span class="corner tl"></span><span class="corner tr"></span>
+        <span class="corner bl"></span><span class="corner br"></span>
+      </div>
+
+      <div class="statechip"><span class="dot"></span>Frozen · deliberating</div>
+      <div class="mk" style="top:14px;left:206px">1</div>
+
+      <!-- chat -->
+      <div class="chat">
+        <div class="chat-hd"><span>AO · client.battle_director</span><span>btl-7-0412</span></div>
+        <div class="chat-body">
+          <div class="ln out"><span class="t">14:22:07</span><span class="g">&#8594;</span><span class="m">brief <b>780 tok</b> · 4 views · <span class="q">priority high</span></span></div>
+          <div class="ln st"><span class="t">14:22:09</span><span class="g">·</span><span class="m">queued 1 of 2</span></div>
+          <div class="ln st"><span class="t">14:22:11</span><span class="g">·</span><span class="m">generating</span></div>
+          <div class="ln in"><span class="t">14:22:14</span><span class="g">&#8592;</span><span class="m"><b>annihilate</b> · own &#8804; 35% · enemy &#8805; 90% <span class="lat">7.1s</span></span></div>
+          <div class="ln in"><span class="t"></span><span class="g"></span><span class="m quote">&ldquo;Their left is hanging. Take it before the cavalry come back round.&rdquo;</span></div>
+          <div class="ln act"><span class="t">14:22:14</span><span class="g">&#8658;</span><span class="m">intent <b>group 2 &#8594; wheel left, charge flank</b></span></div>
+          <div class="ln act"><span class="t">14:22:16</span><span class="g">&#10003;</span><span class="m">verified &#183; 2 units moving</span></div>
+        </div>
+      </div>
+      <div class="mk" style="top:14px;right:334px">4</div>
+
+      <!-- cursor path leash -->
+      <div class="leash">
+        <svg viewBox="0 0 100 100" preserveAspectRatio="none">
+          <path d="M0 100 Q 44 74 100 0" fill="none" stroke="#5fd0e0" stroke-width="0.8"
+                stroke-dasharray="3 3" opacity="0.55" vector-effect="non-scaling-stroke"/>
+        </svg>
+      </div>
+      <div class="ghost"></div>
+      <div class="mk" style="top:43%;left:73.5%">3</div>
+
+      <div class="cursor">
+        <span class="pulse"></span>
+        <span class="ring"></span>
+        <span class="arrow">&#10148;</span>
+      </div>
+
+      <!-- keyboard -->
+      <div class="kbd">
+        <div class="krow">
+          <span class="k">1</span><span class="k tap">2</span><span class="k">3</span><span class="k">4</span>
+          <span class="k">5</span><span class="k">6</span>
+        </div>
+        <div class="krow">
+          <span class="k wide hold">Ctrl</span><span class="k">Alt</span><span class="k">&#8679;</span>
+          <span class="k">&#96;</span><span class="k">G</span>
+        </div>
+        <div class="krow">
+          <span class="k wide">Space</span><span class="k">&#8592;</span><span class="k">&#8593;</span>
+          <span class="k">&#8595;</span><span class="k">&#8594;</span>
+        </div>
+      </div>
+      <div class="mk" style="bottom:186px;left:26px">2</div>
+
+    </div>
+  </div>
+
+  <p class="disclaimer">The battle beneath is a drawn representation, not a game screenshot.</p>
+
+  <section>
+    <h2 class="sechd">Keyed to the mockup</h2>
+    <div class="legend">
+      <div class="item">
+        <h3><span class="num">1</span>Edge glow and state</h3>
+        <p>Border glow sized to the game window, colour encoding what the agent is doing. The chip names the state in words so the colour never has to be memorised. <em>Click through and never activates</em>, or synthetic clicks land on it and the game silently does nothing.</p>
+      </div>
+      <div class="item">
+        <h3><span class="num">2</span>Virtual keyboard</h3>
+        <p>Only the keys the agent actually uses: control groups, modifiers, pause, console, camera. Fades in on the first press and out after idle. Held modifiers stay lit while taps flash, because <em>Ctrl held is what makes 2 mean group two</em>.</p>
+      </div>
+      <div class="item">
+        <h3><span class="num">3</span>Cursor and intent preview</h3>
+        <p>A ring follows the pointer. The dashed leash and hollow marker appear <em>before</em> the cursor travels, so you see what the agent is about to do rather than only what it did. Cyan is the agent driving; amber would mean you took the mouse.</p>
+      </div>
+      <div class="item">
+        <h3><span class="num">4</span>AO cycle window</h3>
+        <p>The whole loop, not just traffic: what went up, live queue and phase from <em>ReachRunStatus</em>, the directive that came back with its latency, the intent it produced, and whether the action verified. This is the intent log, live.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 class="sechd">Glow states</h2>
+    <div class="states">
+      <div class="state">
+        <span class="swatch" style="background:#5fd0e0"></span>
+        <span class="nm" style="color:#5fd0e0">Deliberating</span>
+        <span class="ds">Frozen, waiting on AO. Shown above.</span>
+      </div>
+      <div class="state">
+        <span class="swatch" style="background:#7fc08a"></span>
+        <span class="nm" style="color:#7fc08a">Acting</span>
+        <span class="ds">Issuing orders, game running.</span>
+      </div>
+      <div class="state">
+        <span class="swatch" style="background:#e8a33d"></span>
+        <span class="nm" style="color:#e8a33d">Suspended</span>
+        <span class="ds">You touched the mouse. Agent stood down.</span>
+      </div>
+      <div class="state">
+        <span class="swatch" style="background:#e0685f"></span>
+        <span class="nm" style="color:#e0685f">Fault</span>
+        <span class="ds">An action failed verification.</span>
+      </div>
+      <div class="state">
+        <span class="swatch" style="background:#5d6a72"></span>
+        <span class="nm" style="color:#8d9aa2">Idle</span>
+        <span class="ds">Game detected, control not handed over.</span>
+      </div>
+    </div>
+  </section>
+
+</div>

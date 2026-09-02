@@ -1,0 +1,8 @@
+# Test campaign — update save_path after bootstrap (Grand Campaign, Julii)
+campaign:
+  mode: grand_campaign
+  player_faction: julii
+  save_slug: comstar-julii
+  save_path: null
+  created_at: null
+  game_version: null

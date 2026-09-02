@@ -1,0 +1,7 @@
+id: battle_doctrine
+description: Small stable tactical doctrine core
+content:
+  file: battle_doctrine.md
+inject:
+  heading: "## Battle doctrine"
+  max_chars: 1200
