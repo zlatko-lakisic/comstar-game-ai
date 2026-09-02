@@ -36,7 +36,10 @@ def test_directive_store_roundtrip():
 
 def test_hardcoded_campaign_run_turns():
     driver = HardcodedCampaignDriver()
-    result = driver.run_turns(3, require_ok=False)
+    driver.state.state = __import__(
+        "comstar_game_ai.game_io.state_machine", fromlist=["GameState"]
+    ).GameState.CAMPAIGN_MAP
+    result = driver.run_turns(3, require_ok=False, wait_for_next_turn=False)
     assert result["requested"] == 3
 
 

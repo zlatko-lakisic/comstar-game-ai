@@ -122,6 +122,7 @@ class GameIoRuntime:
             return {"ok": False, "reason": "setup_failed"}
 
         driver = HardcodedCampaignDriver(player_faction=self.player_faction)
+        driver.bootstrap_from_logs()
         successes = 0
         desyncs = 0
 
@@ -135,7 +136,7 @@ class GameIoRuntime:
                     break
 
                 driver.poll_observation()
-                ok = driver.run_turn_stub()
+                ok = driver.run_turn_stub(wait_for_next_turn=True)
                 if ok:
                     successes += 1
                 else:

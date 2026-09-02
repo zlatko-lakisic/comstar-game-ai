@@ -31,26 +31,45 @@ class GameWindow:
 
 def _match_title(title: str, substrings: list[str]) -> bool:
     lower = title.lower()
+    # Avoid false positives like "Google Chrome" matching substring "rome".
+    if "chrome" in lower and "total war" not in lower and "rome remastered" not in lower:
+        return False
+    if "options" in lower and "total war" in lower:
+        return False
+    if "launcher" in lower and "total war" in lower:
+        return False
+    if any(s.lower() in lower for s in ("total war", "rome remastered")):
+        return True
     return any(s.lower() in lower for s in substrings)
 
 
 def find_game_window(title_substrings: list[str]) -> GameWindow | None:
     if win32gui is None:
         return None
-    found: GameWindow | None = None
+    candidates: list[GameWindow] = []
 
     def enum_handler(hwnd: int, _: int) -> None:
-        nonlocal found
         if not win32gui.IsWindowVisible(hwnd):
             return
         title = win32gui.GetWindowText(hwnd)
         if not title or not _match_title(title, title_substrings):
             return
         rect = win32gui.GetWindowRect(hwnd)
-        found = GameWindow(hwnd=hwnd, title=title, rect=rect)
+        # Skip minimized windows (Windows uses -32000 sentinel).
+        if rect[0] <= -30000 or rect[1] <= -30000:
+            return
+        candidates.append(GameWindow(hwnd=hwnd, title=title, rect=rect))
 
     win32gui.EnumWindows(enum_handler, 0)
-    return found
+    if not candidates:
+        return None
+    # Prefer exact game title, then largest client area.
+    def score(w: GameWindow) -> tuple[int, int]:
+        t = w.title.lower()
+        exact = 2 if "rome remastered" in t or "total war" in t else 0
+        return (exact, w.width * w.height)
+
+    return max(candidates, key=score)
 
 
 def get_foreground_hwnd() -> int | None:

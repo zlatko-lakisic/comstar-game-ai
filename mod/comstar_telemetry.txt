@@ -1,0 +1,22 @@
+script;
+
+declare_counter turn_counter;
+
+monitor_event NewTurnStart
+    inc_counter turn_counter 1;
+    script_log event=NewTurnStart;
+end_monitor;
+
+monitor_conditions I_BattleEndPending
+    script_log event=I_BattleEndPending;
+end_monitor;
+
+monitor_conditions I_BattleEnd
+    script_log event=I_BattleEnd;
+end_monitor;
+
+monitor_conditions I_BattleFinished
+    script_log event=I_BattleFinished;
+end_monitor;
+
+end_script

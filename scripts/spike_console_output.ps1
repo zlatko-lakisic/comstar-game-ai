@@ -35,3 +35,8 @@ print('found' if w else 'not found', w)
 "@
 
 Write-Host "Spike output written to docs/spikes/"
+Write-Host ""
+Write-Host "Console output spike: with Rome on campaign map, run:"
+Write-Host "  python scripts/run_phase1_observation.py"
+Write-Host "Then grep message_log.txt for list_characters output."
+Write-Host "If only in-game console pane, console queries need OCR or script telemetry instead."

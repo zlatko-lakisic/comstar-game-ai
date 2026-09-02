@@ -23,13 +23,26 @@ def test_parse_key_value_line():
     assert record["name"] == "Caesar IV"
 
 
+def test_scripting_log_tailer_verbose_script_log(tmp_path):
+    log = tmp_path / "scripting_log.txt"
+    log.write_text("(tutorial.txt::1758) Executing command script_log\n", encoding="utf-8")
+    tailer = ScriptingLogTailer(path=log)
+    tailer._telemetry_line_map = {1758: "NewTurnStart"}
+    batch = tailer.poll()
+    assert batch == [{"event": "NewTurnStart", "source": "verbose_script_log", "script_line": "1758"}]
+
+
 def test_scripting_log_tailer(tmp_path):
     log = tmp_path / "scripting_log.txt"
     log.write_text("event=NewTurnStart turn=1 faction=julii\n", encoding="utf-8")
     tailer = ScriptingLogTailer(path=log)
     first = tailer.poll()
     assert first == [{"event": "NewTurnStart", "turn": "1", "faction": "julii"}]
-    log.write_text("event=NewTurnStart turn=1 faction=julii\nentity=army id=a1 x=10 y=20\n", encoding="utf-8")
+    log.write_text(
+        "event=NewTurnStart turn=1 faction=julii\n"
+        "event=entity entity=army id=a1 x=10 y=20\n",
+        encoding="utf-8",
+    )
     tailer.reset()
     batch = tailer.poll()
     assert len(batch) == 2

@@ -15,6 +15,7 @@ game:
   launch_args:
     - "-windowed"
     - "-enable_logging"
+    - "-verbose_script_logging"
 
 display:
   game_monitor_index: 2
@@ -29,6 +30,7 @@ capture:
 campaign:
   mode: grand_campaign
   player_faction: julii
+  acceptance_turns: 20
   save_slug: comstar-julii
   save_path: null
 

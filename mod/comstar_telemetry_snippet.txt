@@ -1,0 +1,22 @@
+declare_counter comstar_turn_counter;
+
+monitor_event NewTurnStart
+    inc_counter comstar_turn_counter 1;
+    script_log event=NewTurnStart;
+    if I_CompareCounter comstar_turn_counter 5
+        set_counter comstar_turn_counter 0;
+        script_log event=full_dump;
+    end_if
+end_monitor;
+
+monitor_conditions I_BattleEndPending
+    script_log event=I_BattleEndPending;
+end_monitor;
+
+monitor_conditions I_BattleEnd
+    script_log event=I_BattleEnd;
+end_monitor;
+
+monitor_conditions I_BattleFinished
+    script_log event=I_BattleFinished;
+end_monitor;
