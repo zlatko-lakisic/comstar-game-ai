@@ -5,34 +5,31 @@
   </div>
   <p class="comp-lead">Three processes on the Windows box and an engine on a second machine. The split exists so a stalled agent or a hung interface can never leave a key held down.</p>
 
-  {% for group in site.data.components %}
-  <div class="comp-group">
-    <div class="comp-group-head">
-      <h3>{{ group.group }}</h3>
-      <p class="comp-subtitle">{{ group.subtitle }}</p>
-    </div>
-    <div class="comp-items">
-      {% for item in group.items %}
-      {% assign ph = site.data.phases.phases | where: "id", item.phase | first %}
-      <div class="comp-row">
-        <div class="comp-copy">
-          <span class="comp-name">{{ item.name }}</span>
-          <span class="comp-does">{{ item.does }}</span>
-        </div>
-        <div class="comp-meta">
-          <span class="comp-phase mono">PHASE {{ item.phase }}</span>
-          <span class="pill {{ ph.status }}">{{ ph.status | replace: "_", " " | upcase }}</span>
-        </div>
+  <div class="comp-grid">
+    {% for group in site.data.components %}
+    <div class="comp-card">
+      <div class="comp-card-head">
+        <h3>{{ group.group }}</h3>
+        <p class="comp-subtitle">{{ group.subtitle }}</p>
       </div>
-      {% endfor %}
+      <ul class="comp-list">
+        {% for item in group.items %}
+        {% assign ph = site.data.phases.phases | where: "id", item.phase | first %}
+        <li class="comp-item" title="{{ item.does | escape }}">
+          <span class="dot-status {{ ph.status }}" aria-hidden="true"></span>
+          <span class="comp-item-name">{{ item.name }}</span>
+          <span class="comp-item-phase mono">P{{ item.phase }}</span>
+          <span class="sr-only">{{ ph.status | replace: "_", " " }}</span>
+        </li>
+        {% endfor %}
+      </ul>
     </div>
+    {% endfor %}
   </div>
-  {% endfor %}
 
-  <figure class="overlay-figure">
-    <img src="{{ '/assets/img/overlay-screen.png' | relative_url }}" loading="lazy"
-         width="1440" height="810"
-         alt="The overlay in use over a Rome Remastered battle: an edge glow, a virtual keyboard, a cursor with an intent marker, and a translucent AO cycle window">
-    <figcaption>What the screen looks like while it plays.</figcaption>
-  </figure>
+  <div class="comp-legend mono">
+    <span><span class="dot-status done" aria-hidden="true"></span> done</span>
+    <span><span class="dot-status in_progress" aria-hidden="true"></span> in progress</span>
+    <span><span class="dot-status not_started" aria-hidden="true"></span> not started</span>
+  </div>
 </section>

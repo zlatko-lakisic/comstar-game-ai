@@ -1,9 +1,7 @@
 {% assign p = site.data.phases.phases | where: "id", site.data.phases.current_phase | first %}
 {% assign done = site.data.phases.phases | where: "status", "done" | size %}
-{% if p.status == "in_progress" %}
-  {% assign chip_lead = "IN PROGRESS" %}
-{% elsif p.status == "done" %}
-  {% assign chip_lead = "COMPLETE" %}
+{% if p.status == "in_progress" or p.status == "done" %}
+  {% assign chip_lead = p.status | replace: "_", " " | upcase %}
 {% else %}
   {% assign chip_lead = "NEXT UP" %}
 {% endif %}
@@ -22,7 +20,7 @@
       <span class="cap-div" aria-hidden="true"></span>
       <span class="eyebrow" style="margin:0;">Game AI</span>
     </div>
-    <h1>An opponent that plays Rome<br>rather than cheating at it.</h1>
+    <h1>An opponent that plays Rome<br class="h1-break">rather than cheating at it.</h1>
     <p class="tagline">A fogged, no-cheat AI faction for Total War: Rome Remastered, reasoning through Agentic Orchestration and acting through the same console and input surface a person uses.</p>
     <div class="status-chip">
       <span class="dot {{ p.status }}"></span>

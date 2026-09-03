@@ -1,3 +1,5 @@
+# Bump `updated` whenever a phase status changes.
+updated: "2026-09-03"
 current_phase: 2
 total: 7
 phases:
@@ -5,47 +7,55 @@ phases:
     name: Preconditions and capture
     summary: Window detection, WGC window capture of the game window, ring buffer, all three startup self tests.
     accepts: Self tests pass, frames captured at target rate with the overlay stub absent from them.
+    evidence: null
     status: done
     blocked_by: null
   - id: 1
     name: Observation
     summary: Background script emitting state and transitions, log tailers, console query channel, belief store with provenance, age and confidence.
     accepts: Campaign state reconstructed externally and matching the screen for 20 consecutive turns. No AI involved.
+    evidence: null
     status: done
     blocked_by: null
   - id: 2
     name: Actuation
     summary: Console wrapper with the fair play gate, SendInput actuator with dwell and hover, diff based order computation, verification tiers, intent record.
     accepts: 20 consecutive turns driven end to end, hardcoded, no reasoning, zero desyncs between intended and actual.
+    evidence: null
     status: in_progress
     blocked_by: null
   - id: 3
     name: Overlay
     summary: Process C, four surfaces, event stream, takeover handshake, three control transitions.
     accepts: Capture exclusion, click through and non activation self tests all pass with the full overlay live. Kill switch releases everything from any state.
+    evidence: null
     status: not_started
     blocked_by: null
   - id: 4
     name: Battle loop
     summary: toggle_game_update freeze cycle, output_unit_positions parse, deployment phase handling, post battle harvest.
     accepts: A complete battle fought at a fixed tick with no manual intervention, and an after action record written.
+    evidence: null
     status: not_started
     blocked_by: null
   - id: 5
     name: Deterministic predictors
     summary: "Built from Battle_and_Campaign_Formulae.md: melee and charge resolution, fatigue and morale, auto resolve estimate, siege duration, economy projection, movement reachability."
     accepts: Every predictor output paired with an observed outcome in the log.
+    evidence: null
     status: not_started
     blocked_by: null
   - id: 6
     name: AO integration
     summary: Reach session overlay, mTLS enrolment, direct_agent calls, view compositor, neutral directive fallback, cancellation on stale.
     accepts: Directives influence play, a move is never blocked, every failure path resolves to neutral.
+    evidence: null
     status: not_started
     blocked_by: null
   - id: 7
     name: Learning
     summary: After action records, the experience corpus, offline consolidation into doctrine.
     accepts: Records written and retrievable, consolidation produces doctrine.
+    evidence: null
     status: not_started
     blocked_by: null

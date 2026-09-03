@@ -6,7 +6,7 @@
   <p>A local application on a Windows machine reads Rome Remastered through its own scripting and console interfaces, drives it with synthetic keyboard and mouse, and consults a language model for strategy through Agentic Orchestration running on a second box.</p>
   <p>The game process is the host and AO is a service it consults, never the other way around. A move is never blocked waiting on a model &mdash; a timeout, an error or a malformed response all resolve to a neutral directive and play continues.</p>
 
-  <div class="shape-diagram" aria-hidden="false">
+  <div class="shape-diagram">
     <div class="shape-panel">
       <div class="shape-head mono">Windows box</div>
       <div class="shape-row"><span class="shape-name">Total War: Rome Remastered</span></div>
@@ -31,4 +31,11 @@
     <span class="shape-chip mono">NO PROCESS INJECTION</span>
     <span class="shape-chip mono">NO CHEAT COMMANDS</span>
   </div>
+
+  <figure class="overlay-figure">
+    <img src="{{ '/assets/img/overlay-screen.png' | relative_url }}" loading="eager"
+         width="1440" height="810"
+         alt="The overlay in use over a Rome Remastered battle: an edge glow, a virtual keyboard, a cursor with an intent marker, and a translucent AO cycle window">
+    <figcaption>What the screen looks like while it plays. The overlay is excluded from every frame the model sees.</figcaption>
+  </figure>
 </section>
