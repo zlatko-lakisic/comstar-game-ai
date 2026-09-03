@@ -73,6 +73,11 @@
     isolation:isolate;
   }
   .screen svg{position:absolute;inset:0;width:100%;height:100%;display:block}
+  .battle{
+    position:absolute;inset:0;width:100%;height:100%;
+    object-fit:cover;object-position:center 42%;
+    display:block;
+  }
 
   .disclaimer{
     font-family:"IBM Plex Mono",monospace;
@@ -314,115 +319,8 @@
   <div class="monitor">
     <div class="screen">
 
-      <!-- ============ faked Rome battle scene ============ -->
-      <svg viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice" aria-label="Stylised representation of a Total War battle">
-        <defs>
-          <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stop-color="#6b7b86"/><stop offset="1" stop-color="#c2a882"/>
-          </linearGradient>
-          <linearGradient id="far" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stop-color="#4c5748"/><stop offset="1" stop-color="#3b4539"/>
-          </linearGradient>
-          <linearGradient id="mid" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stop-color="#46523a"/><stop offset="1" stop-color="#3c4732"/>
-          </linearGradient>
-          <linearGradient id="near" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stop-color="#414c33"/><stop offset="1" stop-color="#2f3826"/>
-          </linearGradient>
-          <linearGradient id="chrome" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stop-color="#2b2219"/><stop offset="1" stop-color="#181310"/>
-          </linearGradient>
-          <radialGradient id="dust" cx="0.5" cy="0.5" r="0.5">
-            <stop offset="0" stop-color="#c9b590" stop-opacity="0.34"/>
-            <stop offset="1" stop-color="#c9b590" stop-opacity="0"/>
-          </radialGradient>
-        </defs>
-
-        <rect x="0" y="0" width="1600" height="330" fill="url(#sky)"/>
-        <path d="M0 300 L180 244 L360 288 L560 230 L760 282 L980 236 L1210 286 L1420 248 L1600 292 L1600 340 L0 340 Z" fill="url(#far)"/>
-        <path d="M0 336 L1600 336 L1600 560 L0 560 Z" fill="url(#mid)"/>
-        <path d="M0 470 Q 420 430 780 476 T 1600 452 L1600 900 L0 900 Z" fill="url(#near)"/>
-        <path d="M980 470 Q 1180 392 1420 448 L1600 440 L1600 560 L980 560 Z" fill="#4a5639" opacity="0.85"/>
-
-        <!-- treeline -->
-        <g fill="#26301f" opacity="0.9">
-          <circle cx="60" cy="352" r="24"/><circle cx="96" cy="342" r="19"/><circle cx="130" cy="356" r="22"/>
-          <circle cx="1490" cy="356" r="26"/><circle cx="1536" cy="344" r="20"/><circle cx="1572" cy="358" r="24"/>
-        </g>
-        <!-- dirt road -->
-        <path d="M300 900 Q 470 640 640 512 L700 512 Q 540 646 400 900 Z" fill="#7d6c50" opacity="0.42"/>
-
-        <!-- dust clouds at the contact line -->
-        <ellipse cx="720" cy="520" rx="240" ry="80" fill="url(#dust)"/>
-        <ellipse cx="1060" cy="470" rx="180" ry="62" fill="url(#dust)"/>
-
-        <!-- ENEMY line (red) -->
-        <g fill="#8f3b34" stroke="#5d221d" stroke-width="2">
-          <rect x="560" y="430" width="86" height="26" rx="2"/>
-          <rect x="664" y="426" width="86" height="26" rx="2"/>
-          <rect x="768" y="430" width="86" height="26" rx="2"/>
-          <rect x="872" y="424" width="86" height="26" rx="2"/>
-          <rect x="978" y="420" width="86" height="26" rx="2"/>
-        </g>
-        <!-- enemy left flank, exposed -->
-        <g fill="#a04a41" stroke="#5d221d" stroke-width="2">
-          <rect x="1092" y="416" width="78" height="24" rx="2"/>
-        </g>
-        <!-- enemy general -->
-        <rect x="800" y="386" width="46" height="20" rx="2" fill="#c25e52" stroke="#5d221d" stroke-width="2"/>
-
-        <!-- OUR line (blue) -->
-        <g fill="#3d5c80" stroke="#22364d" stroke-width="2">
-          <rect x="556" y="556" width="90" height="28" rx="2"/>
-          <rect x="664" y="560" width="90" height="28" rx="2"/>
-          <rect x="772" y="556" width="90" height="28" rx="2"/>
-          <rect x="880" y="562" width="90" height="28" rx="2"/>
-        </g>
-        <!-- our cavalry, group 2, right flank -->
-        <g fill="#4e79a8" stroke="#22364d" stroke-width="2">
-          <rect x="1010" y="596" width="64" height="22" rx="2"/>
-          <rect x="1082" y="600" width="64" height="22" rx="2"/>
-        </g>
-        <!-- our general -->
-        <rect x="742" y="640" width="50" height="22" rx="2" fill="#6b93c4" stroke="#22364d" stroke-width="2"/>
-
-        <!-- ============ game UI chrome ============ -->
-        <rect x="0" y="752" width="1600" height="148" fill="url(#chrome)"/>
-        <rect x="0" y="750" width="1600" height="2" fill="#a88a4e" opacity="0.75"/>
-
-        <!-- minimap -->
-        <rect x="18" y="768" width="118" height="118" rx="3" fill="#101a12" stroke="#a88a4e" stroke-width="1.5" opacity="0.95"/>
-        <rect x="30" y="800" width="42" height="7" fill="#8f3b34"/>
-        <rect x="56" y="846" width="52" height="7" fill="#3d5c80"/>
-        <rect x="86" y="856" width="26" height="6" fill="#4e79a8"/>
-
-        <!-- unit cards -->
-        <g>
-          <rect x="164" y="782" width="52" height="66" rx="2" fill="#241d15" stroke="#8a7245" stroke-width="1.2"/>
-          <rect x="224" y="782" width="52" height="66" rx="2" fill="#241d15" stroke="#8a7245" stroke-width="1.2"/>
-          <rect x="284" y="782" width="52" height="66" rx="2" fill="#241d15" stroke="#8a7245" stroke-width="1.2"/>
-          <rect x="344" y="782" width="52" height="66" rx="2" fill="#241d15" stroke="#8a7245" stroke-width="1.2"/>
-          <rect x="416" y="782" width="52" height="66" rx="2" fill="#2b2a18" stroke="#d8b45e" stroke-width="2"/>
-          <rect x="476" y="782" width="52" height="66" rx="2" fill="#2b2a18" stroke="#d8b45e" stroke-width="2"/>
-          <rect x="548" y="782" width="52" height="66" rx="2" fill="#241d15" stroke="#8a7245" stroke-width="1.2"/>
-          <rect x="608" y="782" width="52" height="66" rx="2" fill="#241d15" stroke="#8a7245" stroke-width="1.2"/>
-        </g>
-        <g fill="#5e8f5e">
-          <rect x="168" y="840" width="44" height="4"/><rect x="228" y="840" width="40" height="4"/>
-          <rect x="288" y="840" width="46" height="4"/><rect x="348" y="840" width="30" height="4"/>
-          <rect x="420" y="840" width="44" height="4"/><rect x="480" y="840" width="44" height="4"/>
-          <rect x="552" y="840" width="22" height="4"/><rect x="612" y="840" width="38" height="4"/>
-        </g>
-
-        <text x="1432" y="800" font-family="Cinzel,serif" font-size="19" fill="#c9a961" letter-spacing="3">JULII</text>
-        <rect x="1400" y="816" width="176" height="1" fill="#a88a4e" opacity="0.5"/>
-        <g fill="#3a3024" stroke="#8a7245" stroke-width="1.2">
-          <rect x="1400" y="830" width="38" height="30" rx="2"/>
-          <rect x="1446" y="830" width="38" height="30" rx="2"/>
-          <rect x="1492" y="830" width="38" height="30" rx="2"/>
-          <rect x="1538" y="830" width="38" height="30" rx="2"/>
-        </g>
-      </svg>
+      <!-- battlefield: generated hero still, not a game capture -->
+      <img class="battle" src="hero.png" alt="Roman formations on a dry plain, annotated with a thin cyan machine layer">
 
       <!-- ============ overlay ============ -->
       <div class="glow">
@@ -484,7 +382,7 @@
     </div>
   </div>
 
-  <p class="disclaimer">The battle beneath is a drawn representation, not a game screenshot.</p>
+  <p class="disclaimer">The battle beneath is a generated still from the hero prompt, not a game screenshot. The cyan boxes and dashed arc are part of that still; the four overlay surfaces sit on top.</p>
 
   <section>
     <h2 class="sechd">Keyed to the mockup</h2>
