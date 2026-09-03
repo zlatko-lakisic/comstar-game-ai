@@ -1,9 +1,10 @@
 {% assign done = site.data.phases.phases | where: "status", "done" | size %}
 <nav class="rail" aria-label="Section progress">
-  <div class="rail-cap mono">
-    <b>{{ done }}</b>
-    <span class="cap-div" aria-hidden="true"></span>
-    <span>{{ site.data.phases.total }}</span>
+  <div class="rail-cap" title="{{ done }} of {{ site.data.phases.total }} phases complete">
+    <span class="rail-cap-num mono">{{ done }}<span class="rail-cap-slash">/</span>{{ site.data.phases.total }}</span>
+    <span class="rail-cap-segs" aria-hidden="true">
+      {% for p in site.data.phases.phases %}<span class="rseg {{ p.status }}"></span>{% endfor %}
+    </span>
   </div>
   <div class="rail-track-wrap">
     <div class="rail-fill" id="railFill"></div>

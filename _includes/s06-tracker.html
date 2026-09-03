@@ -1,8 +1,8 @@
 {% assign done = site.data.phases.phases | where: "status", "done" | size %}
-{% assign blocked_count = site.data.phases.phases | where: "status", "blocked" | size %}
+{% assign blocked = site.data.phases.phases | where: "status", "blocked" | size %}
 {% assign current = site.data.phases.phases | where: "id", site.data.phases.current_phase | first %}
 {% if current.status == "in_progress" %}
-  {% assign next_clause = "in progress" %}
+  {% assign next_clause = current.status | replace: "_", " " %}
 {% else %}
   {% assign next_clause = "next" %}
 {% endif %}
@@ -15,9 +15,10 @@
   <div class="tracker-summary mono">
     <span><b>{{ done }}</b> of {{ site.data.phases.total }} complete</span>
     <span class="sep" aria-hidden="true">&middot;</span>
-    <span>{% if blocked_count > 0 %}<b style="color:var(--blocked)">{{ blocked_count }}</b>{% else %}<b>{{ blocked_count }}</b>{% endif %} blocked</span>
+    <span class="{% if blocked == 0 %}is-zero{% endif %}">{% if blocked > 0 %}<b style="color:var(--blocked)">{{ blocked }}</b>{% else %}<b>{{ blocked }}</b>{% endif %} blocked</span>
     <span class="sep" aria-hidden="true">&middot;</span>
     <span>phase <b>{{ site.data.phases.current_phase }}</b> {{ next_clause }}</span>
+    <span class="tracker-updated">updated {{ site.data.phases.updated | date: "%-d %B %Y" }}</span>
   </div>
 
   <div class="stepper">
@@ -31,6 +32,9 @@
         <h3>{{ phase.name }} <span class="pill {{ phase.status }}">{{ phase.status | replace: "_", " " | upcase }}</span></h3>
         <p class="summary">{{ phase.summary }}</p>
         <div class="accept"><span class="accept-label">Accept</span><span>{{ phase.accepts }}</span></div>
+        {% if phase.evidence %}
+        <p class="evidence"><span class="evidence-label mono">Result</span><span class="mono">{{ phase.evidence }}</span></p>
+        {% endif %}
         {% if phase.blocked_by %}
         {% assign bq = site.data.questions | where: "id", phase.blocked_by | first %}
         <p class="blocked-note">Blocked on <a href="#q-{{ phase.blocked_by }}">{{ bq.question }}</a> &mdash; open decision, not yet made.</p>

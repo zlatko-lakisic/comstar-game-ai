@@ -1,0 +1,16 @@
+{% assign phases = site.data.phases.phases %}
+{% assign done = phases | where: "status", "done" | size %}
+{% assign cur = phases | where: "id", site.data.phases.current_phase | first %}
+<div class="statusband-wrap">
+  <a class="statusband" href="#tracker">
+    <span class="statusband-segs" aria-hidden="true">
+      {% for p in phases %}<span class="seg {{ p.status }}"></span>{% endfor %}
+    </span>
+    <span class="statusband-text mono">
+      <b>{{ done }} of {{ site.data.phases.total }}</b> complete
+      <span class="statusband-sep" aria-hidden="true">&middot;</span>
+      phase {{ cur.id }}, {{ cur.name | downcase }}, {{ cur.status | replace: "_", " " }}
+    </span>
+    <span class="statusband-go mono">Build tracker &#8594;</span>
+  </a>
+</div>
