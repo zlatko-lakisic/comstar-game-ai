@@ -1,0 +1,18 @@
+<section class="section prose" id="open-questions">
+  <div class="section-head">
+    <span class="eyebrow">Open questions</span>
+    <h2>What is deliberately unmade</h2>
+  </div>
+  <p>These are not oversights. Each one is a decision that has not been made yet, and each one blocks something specific.</p>
+  <div class="q-list">
+    {% for q in site.data.questions %}
+    <div class="q-item" id="q-{{ q.id }}">
+      <div class="q-top">
+        <h3 class="q-question">{{ q.question }}</h3>
+        <span class="q-blocks mono">Blocks {{ q.blocks | upcase }}</span>
+      </div>
+      <p class="q-detail">{{ q.detail }}</p>
+    </div>
+    {% endfor %}
+  </div>
+</section>

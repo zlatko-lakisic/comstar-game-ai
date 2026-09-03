@@ -1,0 +1,42 @@
+{% assign done = site.data.phases.phases | where: "status", "done" | size %}
+{% assign blocked_count = site.data.phases.phases | where: "status", "blocked" | size %}
+{% assign current = site.data.phases.phases | where: "id", site.data.phases.current_phase | first %}
+{% if current.status == "in_progress" %}
+  {% assign next_clause = "in progress" %}
+{% else %}
+  {% assign next_clause = "next" %}
+{% endif %}
+<section class="section wide" id="tracker">
+  <div class="section-head">
+    <span class="eyebrow">Build tracker</span>
+    <h2>How far along it is</h2>
+  </div>
+
+  <div class="tracker-summary mono">
+    <span><b>{{ done }}</b> of {{ site.data.phases.total }} complete</span>
+    <span class="sep" aria-hidden="true">&middot;</span>
+    <span>{% if blocked_count > 0 %}<b style="color:var(--blocked)">{{ blocked_count }}</b>{% else %}<b>{{ blocked_count }}</b>{% endif %} blocked</span>
+    <span class="sep" aria-hidden="true">&middot;</span>
+    <span>phase <b>{{ site.data.phases.current_phase }}</b> {{ next_clause }}</span>
+  </div>
+
+  <div class="stepper">
+    {% for phase in site.data.phases.phases %}
+    <div class="phase{% if phase.status == "blocked" %} is-blocked{% endif %}">
+      <div class="phase-num-col">
+        <span class="phase-num">{% if phase.id < 10 %}0{% endif %}{{ phase.id }}</span>
+        <span class="num-line"></span>
+      </div>
+      <div class="phase-body">
+        <h3>{{ phase.name }} <span class="pill {{ phase.status }}">{{ phase.status | replace: "_", " " | upcase }}</span></h3>
+        <p class="summary">{{ phase.summary }}</p>
+        <div class="accept"><span class="accept-label">Accept</span><span>{{ phase.accepts }}</span></div>
+        {% if phase.blocked_by %}
+        {% assign bq = site.data.questions | where: "id", phase.blocked_by | first %}
+        <p class="blocked-note">Blocked on <a href="#q-{{ phase.blocked_by }}">{{ bq.question }}</a> &mdash; open decision, not yet made.</p>
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</section>

@@ -1,0 +1,72 @@
+- group: Process A
+  subtitle: Game I/O. Owns the kill switch, never allowed to stall
+  items:
+    - name: WGC window capture
+      does: Captures the game window, excludes everything drawn on top of it
+      phase: 0
+    - name: Ring buffer and frame selection
+      does: Keeps recent frames so the selector can look backwards after an event
+      phase: 0
+    - name: SendInput actuator
+      does: Synthetic mouse and keyboard, with dwell, hover and diff based ordering
+      phase: 2
+    - name: RomeShell console channel
+      does: Text commands where clicking would be imprecise, behind the fair play gate
+      phase: 2
+    - name: Log tailers
+      does: Reads scripting_log.txt and message_log.txt as they are written
+      phase: 1
+    - name: Game state machine
+      does: Asserts the expected screen before any action executes
+      phase: 1
+    - name: Control state machine
+      does: Take over, hand back, kill. All three are hotkeys
+      phase: 3
+    - name: Intent record writer
+      does: Logs declare, execute, observe for every action taken
+      phase: 2
+
+- group: Process B
+  subtitle: Agent runtime. Allowed to stall
+  items:
+    - name: Belief store
+      does: What the agent thinks is true, with provenance, age and decaying confidence
+      phase: 1
+    - name: Deterministic predictors
+      does: One step forward predictions built from the published combat formulae
+      phase: 5
+    - name: View compositor
+      does: Builds small composed images from the pieces that carry decision relevant information
+      phase: 6
+    - name: Reach client
+      does: The only path to AO. Carries intent and belief, never pixels and clicks
+      phase: 6
+
+- group: Process C
+  subtitle: Overlay UI. Allowed to crash
+  items:
+    - name: Edge glow
+      does: Colour coded state around the game window, with a text chip naming it
+      phase: 3
+    - name: Virtual keyboard
+      does: Only the keys the agent uses, fading in on press
+      phase: 3
+    - name: Cursor indicator
+      does: Ring and trail, with a marker showing where it intends to go before it moves
+      phase: 3
+    - name: AO cycle window
+      does: Request, live status, directive, and the verification result
+      phase: 3
+
+- group: On ada
+  subtitle: The engine and the model, on the same LAN
+  items:
+    - name: AO session overlay
+      does: Seven ephemeral client agents registered for the run
+      phase: 6
+    - name: The model
+      does: One local model, two prompt modes. Tactical is terse, strategic may reason
+      phase: 6
+    - name: The corpora
+      does: Doctrine and experience, both on AO
+      phase: 7

@@ -1,0 +1,15 @@
+<section class="section prose" id="design-set">
+  <div class="section-head">
+    <span class="eyebrow">The design set</span>
+    <h2>Ten documents, no code yet</h2>
+  </div>
+  <p>The design is the actual asset right now. Every decision below is made, recorded and justified, and the build brief exists &mdash; what does not exist is a line of implementation.</p>
+  <div class="doc-list">
+    {% for doc in site.data.docs %}
+    <div class="doc-row">
+      <a class="doc-name mono" href="{{ site.repo_url }}/blob/main/{{ doc.path }}">{{ doc.name }}</a>
+      <span class="doc-does">{{ doc.does }}</span>
+    </div>
+    {% endfor %}
+  </div>
+</section>

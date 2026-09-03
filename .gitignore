@@ -30,3 +30,10 @@ data/
 
 # Runtime data
 data/
+
+# Jekyll / GitHub Pages
+_site/
+.jekyll-cache/
+.sass-cache/
+Gemfile.lock
+vendor/

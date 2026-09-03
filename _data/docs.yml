@@ -1,0 +1,30 @@
+- name: cursor-handoff.md
+  path: docs/cursor-handoff.md
+  does: The build brief. Constraints, architecture, build order, open questions
+- name: decisions.md
+  path: docs/decisions.md
+  does: Twelve architecture decisions with their consequences, and the risk register
+- name: working-agreement.md
+  path: docs/working-agreement.md
+  does: Roles, the decision rule, the label key
+- name: rtw-remastered-integration.md
+  path: docs/design/rtw-remastered-integration.md
+  does: Observation channels, actuation tiers, game state machine, fair play boundary
+- name: host-app-architecture.md
+  path: docs/design/host-app-architecture.md
+  does: Capture, input injection, process split, safety layer
+- name: host-overlay-ui.md
+  path: docs/design/host-overlay-ui.md
+  does: The on screen overlay, and how it stays out of the screenshots
+- name: reach-overlay-design.md
+  path: docs/design/reach-overlay-design.md
+  does: Session overlay, run modes, connection config, call patterns
+- name: bottlenecks.md
+  path: docs/design/bottlenecks.md
+  does: Eight constraints with the arithmetic behind each
+- name: smart-player-architecture.md
+  path: docs/design/smart-player-architecture.md
+  does: The general design this one specialises
+- name: agentic-orchestration-platform-context.md
+  path: docs/design/agentic-orchestration-platform-context.md
+  does: AO and AO Reach reference

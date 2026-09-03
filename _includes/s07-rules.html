@@ -1,0 +1,18 @@
+<section class="section prose" id="rules">
+  <div class="section-head">
+    <span class="eyebrow">The rules it plays by</span>
+    <h2>Enforced in code, not by good intentions</h2>
+  </div>
+  <table class="rules-table">
+    <thead><tr><th>Rule</th><th>What it means</th></tr></thead>
+    <tbody>
+      <tr><td>Fog of war</td><td>It sees what a player sees. Every belief carries an age and a confidence that decays.</td></tr>
+      <tr><td>No cheats, ever</td><td><code class="mono">add_money</code>, <code class="mono">auto_win</code>, <code class="mono">force_battle_victory</code> and the rest sit in a hard-blocked set. A run that touches them is tainted and marked.</td></tr>
+      <tr><td>Declares intent</td><td>Every action is declared before it executes. No approval gate, nothing waits &mdash; but the record exists.</td></tr>
+      <tr><td>Single player only</td><td>Automating multiplayer is cheating other people, which is a different thing entirely.</td></tr>
+    </tbody>
+  </table>
+  <div class="edge-note">
+    <b>One advantage it does take, on purpose:</b> it freezes and micros every unit on every tick, faster than any human. That's a deliberate mechanical choice, not an oversight &mdash; and the tick rate stays a configurable dial.
+  </div>
+</section>

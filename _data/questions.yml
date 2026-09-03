@@ -1,0 +1,24 @@
+- id: write-path
+  question: What is the write path into AO's knowledge base?
+  detail: Both corpora live on AO and the consolidator writes doctrine directly, but Reach exposes no write path. Candidates are an engine HTTP ingest route, a shared filesystem on ada, a custom tool deployed via the sandbox client, or an agent side write tool.
+  blocks: Phase 7
+- id: rag-restriction
+  question: Can direct_agent be restricted to specific rag sources?
+  detail: The observable and privileged split depends on it, and the whole play loop uses direct_agent rather than the planner. Unverified against the engine.
+  blocks: Phase 7
+- id: plays
+  question: Are parameterised plays adopted?
+  detail: Multi step patterns such as hammer and anvil, refused flank and feigned retreat, selected by the model and executed by the reactive layer. Proposed as the mitigation for having no tree search. Not adopted.
+  blocks: Phases 4 and 6
+- id: campaign-tunnel
+  question: Does campaign_director need the game_query tunnel?
+  detail: Or is a composed brief plus retrieval enough. Fewer tool round trips is materially faster on a local model.
+  blocks: Phase 6
+- id: fold-modeler
+  question: Should opponent_modeler fold into campaign_director?
+  detail: Saves a call, costs a bigger prompt and a mixed output contract.
+  blocks: Phase 6
+- id: overlay-taste
+  question: The remaining overlay taste calls
+  detail: Trail length and decay, keyboard placement, whether held modifiers render differently from taps, chat scrollback depth, and whether the full directive is expandable.
+  blocks: Phase 3

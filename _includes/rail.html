@@ -1,0 +1,21 @@
+{% assign done = site.data.phases.phases | where: "status", "done" | size %}
+<nav class="rail" aria-label="Section progress">
+  <div class="rail-cap mono">
+    <b>{{ done }}</b>
+    <span class="cap-div" aria-hidden="true"></span>
+    <span>{{ site.data.phases.total }}</span>
+  </div>
+  <div class="rail-track-wrap">
+    <div class="rail-fill" id="railFill"></div>
+    <div class="rail-nodes" id="railNodes">
+      <a href="#hero" class="rail-node" data-target="hero"><span class="rail-label">Comstar</span></a>
+      <a href="#question" class="rail-node" data-target="question"><span class="rail-label">The question</span></a>
+      <a href="#what-it-is" class="rail-node" data-target="what-it-is"><span class="rail-label">What it is</span></a>
+      <a href="#ideas" class="rail-node" data-target="ideas"><span class="rail-label">Three ideas</span></a>
+      <a href="#components" class="rail-node" data-target="components"><span class="rail-label">Components</span></a>
+      <a href="#tracker" class="rail-node" data-target="tracker"><span class="rail-label">Build tracker</span></a>
+      <a href="#rules" class="rail-node" data-target="rules"><span class="rail-label">The rules</span></a>
+      <a href="#reference" class="rail-node" data-target="reference"><span class="rail-label">Reference</span></a>
+    </div>
+  </div>
+</nav>
