@@ -1,0 +1,34 @@
+<section class="section prose" id="what-it-is">
+  <div class="section-head">
+    <span class="eyebrow">What it is</span>
+    <h2>The shape of it</h2>
+  </div>
+  <p>A local application on a Windows machine reads Rome Remastered through its own scripting and console interfaces, drives it with synthetic keyboard and mouse, and consults a language model for strategy through Agentic Orchestration running on a second box.</p>
+  <p>The game process is the host and AO is a service it consults, never the other way around. A move is never blocked waiting on a model &mdash; a timeout, an error or a malformed response all resolve to a neutral directive and play continues.</p>
+
+  <div class="shape-diagram" aria-hidden="false">
+    <div class="shape-panel">
+      <div class="shape-head mono">Windows box</div>
+      <div class="shape-row"><span class="shape-name">Total War: Rome Remastered</span></div>
+      <div class="shape-row"><span class="shape-name">Process A</span><span class="shape-desc"> · game I/O</span></div>
+      <div class="shape-row"><span class="shape-name">Process B</span><span class="shape-desc"> · agent runtime</span></div>
+      <div class="shape-row"><span class="shape-name">Process C</span><span class="shape-desc"> · overlay UI</span></div>
+    </div>
+    <div class="shape-connector">
+      <span class="shape-connector-line" aria-hidden="true"></span>
+      <span class="shape-connector-label mono">Reach · WebSocket · mTLS</span>
+    </div>
+    <div class="shape-panel">
+      <div class="shape-head mono">Ada server</div>
+      <div class="shape-row"><span class="shape-name">AO engine</span><span class="shape-desc"> · :8765</span></div>
+      <div class="shape-row"><span class="shape-name">The model</span><span class="shape-desc"> · RTX 4000 Ada</span></div>
+      <div class="shape-row"><span class="shape-name">Doctrine and experience</span></div>
+    </div>
+  </div>
+
+  <div class="shape-chips">
+    <span class="shape-chip mono">NO MEMORY READING</span>
+    <span class="shape-chip mono">NO PROCESS INJECTION</span>
+    <span class="shape-chip mono">NO CHEAT COMMANDS</span>
+  </div>
+</section>

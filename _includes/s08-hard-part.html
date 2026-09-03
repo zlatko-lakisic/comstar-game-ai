@@ -1,0 +1,44 @@
+<section class="section prose" id="hard-part">
+  <div class="section-head">
+    <span class="eyebrow">The hard part</span>
+    <h2>Windows will lie to you</h2>
+  </div>
+  <p>The interesting engineering here is not the model. It is that the platform reports success for things that did not happen. <code class="mono">SendInput</code> blocked by UIPI returns success and does nothing, and Microsoft document that neither the return value nor <code class="mono">GetLastError</code> will tell you.</p>
+
+  <div class="fail-list">
+    <div class="fail-row">
+      <span class="fail-name mono">SendInput under UIPI</span>
+      <span class="fail-symptom">Reports success. Nothing happens. The API can never tell you which.</span>
+    </div>
+    <div class="fail-row">
+      <span class="fail-name mono">An overlay that is not click-through</span>
+      <span class="fail-symptom">Synthetic clicks land on the overlay instead of the game. Identical symptom.</span>
+    </div>
+    <div class="fail-row">
+      <span class="fail-name mono">An overlay that activates</span>
+      <span class="fail-symptom">It takes foreground and receives the input meant for the game. Identical symptom again.</span>
+    </div>
+    <div class="fail-row">
+      <span class="fail-name mono">Acting in the wrong game state</span>
+      <span class="fail-symptom">Clicks during a loading screen do nothing, or queue and fire unpredictably. Map orders with a modal open land on the modal.</span>
+    </div>
+    <div class="fail-row">
+      <span class="fail-name mono">WDA_EXCLUDEFROMCAPTURE before build 19041</span>
+      <span class="fail-symptom">Degrades silently to WDA_MONITOR, which renders the window blank rather than absent. A black rectangle inside the frame the model reasons over.</span>
+    </div>
+    <div class="fail-row">
+      <span class="fail-name mono">SendInput and held keys</span>
+      <span class="fail-symptom">It does not reset keyboard state. Keys already held interfere with the events it generates.</span>
+    </div>
+    <div class="fail-row">
+      <span class="fail-name mono">AO's answer cache</span>
+      <span class="fail-symptom">AGENTIC_ANSWER_CACHE short-circuits a repeated goal to a cached answer. The same question in a different board state returns the old reply.</span>
+    </div>
+  </div>
+
+  <p>Which is why every action in this system is a closed loop: declare, execute, verify by observation, retry. Not because it is elegant, but because the alternative is a system that appears to work and does not.</p>
+
+  <img class="annotation-img" src="{{ '/assets/img/annotation-1920.jpg' | relative_url }}" loading="lazy"
+       width="1920" height="1080"
+       alt="A battle line seen from a low wide angle, with flat cyan annotation boxes labelling each formation">
+</section>

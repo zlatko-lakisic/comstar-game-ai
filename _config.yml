@@ -1,0 +1,37 @@
+title: Comstar Game AI
+tagline: An opponent for Total War Rome Remastered that plays the game rather than cheating at it
+description: >-
+  A fogged, no-cheat AI opponent for Total War: Rome Remastered, reasoning
+  through Agentic Orchestration and acting through the same console and input
+  surface a person uses. Design complete, build not started.
+url: "https://zlatko-lakisic.github.io"
+baseurl: "/comstar-game-ai"
+repo_url: "https://github.com/zlatko-lakisic/comstar-game-ai"
+ao_url: "https://github.com/zlatko-lakisic/agentic-orchestration"
+reach_url: "https://github.com/zlatko-lakisic/agentic-orchestration-reach"
+feral_url: "https://github.com/FeralInteractive/romeremastered"
+
+plugins: []
+
+exclude:
+  - design/
+  - Gemfile
+  - Gemfile.lock
+  - vendor/
+  - README.md
+  - src/
+  - tests/
+  - scripts/
+  - config/
+  - mod/
+  - overlay/
+  - docs/
+  - data/
+  - .cursor/
+  - .website_handoff/
+  - .ao-mtls/
+  - pyproject.toml
+  - "*.py"
+  - "*.ps1"
+  - "*.code-workspace"
+  - comstar-game-ai.code-workspace

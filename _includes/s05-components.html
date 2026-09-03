@@ -1,0 +1,38 @@
+<section class="section wide" id="components">
+  <div class="section-head">
+    <span class="eyebrow">What is being built</span>
+    <h2>The component map</h2>
+  </div>
+  <p class="comp-lead">Three processes on the Windows box and an engine on a second machine. The split exists so a stalled agent or a hung interface can never leave a key held down.</p>
+
+  {% for group in site.data.components %}
+  <div class="comp-group">
+    <div class="comp-group-head">
+      <h3>{{ group.group }}</h3>
+      <p class="comp-subtitle">{{ group.subtitle }}</p>
+    </div>
+    <div class="comp-items">
+      {% for item in group.items %}
+      {% assign ph = site.data.phases.phases | where: "id", item.phase | first %}
+      <div class="comp-row">
+        <div class="comp-copy">
+          <span class="comp-name">{{ item.name }}</span>
+          <span class="comp-does">{{ item.does }}</span>
+        </div>
+        <div class="comp-meta">
+          <span class="comp-phase mono">PHASE {{ item.phase }}</span>
+          <span class="pill {{ ph.status }}">{{ ph.status | replace: "_", " " | upcase }}</span>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endfor %}
+
+  <figure class="overlay-figure">
+    <img src="{{ '/assets/img/overlay-screen.png' | relative_url }}" loading="lazy"
+         width="1440" height="810"
+         alt="The overlay in use over a Rome Remastered battle: an edge glow, a virtual keyboard, a cursor with an intent marker, and a translucent AO cycle window">
+    <figcaption>What the screen looks like while it plays.</figcaption>
+  </figure>
+</section>
