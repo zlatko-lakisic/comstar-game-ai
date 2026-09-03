@@ -1,23 +1,23 @@
-current_phase: 0
+current_phase: 2
 total: 7
 phases:
   - id: 0
     name: Preconditions and capture
     summary: Window detection, WGC window capture of the game window, ring buffer, all three startup self tests.
     accepts: Self tests pass, frames captured at target rate with the overlay stub absent from them.
-    status: not_started
+    status: done
     blocked_by: null
   - id: 1
     name: Observation
     summary: Background script emitting state and transitions, log tailers, console query channel, belief store with provenance, age and confidence.
     accepts: Campaign state reconstructed externally and matching the screen for 20 consecutive turns. No AI involved.
-    status: not_started
+    status: done
     blocked_by: null
   - id: 2
     name: Actuation
     summary: Console wrapper with the fair play gate, SendInput actuator with dwell and hover, diff based order computation, verification tiers, intent record.
     accepts: 20 consecutive turns driven end to end, hardcoded, no reasoning, zero desyncs between intended and actual.
-    status: not_started
+    status: in_progress
     blocked_by: null
   - id: 3
     name: Overlay
@@ -47,5 +47,5 @@ phases:
     name: Learning
     summary: After action records, the experience corpus, offline consolidation into doctrine.
     accepts: Records written and retrievable, consolidation produces doctrine.
-    status: blocked
-    blocked_by: write-path
+    status: not_started
+    blocked_by: null

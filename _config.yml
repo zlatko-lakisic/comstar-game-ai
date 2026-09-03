@@ -3,7 +3,7 @@ tagline: An opponent for Total War Rome Remastered that plays the game rather th
 description: >-
   A fogged, no-cheat AI opponent for Total War: Rome Remastered, reasoning
   through Agentic Orchestration and acting through the same console and input
-  surface a person uses. Design complete, build not started.
+  surface a person uses. Phases 0 and 1 complete; phase 2 actuation in progress.
 url: "https://zlatko-lakisic.github.io"
 baseurl: "/comstar-game-ai"
 repo_url: "https://github.com/zlatko-lakisic/comstar-game-ai"
