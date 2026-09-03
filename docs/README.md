@@ -21,6 +21,8 @@ It is self contained, and where it disagrees with anything in `design/`, it wins
 | `design/reach-overlay-design.md` | AO session overlay, run modes, connection config, call patterns |
 | `design/bottlenecks.md` | The eight system constraints with numbers and reasoning |
 | `design/agentic-orchestration-platform-context.md` | AO engine and AO Reach SDK reference |
+| `hero-image-prompt.md` | Gemini prompt for the battlefield hero still |
+| `images/hero.png` | Generated hero still (warm field, thin cyan annotation) |
 | `images/overlay-mockup.html` | Live mockup of the overlay, animated |
 | `images/overlay-mockup.png` | Full page still of the mockup |
 | `images/overlay-screen.png` | The screen on its own |
