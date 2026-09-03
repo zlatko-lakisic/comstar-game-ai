@@ -4,7 +4,7 @@
 
 ![Roman formations on a dry plain, annotated with a thin cyan machine layer](docs/images/hero.png)
 
-> **Status: design complete, build not started.** Every architectural decision is made and recorded. No code exists yet. The [`docs/design/`](docs/design/) folder is the whole system on paper, and [`docs/cursor-handoff.md`](docs/cursor-handoff.md) is the brief for building it.
+> **Status: phases 0–1 complete, phase 2 (actuation) in progress.** Design is recorded in [`docs/`](docs/); [`docs/cursor-handoff.md`](docs/cursor-handoff.md) is the build brief.
 
 ---
 

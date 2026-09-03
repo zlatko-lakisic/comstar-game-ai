@@ -1,8 +1,9 @@
 <section class="section prose" id="open-questions">
   <div class="section-head">
     <span class="eyebrow">Open questions</span>
-    <h2>What is deliberately unmade</h2>
+    <h2>{% if site.data.questions.size > 0 %}What is deliberately unmade{% else %}Nothing left open{% endif %}</h2>
   </div>
+  {% if site.data.questions.size > 0 %}
   <p>These are not oversights. Each one is a decision that has not been made yet, and each one blocks something specific.</p>
   <div class="q-list">
     {% for q in site.data.questions %}
@@ -15,4 +16,7 @@
     </div>
     {% endfor %}
   </div>
+  {% else %}
+  <p>The six handoff questions are settled. Write path, RAG split, plays, campaign tunnel, opponent modeler, and overlay taste are recorded in the build brief.</p>
+  {% endif %}
 </section>
