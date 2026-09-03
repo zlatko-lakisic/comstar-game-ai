@@ -8,23 +8,23 @@
     <div class="idea">
       <h3>Time stops so the machine can think</h3>
       <div class="idea-visual">
-        <svg class="loop-svg" viewBox="0 0 120 90" width="100%" height="100" role="img" aria-label="Freeze, read, decide, order, resume cycle">
+        <svg class="loop-svg" viewBox="0 0 160 120" role="img" aria-label="Freeze, read, decide, order, resume cycle">
           <defs>
-            <marker id="arrow" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto">
-              <path d="M0,0 L6,3 L0,6 Z" class="loop-arrow" fill="#2b8b9c"/>
+            <marker id="arrow" markerWidth="7" markerHeight="7" refX="3.5" refY="3.5" orient="auto">
+              <path d="M0,0 L7,3.5 L0,7 Z" class="loop-arrow" fill="#2b8b9c"/>
             </marker>
           </defs>
-          <path class="loop-path" d="M60 16 A28 28 0 1 1 34 60" marker-end="url(#arrow)" fill="none"/>
-          <circle class="loop-node now" cx="60" cy="16" r="9" fill="#5fd0e0" stroke="#5fd0e0"/>
-          <text x="60" y="18.5" text-anchor="middle" fill="#9aa9ae">FREEZE</text>
-          <circle class="loop-node" cx="86" cy="34" r="9" fill="#1a2226" stroke="#2b8b9c"/>
-          <text x="86" y="36.5" text-anchor="middle" fill="#9aa9ae">READ</text>
-          <circle class="loop-node" cx="86" cy="60" r="9" fill="#1a2226" stroke="#2b8b9c"/>
-          <text x="86" y="62.5" text-anchor="middle" fill="#9aa9ae">DECIDE</text>
-          <circle class="loop-node" cx="60" cy="76" r="9" fill="#1a2226" stroke="#2b8b9c"/>
-          <text x="60" y="78.5" text-anchor="middle" fill="#9aa9ae">ORDER</text>
-          <circle class="loop-node" cx="34" cy="60" r="9" fill="#1a2226" stroke="#2b8b9c"/>
-          <text x="34" y="62.5" text-anchor="middle" fill="#9aa9ae">RESUME</text>
+          <path class="loop-path" d="M80 22 A36 36 0 1 1 46 80" marker-end="url(#arrow)" fill="none"/>
+          <circle class="loop-node now" cx="80" cy="22" r="14" fill="#5fd0e0" stroke="#5fd0e0"/>
+          <text class="loop-label-now" x="80" y="25" text-anchor="middle">FREEZE</text>
+          <circle class="loop-node" cx="114" cy="46" r="14" fill="#1a2226" stroke="#2b8b9c"/>
+          <text x="114" y="49" text-anchor="middle" fill="#9aa9ae">READ</text>
+          <circle class="loop-node" cx="114" cy="80" r="14" fill="#1a2226" stroke="#2b8b9c"/>
+          <text x="114" y="83" text-anchor="middle" fill="#9aa9ae">DECIDE</text>
+          <circle class="loop-node" cx="80" cy="100" r="14" fill="#1a2226" stroke="#2b8b9c"/>
+          <text x="80" y="103" text-anchor="middle" fill="#9aa9ae">ORDER</text>
+          <circle class="loop-node" cx="46" cy="80" r="14" fill="#1a2226" stroke="#2b8b9c"/>
+          <text x="46" y="83" text-anchor="middle" fill="#9aa9ae">RESUME</text>
         </svg>
       </div>
       <p><code class="mono">toggle_game_update</code> freezes the battle sim, turning a real-time fight into an effectively turn-based one. The agent thinks in seconds; the battle never notices.</p>
