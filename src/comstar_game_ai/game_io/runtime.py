@@ -125,7 +125,7 @@ class GameIoRuntime:
         driver.bootstrap_from_logs()
         successes = 0
         desyncs = 0
-        turn_at_start = driver.game_turn
+        turn_at_start = driver.turns_ended
 
         try:
             if self.safety.mode == ControlMode.IDLE:
@@ -155,8 +155,8 @@ class GameIoRuntime:
                 "turns_ok": successes,
                 "desyncs": desyncs,
                 "game_turn_start": turn_at_start,
-                "game_turn_end": driver.game_turn,
-                "turns_advanced": max(0, driver.game_turn - turn_at_start),
+                "game_turn_end": driver.turns_ended,
+                "turns_advanced": max(0, driver.turns_ended - turn_at_start),
             }
             return {"ok": phase2_accepted(result, turns=n), **result}
         finally:

@@ -9,8 +9,15 @@ import sys
 import time
 from pathlib import Path
 
+from comstar_game_ai.game_io.campaign.ui_mode import CampaignUiMode, grab_and_classify
 from comstar_game_ai.game_io.drivers.hardcoded_campaign import HardcodedCampaignDriver, phase2_accepted
-from comstar_game_ai.game_io.elevation import ensure_elevation_for_game, strip_elevation_marker
+from comstar_game_ai.game_io.elevation import (
+    ensure_elevation_for_game,
+    strip_elevation_marker,
+    tee_output,
+    trail_path_from_argv,
+)
+from comstar_game_ai.game_io.state_machine import GameState
 from comstar_game_ai.game_io.window import find_game_window
 from comstar_game_ai.shared.config import load_config
 
@@ -27,6 +34,11 @@ def _countdown(seconds: int) -> None:
 
 def main() -> int:
     raw_argv = list(sys.argv)
+    stamp = time.strftime("%Y%m%d-%H%M%S")
+    trail = trail_path_from_argv() or str(
+        Path(f"data/runtime/phase2_live_{stamp}.log").resolve()
+    )
+    tee_output(trail)
     sys.argv = [sys.argv[0], *strip_elevation_marker()]
 
     parser = argparse.ArgumentParser(description="Phase 2 live actuation")
@@ -46,13 +58,12 @@ def main() -> int:
         return 1
 
     print(f"OK  game_window: {game.title!r} {game.width}x{game.height}")
+    print(f"OK  trail: {trail}")
 
     import win32process
 
     _, pid = win32process.GetWindowThreadProcessId(game.hwnd)
-    stamp = time.strftime("%Y%m%d-%H%M%S")
-    log_path = str(Path(f"data/runtime/phase2_live_{stamp}.log").resolve())
-    action = ensure_elevation_for_game(pid, argv=raw_argv, log_path=log_path)
+    action = ensure_elevation_for_game(pid, argv=raw_argv, log_path=trail)
     if action == "relaunching":
         print("INFO approve UAC — a new 'Comstar Game AI' window will show the live trail", flush=True)
         print("INFO click Rome during the countdown in that window", flush=True)
@@ -81,10 +92,23 @@ def main() -> int:
     )
 
     if not driver.state.allows_campaign_orders():
+        # Rome rewrites message_log.txt on launch and buffers its writes, so a campaign
+        # just entered has flushed nothing to read yet — a fresh campaign sitting on
+        # turn 1 leaves the log silent. Vision is the only evidence available there.
+        classification = grab_and_classify(game.hwnd)
         print(
-            "FAIL: not on campaign map — load campaign save with telemetry mod, then re-run"
+            f"INFO log gate inconclusive (state={driver.state.state.value}, "
+            f"turn={driver.state.turn}); vision says {classification.mode.value} "
+            f"({classification.detail}, confidence {classification.confidence:.2f})"
         )
-        return 1
+        if classification.mode is CampaignUiMode.CAMPAIGN_MAP:
+            driver.state.state = GameState.CAMPAIGN_MAP
+        else:
+            print(
+                "FAIL: not on campaign map — neither the log nor the screen shows the "
+                "strat map. Load or start a campaign, wait for the map, then re-run."
+            )
+            return 1
 
     def on_progress(*, index: int, total: int, phase: str, ok: bool | None = None) -> None:
         tag = f"ATTEMPT {index}/{total} game_turn={driver._known_game_turn()}"

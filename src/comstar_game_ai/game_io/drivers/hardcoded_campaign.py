@@ -22,6 +22,7 @@ from comstar_game_ai.game_io.console.actuator import ConsoleActuator
 from comstar_game_ai.game_io.intent_record import IntentRecordWriter
 from comstar_game_ai.game_io.logs.campaign_probe import latest_julii_autosave_turn, summarize_julii_turn_markers
 from comstar_game_ai.game_io.logs.message_log import MessageLogTailer, default_message_log_path
+from comstar_game_ai.game_io.logs.turn_boundary import latest_turn_end
 from comstar_game_ai.game_io.logs.scripting_log import ScriptingLogTailer
 from comstar_game_ai.game_io.state_machine import GameState, GameStateDetector
 from comstar_game_ai.game_io.verification import VerificationPipeline, VerificationResult
@@ -303,6 +304,16 @@ class HardcodedCampaignDriver:
         """The campaign's own turn number, as last observed from the logs."""
         return self._known_game_turn()
 
+    @property
+    def turns_ended(self) -> int:
+        """Highest turn Rome has autosaved as *ended*, or 0 before the first End Turn.
+
+        Measuring from the autosave rather than the inferred turn keeps the count immune
+        to 'Turn N Start' markers, which would read a fresh campaign as already one turn
+        in and leave a 20-turn run one short of acceptance.
+        """
+        return int(latest_turn_end() or 0)
+
     def _blocking_ui_present(self) -> bool:
         """Decision buttons, or a panel over the map centre that swallows End Turn.
 
@@ -581,7 +592,7 @@ class HardcodedCampaignDriver:
         fail_count = 0
         self.poll_observation()
         self._refresh_turn_from_message_log()
-        turn_at_start = self._known_game_turn()
+        turn_at_start = self.turns_ended
         for i in range(n):
             self.poll_observation()
             idx = i + 1
@@ -601,7 +612,7 @@ class HardcodedCampaignDriver:
                 if require_ok:
                     break
         self._refresh_turn_from_message_log()
-        turn_at_end = self._known_game_turn()
+        turn_at_end = self.turns_ended
         return {
             "turns_ok": ok_count,
             "turns_failed": fail_count,
