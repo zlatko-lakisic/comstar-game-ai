@@ -12,6 +12,7 @@ from comstar_game_ai.shared.config import load_config
 CLIENT_AGENT_IDS = (
     "client.battle_director",
     "client.campaign_director",
+    "client.modal_vision",
     "client.opponent_modeler",
     "client.narrator",
     "client.consolidator",

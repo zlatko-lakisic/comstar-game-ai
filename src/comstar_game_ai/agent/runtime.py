@@ -99,7 +99,7 @@ class AgentRuntime:
                 if use_ao:
                     await self.deliberate_campaign_turn(turn)
                     ao_calls += 1
-                driver.run_turn_stub()
+                driver.run_turn_stub(wait_for_next_turn=False)
                 await asyncio.sleep(0.01)
             return {"ok": True, "turns": n, "ao_calls": ao_calls}
         finally:

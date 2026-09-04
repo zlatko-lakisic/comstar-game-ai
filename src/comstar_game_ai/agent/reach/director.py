@@ -16,6 +16,7 @@ BATTLE_DIRECTOR = "client.battle_director"
 CAMPAIGN_DIRECTOR = "client.campaign_director"
 OPPONENT_MODELER = "client.opponent_modeler"
 NARRATOR = "client.narrator"
+MODAL_VISION = "client.modal_vision"
 CONSOLIDATOR = "client.consolidator"
 DOCTRINE_INGESTOR = "client.doctrine_ingestor"
 POST_MORTEM = "client.post_mortem"
@@ -25,6 +26,7 @@ GAME_QUERY_MCP = "client.game_query"
 DEFAULT_TIMEOUTS: dict[str, float] = {
     BATTLE_DIRECTOR: 20.0,
     CAMPAIGN_DIRECTOR: 90.0,
+    MODAL_VISION: 30.0,
     OPPONENT_MODELER: 120.0,
     NARRATOR: 15.0,
 }
@@ -152,4 +154,42 @@ async def call_narrator(
         return _extract_text(result)
     except Exception:  # noqa: BLE001
         _LOGGER.debug("narrator call failed", exc_info=True)
+        return ""
+
+
+async def call_modal_vision(
+    session: ReachSession,
+    *,
+    text: str,
+    question_id: str,
+    images: list[dict[str, Any]],
+    context: str = "",
+    timeout: float | None = None,
+    on_status: Callable[[ReachRunStatus], None] | None = None,
+    raise_errors: bool = False,
+) -> str:
+    """Modal vision call; empty string on failure."""
+    from comstar_game_ai.shared.config import load_config
+
+    cfg = load_config()
+    vision_model = str((cfg.get("ao") or {}).get("vision_model") or "llava:7b").strip()
+    effective_text = text
+    if vision_model and not text.lstrip().lower().startswith("[model="):
+        effective_text = f"[model={vision_model}]\n{text}"
+    try:
+        result = await session.bridge.direct_agent(
+            agent_provider_id=MODAL_VISION,
+            text=effective_text,
+            context=context,
+            question_id=question_id,
+            priority="high",
+            timeout=timeout if timeout is not None else DEFAULT_TIMEOUTS[MODAL_VISION],
+            images=images,
+            on_status=on_status,
+        )
+        return _extract_text(result)
+    except Exception as exc:  # noqa: BLE001
+        _LOGGER.warning("modal_vision call failed: %s: %s", type(exc).__name__, exc)
+        if raise_errors:
+            raise
         return ""

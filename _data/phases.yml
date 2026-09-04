@@ -1,5 +1,5 @@
 # Bump `updated` whenever a phase status changes.
-updated: "2026-09-03"
+updated: "2026-09-04"
 current_phase: 2
 total: 7
 phases:
@@ -19,9 +19,9 @@ phases:
     blocked_by: null
   - id: 2
     name: Actuation
-    summary: Console wrapper with the fair play gate, SendInput actuator with dwell and hover, diff based order computation, verification tiers, intent record.
+    summary: Console wrapper with the fair play gate, SendInput actuator with dwell and hover, diff based order computation, verification tiers, intent record, vision located HUD controls and modal dismissal.
     accepts: 20 consecutive turns driven end to end, hardcoded, no reasoning, zero desyncs between intended and actual.
-    evidence: null
+    evidence: "4 Sep 2026: 20 attempts drove game turns 10 to 20, with 19 cycles OK, 1 failed and 1 desync. A clean 20 turn run with zero desyncs is still outstanding."
     status: in_progress
     blocked_by: null
   - id: 3

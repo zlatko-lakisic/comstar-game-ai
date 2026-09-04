@@ -10,6 +10,7 @@ if sys.platform == "win32":
     import ctypes
     from ctypes import wintypes
 
+    import win32api
     import win32con
     import win32gui
 
@@ -44,6 +45,7 @@ if sys.platform == "win32":
     INPUT_MOUSE = 0
     KEYEVENTF_KEYUP = 0x0002
     KEYEVENTF_UNICODE = 0x0004
+    KEYEVENTF_SCANCODE = 0x0008
     MOUSEEVENTF_MOVE = 0x0001
     MOUSEEVENTF_ABSOLUTE = 0x8000
     MOUSEEVENTF_LEFTDOWN = 0x0002
@@ -119,15 +121,64 @@ if sys.platform == "win32":
                 if vk is not None:
                     self._key_up(vk)
 
-        def tap_key(self, key: str, *, dwell_ms: int = 30) -> bool:
+        def tap_key(self, key: str, *, dwell_ms: int = 30, hwnd: int | None = None) -> bool:
             vk = virtual_key_for(key)
             if vk is None:
                 return False
+            if hwnd is not None:
+                self.focus_window(hwnd)
             self.normalize_keyboard_state()
             if not self._key_down(vk):
                 return False
             time.sleep(max(dwell_ms, 1) / 1000.0)
             return self._key_up(vk)
+
+        def _send_scancode(self, scan: int, *, key_up: bool) -> bool:
+            flags = KEYEVENTF_SCANCODE
+            if key_up:
+                flags |= KEYEVENTF_KEYUP
+            inp = INPUT()
+            inp.type = INPUT_KEYBOARD
+            inp.union.ki = KEYBDINPUT(0, scan & 0xFFFF, flags, 0, 0)
+            return self._user32.SendInput(1, ctypes.byref(inp), ctypes.sizeof(INPUT)) == 1
+
+        def chord_scancode(self, modifier: str, key: str, *, dwell_ms: int = 30, hwnd: int | None = None) -> bool:
+            mod_vk = virtual_key_for(modifier)
+            key_vk = virtual_key_for(key)
+            if mod_vk is None or key_vk is None:
+                return False
+            mod_scan = win32api.MapVirtualKey(mod_vk, 0)
+            key_scan = win32api.MapVirtualKey(key_vk, 0)
+            if not mod_scan or not key_scan:
+                return False
+            if hwnd is not None:
+                self.focus_window(hwnd)
+            self.normalize_keyboard_state()
+            delay = max(dwell_ms, 1) / 1000.0
+            if not self._send_scancode(mod_scan, key_up=False):
+                return False
+            time.sleep(delay)
+            if not self._send_scancode(key_scan, key_up=False):
+                self._send_scancode(mod_scan, key_up=True)
+                return False
+            time.sleep(delay)
+            if not self._send_scancode(key_scan, key_up=True):
+                self._send_scancode(mod_scan, key_up=True)
+                return False
+            return self._send_scancode(mod_scan, key_up=True)
+
+        def click_client_norm(self, hwnd: int, x_norm: float, y_norm: float, *, dwell_ms: int = 30) -> bool:
+            try:
+                left, top, right, bottom = win32gui.GetClientRect(hwnd)
+                w = max(right - left, 1)
+                h = max(bottom - top, 1)
+                cx = int(w * max(0.0, min(1.0, x_norm)))
+                cy = int(h * max(0.0, min(1.0, y_norm)))
+                sx, sy = win32gui.ClientToScreen(hwnd, (cx, cy))
+                self.focus_window(hwnd)
+                return self.click(sx, sy, dwell_ms=dwell_ms)
+            except Exception:
+                return False
 
         def send_keys(self, keys: Iterable[str], *, dwell_ms: int = 30) -> bool:
             ok = True
@@ -210,13 +261,19 @@ else:
         def normalize_keyboard_state(self) -> None:
             return None
 
-        def tap_key(self, key: str, *, dwell_ms: int = 30) -> bool:
+        def tap_key(self, key: str, *, dwell_ms: int = 30, hwnd: int | None = None) -> bool:
             return False
 
         def send_keys(self, keys: Iterable[str], *, dwell_ms: int = 30) -> bool:
             return False
 
         def type_text(self, text: str, *, dwell_ms: int = 15) -> bool:
+            return False
+
+        def click_client_norm(self, hwnd: int, x_norm: float, y_norm: float, *, dwell_ms: int = 30) -> bool:
+            return False
+
+        def chord_scancode(self, modifier: str, key: str, *, dwell_ms: int = 30, hwnd: int | None = None) -> bool:
             return False
 
         def move_mouse(self, x: int, y: int) -> bool:

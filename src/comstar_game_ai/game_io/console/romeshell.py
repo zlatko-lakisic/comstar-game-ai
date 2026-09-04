@@ -84,6 +84,26 @@ class RomeShell:
         submitted = self.input_controller.tap_key(CONSOLE_SUBMIT_KEY, dwell_ms=self.dwell_ms)
         return typed and submitted
 
+    def end_turn(self) -> bool:
+        hwnd = self.resolve_hwnd()
+        if hwnd is None:
+            _LOGGER.warning("RomeShell: end_turn — game window not found")
+            return False
+        from comstar_game_ai.game_io.campaign.end_turn import end_turn_campaign
+
+        ok, method = end_turn_campaign(
+            hwnd=hwnd,
+            input_controller=self.input_controller,
+            console_open=self.console_open,
+            dwell_ms=self.dwell_ms,
+        )
+        if ok:
+            self.console_open = False
+            _LOGGER.info("RomeShell: end_turn ok via %s", method)
+        else:
+            _LOGGER.warning("RomeShell: end_turn failed (%s)", method)
+        return ok
+
     def send_raw_keys(self, keys: list[str]) -> bool:
         normalized = [normalize_key_name(k) for k in keys]
         return self.input_controller.send_keys(normalized, dwell_ms=self.dwell_ms)

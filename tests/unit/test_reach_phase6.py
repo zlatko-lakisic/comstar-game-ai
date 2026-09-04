@@ -16,11 +16,14 @@ def test_build_connection_config():
     assert cfg.deploy_to_ao_sandbox is False
 
 
-def test_overlay_packs_seven_agents():
+def test_overlay_packs_eight_agents():
     root = repo_root() / "overlay"
     pack = OverlayPacker().pack(root)
-    assert len(pack.agents) == 7
-    assert all(a["model"] == "llama3.1:8b" for a in pack.agents)
+    assert len(pack.agents) == 8
+    # modal_vision runs a vision model; the directive agents share the text model.
+    vision = next(a for a in pack.agents if a["id"] == "client.modal_vision")
+    assert vision["model"] == "llava:7b"
+    assert all(a["model"] == "llama3.1:8b" for a in pack.agents if a is not vision)
     battle = next(a for a in pack.agents if a["id"] == "client.battle_director")
     assert battle.get("skills") == ["client.battle_doctrine"]
     assert "Battle doctrine" in str(battle.get("backstory") or "")
