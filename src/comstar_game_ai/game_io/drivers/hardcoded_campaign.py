@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import time
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from typing import Callable
 
@@ -26,6 +27,20 @@ from comstar_game_ai.game_io.state_machine import GameState, GameStateDetector
 from comstar_game_ai.game_io.verification import VerificationPipeline, VerificationResult
 
 _LOGGER = logging.getLogger(__name__)
+
+
+def phase2_accepted(result: Mapping[str, object], *, turns: int) -> bool:
+    """Did a run meet Phase 2 acceptance: `turns` turns driven with zero desyncs?
+
+    The campaign's own turn counter must agree with our cycle count. Without that,
+    cycles that report success without moving the game on still pass, which is how a run
+    of 20 attempts was scored 19 OK while the campaign advanced 10 turns.
+    """
+    return (
+        int(result.get("desyncs", 1) or 0) == 0
+        and int(result.get("turns_ok", 0) or 0) >= turns
+        and int(result.get("turns_advanced", 0) or 0) >= turns
+    )
 
 
 @dataclass
@@ -283,6 +298,11 @@ class HardcodedCampaignDriver:
         """Best available Julii turn from autosave / inferred state (game truth)."""
         return max(int(self.state.turn or 0), int(self._last_autosave_turn or 0))
 
+    @property
+    def game_turn(self) -> int:
+        """The campaign's own turn number, as last observed from the logs."""
+        return self._known_game_turn()
+
     def _blocking_ui_present(self) -> bool:
         """Decision buttons, or a panel over the map centre that swallows End Turn.
 
@@ -361,29 +381,26 @@ class HardcodedCampaignDriver:
     ) -> bool:
         """Wait until Julii's turn returns after End Turn.
 
-        Prefer autosave/known turn increase. Also accept a new Julii round-start
-        after End Turn (player turn came back) even if autosave turn text lags.
+        Only a higher game turn counts. A new Julii round-start used to count too, but
+        that line arrives once the AI round finishes, which is often after the next
+        attempt has already begun waiting — so it scored the previous turn twice and the
+        run reported nearly twice as many turns as the campaign actually played.
         """
         timeout = timeout_s if timeout_s is not None else self.turn_wait_timeout_s
         baseline = int(turn_before if turn_before is not None else self._known_game_turn())
-        before_rounds = self._julii_round_starts
-        before_autosaves = self._autosave_events
         deadline = time.time() + timeout
         last_ui = -999.0
         while time.time() < deadline:
             self.poll_observation()
             self._refresh_turn_from_message_log()
             current = self._known_game_turn()
-            round_returned = self._julii_round_starts > before_rounds
-            autosave_bumped = self._autosave_events > before_autosaves and current > baseline
-            if current > baseline or round_returned or autosave_bumped:
+            if current > baseline:
                 if on_progress:
-                    why = (
-                        f"game turn advanced {baseline} -> {current}"
-                        if current > baseline
-                        else f"Julii round returned (rounds {before_rounds} -> {self._julii_round_starts})"
+                    on_progress(
+                        index=index,
+                        total=total,
+                        phase=f"game turn advanced {baseline} -> {current}",
                     )
-                    on_progress(index=index, total=total, phase=why)
                 return True
             now = time.time()
             if self.use_vision and now - last_ui >= 3.0:
@@ -562,6 +579,9 @@ class HardcodedCampaignDriver:
     ) -> dict[str, int]:
         ok_count = 0
         fail_count = 0
+        self.poll_observation()
+        self._refresh_turn_from_message_log()
+        turn_at_start = self._known_game_turn()
         for i in range(n):
             self.poll_observation()
             idx = i + 1
@@ -580,9 +600,16 @@ class HardcodedCampaignDriver:
                     on_progress(index=idx, total=n, phase="turn cycle failed or timed out", ok=False)
                 if require_ok:
                     break
+        self._refresh_turn_from_message_log()
+        turn_at_end = self._known_game_turn()
         return {
             "turns_ok": ok_count,
             "turns_failed": fail_count,
             "requested": n,
             "desyncs": fail_count,
+            # The campaign's own count, so a run cannot pass on cycles that reported
+            # success without moving the game on.
+            "game_turn_start": turn_at_start,
+            "game_turn_end": turn_at_end,
+            "turns_advanced": max(0, turn_at_end - turn_at_start),
         }

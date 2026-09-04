@@ -9,7 +9,7 @@ import sys
 import time
 from pathlib import Path
 
-from comstar_game_ai.game_io.drivers.hardcoded_campaign import HardcodedCampaignDriver
+from comstar_game_ai.game_io.drivers.hardcoded_campaign import HardcodedCampaignDriver, phase2_accepted
 from comstar_game_ai.game_io.elevation import ensure_elevation_for_game, strip_elevation_marker
 from comstar_game_ai.game_io.window import find_game_window
 from comstar_game_ai.shared.config import load_config
@@ -110,6 +110,10 @@ def main() -> int:
         f"turns_failed={result['turns_failed']} desyncs={result['desyncs']}"
     )
     print(
+        f"OK  campaign advanced {result['turns_advanced']} turns "
+        f"({result['game_turn_start']} -> {result['game_turn_end']})"
+    )
+    print(
         f"OK  belief_history={len(driver.belief.history)} armies={len(driver.belief.armies)} "
         f"settlements={len(driver.belief.settlements)}"
     )
@@ -126,11 +130,18 @@ def main() -> int:
     out.write_text(json.dumps(report, indent=2), encoding="utf-8")
     print(f"OK  report: {out}")
 
-    if result["desyncs"] == 0 and result["turns_ok"] >= turns:
-        print("\nPASS Phase 2 actuation (20 turns, zero desyncs)")
+    if phase2_accepted(result, turns=turns):
+        print(f"\nPASS Phase 2 actuation ({turns} turns, zero desyncs)")
         return 0
 
-    if result["turns_ok"] > 0:
+    if result["turns_ok"] >= turns and result["turns_advanced"] < turns:
+        print(
+            f"\nFAIL Phase 2 — {result['turns_ok']} cycles reported OK but the campaign "
+            f"advanced {result['turns_advanced']} turns. Turn detection is over-counting."
+        )
+        return 1
+
+    if result["turns_advanced"] > 0:
         print("\nPARTIAL Phase 2 — some turns succeeded; check intent log and Rome console focus")
         return 0
 

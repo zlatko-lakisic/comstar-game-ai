@@ -78,12 +78,19 @@ facts:
     durable: true
     verified: "2026-09-04"
     statement: >
-      Screen state never proves a turn ended. In message_log.txt, the autosave line
-      'Turn <N> End.sav' is proof the turn actually ended, and
-      '****new round start turn(<faction>)****' marks the start of a round. A turn
-      with a round-start line but no matching End.sav line was never ended.
+      Screen state never proves a turn ended. In message_log.txt the autosave line
+      'Turn <N> End.sav' carries the turn number and is written the instant the player
+      ends the turn, before any AI faction moves, so it is both proof and a counter:
+      compare N against the highest N seen before acting. The
+      '****new round start turn(<faction>)****' line is written only once the AI round
+      finishes, seconds to a minute later, so it must never be read as proof that an
+      End Turn just worked — by the time it lands, the next attempt is usually already
+      waiting, and it scores the previous turn a second time. A turn with a round-start
+      line but no matching End.sav line was never ended.
     evidence:
       - "turns 3-7 each have a 'Turn N End.sav' line; turn 8 has none and never ended"
+      - "order in the log: 'between turns' -> 'Turn 18 End.sav' -> 'start of timer time taken for AI turns' -> faction moves -> 'new round start turn(romans_julii)'"
+      - "counting round-start lines scored 20 End Turn attempts as 19 successes while the campaign advanced 10 turns"
       - "path: %LOCALAPPDATA%/Feral Interactive/Total War ROME REMASTERED/VFS/Local/Rome/logs/message_log.txt"
 
   - id: never_blind_click_the_hud

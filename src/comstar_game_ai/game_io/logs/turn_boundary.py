@@ -7,11 +7,16 @@ import time
 
 from comstar_game_ai.game_io.logs.message_log import default_message_log_path
 
-_TURN_END_RE = re.compile(r"Turn\s+\d+\s+End", re.I)
-_TURN_BOUNDARY_RE = re.compile(
-    r"(Turn\s+\d+\s+End|new round start turn\(|end\.sav)",
-    re.I,
-)
+# Rome writes `Campaign saved: "...Turn 18 End.sav"` the moment the player ends a turn,
+# before the AI factions move, so the turn number in that line is the only proof a turn
+# actually ended. The `new round start turn(...)` line marks the player's *next* turn and
+# arrives seconds later, once the AI round finishes — late enough to land inside the next
+# End Turn attempt's wait window, where it read as an instant success.
+_TURN_END_RE = re.compile(r"Turn\s+(\d+)\s+End", re.I)
+
+# The log runs to tens of megabytes over a campaign, and turn numbers only ever climb,
+# so the highest one is always near the end.
+_TAIL_BYTES = 262_144
 
 
 def message_log_snapshot() -> tuple[int, str]:
@@ -23,45 +28,53 @@ def message_log_snapshot() -> tuple[int, str]:
     return len(raw), text[-6000:]
 
 
-def turn_boundary_in_tail(tail: str) -> bool:
-    lower = tail.lower()
-    if "end.sav" in lower and "turn" in lower:
-        return True
-    if _TURN_END_RE.search(tail):
-        return True
-    if "new round start turn(" in lower:
-        return True
-    return False
-
-
-def new_turn_boundary_since(before_size: int) -> bool:
-    """True only when message_log grew and the *new* bytes contain a turn boundary."""
+def latest_turn_end() -> int | None:
+    """Highest turn number Rome has autosaved, or None if it has autosaved none."""
     path = default_message_log_path()
     if not path.is_file():
-        return False
-    raw = path.read_bytes()
-    if len(raw) <= before_size:
-        return False
-    new_region = raw[before_size:].decode("utf-8", errors="replace")
-    return bool(_TURN_BOUNDARY_RE.search(new_region))
+        return None
+    try:
+        size = path.stat().st_size
+        with path.open("rb") as handle:
+            handle.seek(max(0, size - _TAIL_BYTES))
+            tail = handle.read()
+    except OSError:
+        return None
+
+    numbers = _turn_numbers(tail)
+    if numbers:
+        return max(numbers)
+    if size <= _TAIL_BYTES:
+        return None
+    try:
+        numbers = _turn_numbers(path.read_bytes())
+    except OSError:
+        return None
+    return max(numbers) if numbers else None
 
 
-def wait_for_turn_boundary(
-    before_size: int,
-    before_tail: str,
+def _turn_numbers(raw: bytes) -> list[int]:
+    text = raw.decode("utf-8", errors="replace")
+    return [int(match.group(1)) for match in _TURN_END_RE.finditer(text)]
+
+
+def wait_for_turn_end(
+    baseline: int | None,
     *,
     timeout_s: float = 8.0,
     poll_s: float = 0.35,
-) -> bool:
-    """Return True if message_log shows a *new* turn end/start after actuation.
+) -> int | None:
+    """The new turn number once Rome autosaves a turn later than ``baseline``.
 
-    Historical round-start lines already present in ``before_tail`` must not count —
-    that falsely marked End Turn as successful while the game stayed on the same turn.
+    Scoring log growth, or any boundary-looking line, instead of comparing turn numbers
+    double-counted turns: 20 End Turn attempts were reported as 19 successes while the
+    campaign advanced 10 turns.
     """
-    del before_tail  # kept for call-site compatibility
     deadline = time.time() + timeout_s
-    while time.time() < deadline:
-        if new_turn_boundary_since(before_size):
-            return True
+    while True:
+        latest = latest_turn_end()
+        if latest is not None and (baseline is None or latest > baseline):
+            return latest
+        if time.time() >= deadline:
+            return None
         time.sleep(poll_s)
-    return False
