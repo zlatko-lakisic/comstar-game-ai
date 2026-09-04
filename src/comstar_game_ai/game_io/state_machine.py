@@ -22,6 +22,8 @@ class GameState(str, Enum):
 
 _SCRIPT_EVENT_TO_STATE: dict[str, GameState] = {
     "NewTurnStart": GameState.CAMPAIGN_MAP,
+    "CampaignMapReady": GameState.CAMPAIGN_MAP,
+    "CampaignReady": GameState.CAMPAIGN_MAP,
     "I_BattleEndPending": GameState.PRE_BATTLE_SCROLL,
     "I_BattleEnd": GameState.POST_BATTLE_SCROLL,
     "I_BattleFinished": GameState.POST_BATTLE_SCROLL,
@@ -43,7 +45,25 @@ class GameStateDetector:
     turn: int | None = None
     faction: str | None = None
     battle_id: str | None = None
+    ui_mode: str = "unknown"
     _history: list[tuple[str, GameState]] = field(default_factory=list)
+
+    def infer_from_message_log(self, text: str, *, player_faction: str = "julii") -> GameState | None:
+        """Set campaign_map from message_log when already on the strat map."""
+        from comstar_game_ai.game_io.logs.campaign_probe import infer_campaign_map_from_message_log
+
+        on_map, turn = infer_campaign_map_from_message_log(text, player_faction=player_faction)
+        if not on_map:
+            return None
+        if turn is not None:
+            self.turn = turn
+        if self.state != GameState.CAMPAIGN_MAP:
+            self._history.append(("message_log_infer", GameState.CAMPAIGN_MAP))
+            if len(self._history) > 200:
+                self._history = self._history[-200:]
+            self.state = GameState.CAMPAIGN_MAP
+            return GameState.CAMPAIGN_MAP
+        return None
 
     def update_from_script_event(self, record: dict[str, str]) -> GameState | None:
         """Apply one parsed scripting_log record; return state if changed."""
@@ -72,6 +92,26 @@ class GameStateDetector:
             self.state = new_state
             return new_state
         return None
+
+    def apply_ui_classification(self, classification) -> GameState | None:
+        """Apply a visual UI-mode result. UNKNOWN / low-confidence never leave campaign_map."""
+        from comstar_game_ai.game_io.campaign.ui_mode import UiClassification
+
+        if not isinstance(classification, UiClassification):
+            return None
+        self.ui_mode = classification.mode.value
+        new_state = classification.to_game_state()
+        if new_state is None or new_state == self.state:
+            return None
+        # False-positive modals were aborting every turn. Only leave the map when sure.
+        if self.state == GameState.CAMPAIGN_MAP and new_state != GameState.CAMPAIGN_MAP:
+            if classification.confidence < 0.7:
+                return None
+        self._history.append((f"ui:{classification.mode.value}", new_state))
+        if len(self._history) > 200:
+            self._history = self._history[-200:]
+        self.state = new_state
+        return new_state
 
     def allows_campaign_orders(self) -> bool:
         return self.state == GameState.CAMPAIGN_MAP

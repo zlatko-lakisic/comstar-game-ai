@@ -35,7 +35,7 @@ def test_directive_store_roundtrip():
 
 
 def test_hardcoded_campaign_run_turns():
-    driver = HardcodedCampaignDriver()
+    driver = HardcodedCampaignDriver(use_vision=False, auto_end_turn=False, end_turn_delay_s=0)
     driver.state.state = __import__(
         "comstar_game_ai.game_io.state_machine", fromlist=["GameState"]
     ).GameState.CAMPAIGN_MAP

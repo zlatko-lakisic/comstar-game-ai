@@ -1,0 +1,29 @@
+;;;; Comstar Game AI telemetry — appended to imperial campaign tutorial.txt (always active).
+declare_counter comstar_turn_counter;
+declare_counter comstar_boot_logged;
+
+monitor_conditions I_CompareCounter comstar_boot_logged = 0
+	set_counter comstar_boot_logged 1;
+	script_log event=CampaignMapReady;
+end_monitor;
+
+monitor_event FactionTurnStart FactionType romans_julii
+	inc_counter comstar_turn_counter 1;
+	script_log event=NewTurnStart;
+	if I_CompareCounter comstar_turn_counter 5
+		set_counter comstar_turn_counter 0;
+		script_log event=full_dump;
+	end_if
+end_monitor;
+
+monitor_conditions I_BattleEndPending
+	script_log event=I_BattleEndPending;
+end_monitor;
+
+monitor_conditions I_BattleEnd
+	script_log event=I_BattleEnd;
+end_monitor;
+
+monitor_conditions I_BattleFinished
+	script_log event=I_BattleFinished;
+end_monitor;

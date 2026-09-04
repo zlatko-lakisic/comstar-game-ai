@@ -1,15 +1,26 @@
-"""Hardcoded campaign driver for Phase 2 actuation acceptance."""
+"""Hardcoded campaign driver — observe, clear modals, issue fair orders, end turn."""
 
 from __future__ import annotations
 
 import logging
 import time
 from dataclasses import dataclass, field
+from typing import Callable
 
 from comstar_game_ai.agent.belief.entities import Army, ExistenceStatus
 from comstar_game_ai.agent.belief.store import BeliefStore
+from comstar_game_ai.game_io.campaign.modal import ensure_campaign_map, localize_colored_modal_buttons
+from comstar_game_ai.game_io.campaign.orders import CampaignPlanner
+from comstar_game_ai.game_io.campaign.ui_mode import (
+    CampaignUiMode,
+    grab_and_classify,
+    grab_rgb_image,
+    save_debug_capture,
+)
 from comstar_game_ai.game_io.console.actuator import ConsoleActuator
 from comstar_game_ai.game_io.intent_record import IntentRecordWriter
+from comstar_game_ai.game_io.logs.campaign_probe import latest_julii_autosave_turn, summarize_julii_turn_markers
+from comstar_game_ai.game_io.logs.message_log import MessageLogTailer, default_message_log_path
 from comstar_game_ai.game_io.logs.scripting_log import ScriptingLogTailer
 from comstar_game_ai.game_io.state_machine import GameState, GameStateDetector
 from comstar_game_ai.game_io.verification import VerificationPipeline, VerificationResult
@@ -19,29 +30,168 @@ _LOGGER = logging.getLogger(__name__)
 
 @dataclass
 class HardcodedCampaignDriver:
-    """Minimal end-to-end campaign loop without reasoning."""
+    """Campaign-map loop without AO reasoning."""
 
     belief: BeliefStore = field(default_factory=BeliefStore)
     actuator: ConsoleActuator = field(default_factory=ConsoleActuator)
     state: GameStateDetector = field(default_factory=GameStateDetector)
     log_tailer: ScriptingLogTailer = field(default_factory=ScriptingLogTailer)
+    message_tailer: MessageLogTailer = field(default_factory=MessageLogTailer)
     intent_writer: IntentRecordWriter = field(default_factory=IntentRecordWriter)
     verification: VerificationPipeline = field(default_factory=VerificationPipeline)
     player_faction: str = "julii"
     turn_wait_timeout_s: float = 180.0
+    auto_end_turn: bool = False
+    # Max seconds to poll for map-clear readiness before End Turn (not a fixed sleep).
+    end_turn_ready_timeout_s: float = 30.0
+    # Deprecated alias kept for callers/tests; treated as ready-timeout when set.
+    end_turn_delay_s: float = 0.0
+    use_vision: bool = False
+    planner: CampaignPlanner | None = None
     _julii_turns_seen: int = field(default=0, init=False)
+    _julii_turn_ready: bool = field(default=False, init=False)
+    _julii_round_starts: int = field(default=0, init=False)
+    _last_autosave_turn: int = field(default=0, init=False)
+    _autosave_events: int = field(default=0, init=False)
+    last_ui_mode: str = field(default="unknown", init=False)
+    last_ui_confidence: float = field(default=0.0, init=False)
+    last_ui_detail: str = field(default="", init=False)
+    last_orders: list[str] = field(default_factory=list, init=False)
+    _last_debug_capture_ts: float = field(default=0.0, init=False)
 
     def __post_init__(self) -> None:
         self.actuator.state = self.state
+        if self.planner is None:
+            self.planner = CampaignPlanner(player_faction=self.player_faction)
+
+    def _resolve_hwnd(self) -> int | None:
+        try:
+            shell = self.actuator.shell
+            if shell is None:
+                return None
+            return shell.resolve_hwnd()
+        except Exception:
+            return None
+
+    def _sync_ui(self, *, handle_modal: bool = True) -> CampaignUiMode:
+        """Classify the live window. Dry tests leave use_vision=False so this is a no-op."""
+        if not self.use_vision:
+            return CampaignUiMode.UNKNOWN
+        hwnd = self._resolve_hwnd()
+        if hwnd is None:
+            return CampaignUiMode.UNKNOWN
+        if handle_modal:
+            shell = self.actuator.shell
+            classification = ensure_campaign_map(
+                hwnd,
+                input_controller=shell.input_controller if shell else None,
+                turn=self.state.turn,
+            )
+        else:
+            classification = grab_and_classify(hwnd)
+        self.last_ui_mode = classification.mode.value
+        self.last_ui_confidence = float(getattr(classification, "confidence", 0.0) or 0.0)
+        self.last_ui_detail = str(getattr(classification, "detail", "") or "")
+        # Vision is advisory. A bad classify must not wipe campaign_map from logs.
+        if classification.confidence >= 0.7:
+            self.state.apply_ui_classification(classification)
+        return classification.mode
+
+    def _refresh_turn_from_message_log(self) -> None:
+        """Continuously infer current turn from full message_log snapshot."""
+        path = default_message_log_path()
+        if not path.is_file():
+            return
+        text = path.read_text(encoding="utf-8", errors="replace")
+        markers = summarize_julii_turn_markers(text, player_faction=self.player_faction)
+        rounds = int(markers.get("round_starts") or 0)
+        self._julii_round_starts = max(self._julii_round_starts, rounds)
+        autosave_turn = int(markers.get("autosave_turn") or 0)
+        if autosave_turn > self._last_autosave_turn:
+            self._last_autosave_turn = autosave_turn
+            self._autosave_events += 1
+        inferred = self.state.infer_from_message_log(text, player_faction=self.player_faction)
+        known_turn = markers.get("known_turn")
+        if isinstance(known_turn, int):
+            self.state.turn = max(self.state.turn or 0, known_turn)
+        if inferred is not None:
+            self._julii_turn_ready = True
 
     def bootstrap_from_logs(self) -> int:
-        """Ingest existing scripting_log (e.g. after load) before live tailing."""
+        """Ingest existing logs (script + message_log inference) before live tailing."""
         self.log_tailer.reset()
+        self.message_tailer.reset()
+
+        path = default_message_log_path()
+        if path.is_file():
+            text = path.read_text(encoding="utf-8", errors="replace")
+            markers = summarize_julii_turn_markers(text, player_faction=self.player_faction)
+            self._julii_round_starts = int(markers.get("round_starts") or 0)
+            autosave_turn = markers.get("autosave_turn")
+            known_turn = markers.get("known_turn")
+            self._last_autosave_turn = int(autosave_turn or known_turn or 0)
+            inferred = self.state.infer_from_message_log(text, player_faction=self.player_faction)
+            if known_turn is not None and self.state.turn is None:
+                self.state.turn = int(known_turn)
+            if inferred is not None:
+                self.belief.history.append(
+                    {
+                        "event": "CampaignMapReady",
+                        "source": "message_log_infer",
+                        "turn": str(self.state.turn or ""),
+                    }
+                )
+            self._julii_turn_ready = self.state.allows_campaign_orders()
+            self.message_tailer.seek_end()
+
         return self.poll_observation()
 
+    def _poll_message_log_turns(self) -> int:
+        from comstar_game_ai.game_io.logs.campaign_probe import player_faction_log_name
+
+        log_faction = player_faction_log_name(self.player_faction)
+        ingested = 0
+        for line in self.message_tailer.poll():
+            lower = line.lower()
+            if "new round start turn(" in lower:
+                start = lower.index("new round start turn(") + len("new round start turn(")
+                end = lower.index(")", start)
+                faction = line[start:end].strip().lower()
+                if faction == log_faction.lower():
+                    self._julii_round_starts += 1
+                    ingested += 1
+                    self._record_message_log_turn()
+            elif "campaign saved:" in lower and "house of julii" in lower and "turn" in lower:
+                turn = latest_julii_autosave_turn(line)
+                if turn is not None:
+                    self._last_autosave_turn = turn
+                    self._autosave_events += 1
+                    ingested += 1
+                    self._record_message_log_turn(turn=turn)
+        return ingested
+
+    def _record_message_log_turn(self, *, turn: int | None = None) -> None:
+        if turn is None:
+            turn = self.state.turn
+            if turn is None:
+                turn = self._julii_round_starts
+            else:
+                turn = max(turn, self._julii_round_starts)
+        else:
+            turn = max(turn, self._last_autosave_turn)
+        self.state.turn = turn
+        record = {
+            "event": "NewTurnStart",
+            "source": "message_log",
+            "turn": str(turn),
+            "faction": self.player_faction,
+        }
+        self.state.update_from_script_event(record)
+        self.belief.history.append(dict(record))
+
     def poll_observation(self) -> int:
-        """Ingest new script telemetry into belief + state; return line count."""
-        count = 0
+        self._refresh_turn_from_message_log()
+        count = self._poll_message_log_turns()
         for record in self.log_tailer.poll():
             count += 1
             self._ingest_script_record(record)
@@ -59,10 +209,15 @@ class HardcodedCampaignDriver:
 
         if event == "NewTurnStart":
             self._julii_turns_seen += 1
-            if self.state.turn is None:
+            if record.get("source") != "message_log" and record.get("turn"):
+                try:
+                    script_turn = int(record["turn"])
+                    if self.state.turn is None or script_turn > self.state.turn:
+                        self.state.turn = script_turn
+                except ValueError:
+                    pass
+            elif self.state.turn is None:
                 self.state.turn = self._julii_turns_seen
-            else:
-                self.state.turn = max(self.state.turn, self._julii_turns_seen)
 
         self._ingest_entity_record(record)
 
@@ -124,28 +279,185 @@ class HardcodedCampaignDriver:
                 )
             )
 
-    def wait_for_turn_event(self, *, timeout_s: float | None = None) -> bool:
-        """Block until NewTurnStart telemetry or timeout."""
-        timeout = timeout_s if timeout_s is not None else self.turn_wait_timeout_s
-        before = self._julii_turns_seen
-        deadline = time.time() + timeout
+    def _known_game_turn(self) -> int:
+        """Best available Julii turn from autosave / inferred state (game truth)."""
+        return max(int(self.state.turn or 0), int(self._last_autosave_turn or 0))
+
+    def _blocking_ui_present(self) -> bool:
+        """Decision buttons, or a panel over the map centre that swallows End Turn.
+
+        Notice cards in the left dock are deliberately not blocking: they ask for
+        nothing and the map stays playable behind them.
+        """
+        if not self.use_vision:
+            return False
+        hwnd = self._resolve_hwnd()
+        if hwnd is None:
+            return False
+        image = grab_rgb_image(hwnd)
+        if image is None:
+            return False
+        from comstar_game_ai.game_io.campaign.modal import blocking_ui_present
+
+        return blocking_ui_present(image)
+
+    def wait_until_ready_for_end_turn(
+        self,
+        *,
+        timeout_s: float | None = None,
+        on_progress: Callable[..., None] | None = None,
+        index: int = 0,
+        total: int = 0,
+    ) -> bool:
+        """Poll until campaign map is clear of blocking diplomacy UI — no fixed sleep."""
+        legacy = max(0.0, float(self.end_turn_delay_s or 0.0))
+        timeout = timeout_s
+        if timeout is None:
+            timeout = max(float(self.end_turn_ready_timeout_s), legacy) if self.use_vision else legacy
+        if timeout <= 0 and not self.use_vision:
+            return True
+        deadline = time.time() + max(0.5, float(timeout))
+        last_report = 0.0
         while time.time() < deadline:
             self.poll_observation()
-            if self._julii_turns_seen > before:
+            mode = self._sync_ui(handle_modal=True)
+            buttons = self._blocking_ui_present()
+            map_ok = mode == CampaignUiMode.CAMPAIGN_MAP or (
+                not self.use_vision and self.state.allows_campaign_orders()
+            )
+            ready = map_ok and not buttons and self.state.allows_campaign_orders()
+            now = time.time()
+            if on_progress and now - last_report >= 1.0:
+                on_progress(
+                    index=index,
+                    total=total,
+                    phase=(
+                        f"end-turn ready check ui={self.last_ui_mode} "
+                        f"buttons={'yes' if buttons else 'no'} "
+                        f"game_turn={self._known_game_turn()}"
+                    ),
+                )
+                last_report = now
+            if ready:
+                if on_progress:
+                    on_progress(index=index, total=total, phase="ready for End Turn")
                 return True
             time.sleep(0.25)
-        _LOGGER.warning("timed out waiting for NewTurnStart (seen=%s)", before)
+        _LOGGER.warning(
+            "timed out waiting for End Turn readiness (ui=%s buttons=%s)",
+            self.last_ui_mode,
+            self._blocking_ui_present(),
+        )
         return False
 
-    def run_turn_stub(self, *, wait_for_next_turn: bool = True) -> bool:
-        """Halt AI, observe via console, resume AI, verify state, optionally wait for next turn."""
+    def wait_for_turn_event(
+        self,
+        *,
+        timeout_s: float | None = None,
+        on_progress: Callable[..., None] | None = None,
+        index: int = 0,
+        total: int = 0,
+        turn_before: int | None = None,
+    ) -> bool:
+        """Wait until Julii's turn returns after End Turn.
+
+        Prefer autosave/known turn increase. Also accept a new Julii round-start
+        after End Turn (player turn came back) even if autosave turn text lags.
+        """
+        timeout = timeout_s if timeout_s is not None else self.turn_wait_timeout_s
+        baseline = int(turn_before if turn_before is not None else self._known_game_turn())
+        before_rounds = self._julii_round_starts
+        before_autosaves = self._autosave_events
+        deadline = time.time() + timeout
+        last_ui = -999.0
+        while time.time() < deadline:
+            self.poll_observation()
+            self._refresh_turn_from_message_log()
+            current = self._known_game_turn()
+            round_returned = self._julii_round_starts > before_rounds
+            autosave_bumped = self._autosave_events > before_autosaves and current > baseline
+            if current > baseline or round_returned or autosave_bumped:
+                if on_progress:
+                    why = (
+                        f"game turn advanced {baseline} -> {current}"
+                        if current > baseline
+                        else f"Julii round returned (rounds {before_rounds} -> {self._julii_round_starts})"
+                    )
+                    on_progress(index=index, total=total, phase=why)
+                return True
+            now = time.time()
+            if self.use_vision and now - last_ui >= 3.0:
+                # Lightweight sync: dismiss only if something modal-like is present.
+                mode = self._sync_ui(handle_modal=True)
+                if on_progress:
+                    on_progress(
+                        index=index,
+                        total=total,
+                        phase=(
+                            f"wait status game_turn={current} baseline={baseline} "
+                            f"ui={mode.value} rounds={self._julii_round_starts} "
+                            f"autosaves={self._autosave_events}"
+                        ),
+                    )
+                if mode in (CampaignUiMode.MODAL, CampaignUiMode.PAUSE, CampaignUiMode.PRE_BATTLE):
+                    if on_progress:
+                        on_progress(
+                            index=index,
+                            total=total,
+                            phase=f"dialog while waiting: {mode.value} (resolving)",
+                        )
+                    if now - self._last_debug_capture_ts >= 10.0:
+                        hwnd = self._resolve_hwnd()
+                        if hwnd is not None:
+                            stamp = int(now)
+                            out = f"data/runtime/dialog-{index}-{stamp}.png"
+                            if save_debug_capture(hwnd, out):
+                                on_progress(
+                                    index=index,
+                                    total=total,
+                                    phase=f"saved dialog frame: {out}",
+                                )
+                                self._last_debug_capture_ts = now
+                last_ui = now
+            time.sleep(0.25)
+        _LOGGER.warning(
+            "timed out waiting for player turn advance (baseline=%s now=%s rounds=%s autosaves=%s)",
+            baseline,
+            self._known_game_turn(),
+            self._julii_round_starts,
+            self._autosave_events,
+        )
+        return False
+
+    def run_turn_stub(
+        self,
+        *,
+        wait_for_next_turn: bool = True,
+        on_progress: Callable[..., None] | None = None,
+        index: int = 0,
+        total: int = 0,
+    ) -> bool:
+        """Clear modals, observe, optional move, End Turn only on open map."""
+        self._refresh_turn_from_message_log()
+        if on_progress:
+            on_progress(index=index, total=total, phase=f"sync UI on turn {self.state.turn}")
+        self._sync_ui(handle_modal=True)
+
         if not self.state.allows_campaign_orders():
-            _LOGGER.info("skip turn — state=%s", self.state.state.value)
+            _LOGGER.info("skip turn — state=%s ui=%s", self.state.state.value, self.last_ui_mode)
+            if on_progress:
+                on_progress(
+                    index=index,
+                    total=total,
+                    phase=f"skip — state={self.state.state.value} ui={self.last_ui_mode}",
+                )
             return False
 
-        halt = f"halt_ai {self.player_faction}"
-        intent = {"objective": "observe", "turn": self.state.turn}
-        action = {"type": "console", "command": "list_characters"}
+        assert self.planner is not None
+        orders = self.planner.plan(self.belief)
+        self.last_orders = [o.command for o in orders]
+        intent = {"objective": "campaign_turn", "turn": self.state.turn, "ui": self.last_ui_mode}
+        action = {"type": "campaign_plan", "commands": self.last_orders}
         expected = {"state": GameState.CAMPAIGN_MAP.value}
 
         record = self.intent_writer.declare(
@@ -157,15 +469,80 @@ class HardcodedCampaignDriver:
             expected_effect=expected,
         )
 
+        if on_progress:
+            on_progress(
+                index=index,
+                total=total,
+                phase=f"orders on turn {self.state.turn}: {', '.join(self.last_orders)}",
+            )
+
         start = time.perf_counter()
-        ok = self.actuator.send(halt, require_campaign=True)
-        ok = self.actuator.send("list_characters", require_campaign=True) and ok
-        ok = self.actuator.send("run_ai", require_campaign=True) and ok
+        ok = True
+        for order in orders:
+            sent = self.actuator.send(order.command, require_campaign=True)
+            if not sent:
+                _LOGGER.warning("order failed: %s (%s)", order.command, order.reason)
+            ok = sent and ok
 
-        if wait_for_next_turn and ok:
-            ok = self.wait_for_turn_event() and ok
+        if self.auto_end_turn and ok:
+            ready = self.wait_until_ready_for_end_turn(
+                on_progress=on_progress,
+                index=index,
+                total=total,
+            )
+            if not ready:
+                if on_progress:
+                    on_progress(
+                        index=index,
+                        total=total,
+                        phase="WARN End Turn skipped — UI not ready",
+                    )
+                ok = False
+            else:
+                turn_before = self._known_game_turn()
+                ended = self.actuator.end_turn()
+                if on_progress:
+                    phase = (
+                        f"ended turn (game_turn={turn_before})"
+                        if ended
+                        else "WARN End Turn did not register"
+                    )
+                    on_progress(index=index, total=total, phase=phase)
+                ok = ended and ok
+                if wait_for_next_turn and ok:
+                    self._julii_turn_ready = False
+                    if on_progress:
+                        on_progress(
+                            index=index,
+                            total=total,
+                            phase=f"waiting for next Julii turn (after {turn_before})",
+                        )
+                    ok = (
+                        self.wait_for_turn_event(
+                            on_progress=on_progress,
+                            index=index,
+                            total=total,
+                            turn_before=turn_before,
+                        )
+                        and ok
+                    )
+                    if ok:
+                        self._julii_turn_ready = True
 
-        observed = {"state": self.state.state.value}
+        if wait_for_next_turn and ok and not self.auto_end_turn:
+            # Orders-only mode: still wait for an external turn advance if requested.
+            self._julii_turn_ready = False
+            if on_progress:
+                on_progress(
+                    index=index,
+                    total=total,
+                    phase="waiting for next Julii turn",
+                )
+            ok = self.wait_for_turn_event(on_progress=on_progress, index=index, total=total) and ok
+            if ok:
+                self._julii_turn_ready = True
+
+        observed = {"state": self.state.state.value, "ui": self.last_ui_mode}
         outcomes = self.verification.verify(action, expected, observed=observed)
         verified = all(o.result != VerificationResult.FAIL for o in outcomes)
         ok = ok and verified
@@ -181,16 +558,26 @@ class HardcodedCampaignDriver:
         *,
         require_ok: bool = True,
         wait_for_next_turn: bool = True,
+        on_progress: Callable[..., None] | None = None,
     ) -> dict[str, int]:
-        """Run n campaign turn stubs; return success counts."""
         ok_count = 0
         fail_count = 0
-        for _ in range(n):
+        for i in range(n):
             self.poll_observation()
-            if self.run_turn_stub(wait_for_next_turn=wait_for_next_turn):
+            idx = i + 1
+            if self.run_turn_stub(
+                wait_for_next_turn=wait_for_next_turn,
+                on_progress=on_progress,
+                index=idx,
+                total=n,
+            ):
                 ok_count += 1
+                if on_progress:
+                    on_progress(index=idx, total=n, phase="turn cycle complete", ok=True)
             else:
                 fail_count += 1
+                if on_progress:
+                    on_progress(index=idx, total=n, phase="turn cycle failed or timed out", ok=False)
                 if require_ok:
                     break
         return {

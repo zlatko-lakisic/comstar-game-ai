@@ -1,0 +1,168 @@
+id: campaign_ui_facts
+description: Verified Rome Remastered campaign UI facts for vision and reasoning agents
+game: "Total War: ROME REMASTERED"
+schema_version: 1
+
+# Keep every value JSON-serialisable: the overlay is packed and sent over the Reach
+# websocket as JSON. Unquoted ISO dates become datetime.date and break the whole
+# session registration, so dates are quoted strings.
+
+# Every coordinate below is normalised against the CLIENT rect (not the window rect)
+# and was measured on a 16:9 client area. Treat them as anchors to look near, not as
+# constants to click blindly — re-measure per frame where a detector exists.
+frame:
+  coordinate_space: client_rect_normalised
+  measured_client_size: [1920, 1080]
+  aspect: "16:9"
+
+inject:
+  heading: "## Campaign UI facts"
+  max_chars: 2000
+
+facts:
+  - id: end_turn_control
+    kind: control
+    durable: true
+    verified: "2026-09-04"
+    statement: >
+      The End Turn control is the round button at the far bottom-right of the client
+      area, centred at (0.980, 0.971). Its icon is state dependent: a cream hourglass
+      and a red horn have both been observed at the same centre in different
+      campaigns. Identify it by position and round shape, never by colour.
+    evidence:
+      - "red horn disc bbox x1855-1909 y1024-1077, centre (1882, 1050)"
+      - "cream hourglass disc at the same centre, new campaign 2026-09-04"
+      - "frames: modal-unresolved-modal-f3cf556c0e-raw.png (horn), modal-unresolved-modal-b272df7824-raw.png (hourglass)"
+
+  - id: panel_close_button
+    kind: control
+    durable: true
+    verified: "2026-09-04"
+    statement: >
+      Parchment panels are closed by a round button bearing a gold crossed-swords X,
+      centred ON the panel's top-right corner (straddling the panel edge, not inside
+      it). This is the reliable way to dismiss a panel.
+    evidence:
+      - "left alerts dock: close X at (0.327, 0.077), panel x 0.03-0.33"
+      - "senate mission card: close X at (0.160, 0.077), panel x 0.00-0.16"
+      - "building browser: close X at (0.752, 0.196), panel x 0.26-0.74"
+      - "found on 210/210 panel frames after generalising the search to any panel"
+
+  - id: escape_key_is_unreliable
+    kind: input
+    durable: true
+    verified: "2026-09-04"
+    statement: >
+      Escape closes some panels and is ignored by others — the settlement/building
+      browser stayed open through 40+ Escape presses. Always prefer the panel's close
+      X; use Escape only as a last resort for a blocking panel with no visible X.
+
+  - id: panel_taxonomy
+    kind: semantics
+    durable: true
+    verified: "2026-09-04"
+    statement: >
+      A panel being open does not mean the game is blocked. Three distinct classes:
+      (1) DECISION panels show a green check and a red X glyph pair and must be
+      answered; (2) NOTICE panels (senate mission assigned, alert/event cards in the
+      left dock) ask nothing, leave the map playable and End Turn working, and can be
+      left on screen; (3) OBSTRUCTING panels straddle the screen centre (settlement,
+      building browser), ask nothing, but swallow input and must be closed. Treating
+      every panel as a modal strands the turn on a panel with nothing to dismiss.
+    evidence:
+      - "senate mission card: no glyph pair, map playable, turn proceeds"
+      - "building browser spans x 0.26-0.74 across the centre and blocks input"
+
+  - id: turn_truth_lives_in_the_log
+    kind: ground_truth
+    durable: true
+    verified: "2026-09-04"
+    statement: >
+      Screen state never proves a turn ended. In message_log.txt, the autosave line
+      'Turn <N> End.sav' is proof the turn actually ended, and
+      '****new round start turn(<faction>)****' marks the start of a round. A turn
+      with a round-start line but no matching End.sav line was never ended.
+    evidence:
+      - "turns 3-7 each have a 'Turn N End.sav' line; turn 8 has none and never ended"
+      - "path: %LOCALAPPDATA%/Feral Interactive/Total War ROME REMASTERED/VFS/Local/Rome/logs/message_log.txt"
+
+  - id: never_blind_click_the_hud
+    kind: hazard
+    durable: true
+    verified: "2026-09-04"
+    statement: >
+      Clicking unverified positions in the lower-right lands on the map or HUD and
+      mutates game state. A fallback cascade of five guessed End Turn positions
+      opened the building browser and wedged the run. Locate a control before
+      clicking it; never sweep candidate coordinates.
+    evidence:
+      - "log line: 'Uknown settlement levelbuilding_browser_scroll scroll opened'"
+      - "all five legacy candidates missed the button: 0.94/0.97 hit the HUD bar, the rest open map"
+
+  - id: left_dock_geometry
+    kind: layout
+    durable: true
+    verified: "2026-09-04"
+    statement: >
+      Alert, event and senate mission cards dock against the left edge, spanning
+      x 0.00 to roughly 0.16-0.33 with their top edge near y 0.07. A vertical strip
+      of round category icons (horn, scroll, coins, eagle) sits immediately to their
+      right, and those icons are gold — do not mistake them for the close X.
+
+  - id: building_browser_geometry
+    kind: layout
+    durable: true
+    verified: "2026-09-04"
+    statement: >
+      The settlement building browser spans x 0.26-0.74 with its top edge near
+      y 0.21, and covers the bottom-right HUD including the End Turn control. Its
+      construction tree is full of green and red connector lines that mimic
+      accept/reject glyphs, so decision detection must not run inside it.
+
+  - id: camera_lighting_varies
+    kind: perception
+    durable: true
+    verified: "2026-09-04"
+    statement: >
+      Winter and night cameras render the map dim and nearly flat: centre luminance
+      around 0.15 with low variance, while the HUD edges stay near 0.30. A dark map
+      centre alone does not mean a pause menu or a failed capture — the pause menu
+      and a dead capture darken the edges too.
+
+  - id: capture_the_client_rect
+    kind: perception
+    durable: true
+    verified: "2026-09-03"
+    statement: >
+      Screenshots must cover the client rect. Capturing the window rect includes the
+      title bar and borders, which offsets every derived coordinate against clicks
+      that are computed from the client rect, so vision-derived clicks miss.
+    evidence:
+      - "window 1936x1119 vs client 1920x1080 on the reference machine"
+
+# Deliberately NOT knowledge for a reasoning model. These are properties of the
+# current pixel heuristics, not of the game, and would mislead a stronger model.
+detector_artifacts:
+  - "cream mask RGB bounds used by _cream_mask"
+  - "0.32 column-density threshold in panel_bounds (0.45 missed cards with artwork and text)"
+  - "topmost-blob window sizes and centroid refinement radii in localize_panel_close_x"
+  - "left_overlay_parchment_ratio >= 0.10 as a panel trigger (the left HUD strip alone reaches it)"
+
+# Frames with hand-verified answers, usable as a scored regression set for any
+# replacement perception model.
+eval_set:
+  location: data/runtime/modal-unresolved-*-raw.png
+  frame_size: [1920, 1080]
+  expectations:
+    - count: 125
+      contents: building browser over the centre
+      expect: {blocking: true, close_x: true, mode: modal}
+    - count: 73
+      contents: dim night map with a senate mission card
+      expect: {blocking: false, close_x: true, mode: campaign_map}
+    - count: 18
+      contents: clear campaign map
+      expect: {blocking: false, close_x: false, mode: campaign_map}
+    - count: 12
+      contents: left dock notice card over a lit map
+      expect: {blocking: false, close_x: true, mode: campaign_map}

@@ -5,6 +5,7 @@ ao:
   app_id: comstar-game-ai
   mtls_material_dir: ".cursor/secrets/mtls/comstar-game-ai"
   model: null  # pinned after ada survey in docs/ada-model.md
+  vision_model: "llava:7b"
 
 game:
   window_title_substrings:
@@ -31,8 +32,35 @@ campaign:
   mode: grand_campaign
   player_faction: julii
   acceptance_turns: 20
+  auto_end_turn: true
+  # Max poll window for map-clear readiness before End Turn (not a fixed sleep).
+  end_turn_ready_timeout_s: 30
+  end_turn_delay_s: 0
+  # Measured centre of the red horn button; the previous [0.94, 0.97] hit the HUD bar.
+  end_turn_click_norm: [0.980, 0.973]
   save_slug: comstar-julii
   save_path: null
+  policy:
+    allow_moves: true
+  modal:
+    min_confidence: 0.72
+    min_margin: 0.10
+    model_timeout_s: 180
+    save_unresolved_frames: true
+    diplomacy_action: reject
+    allow_visual_button_fallback: true
+    allow_coordinate_fallback: false
+    # Ada/LLaVA recognizes the panel and its buttons; pixel localization only backs it up.
+    use_ada_vision: true
+    decline_click_norms:
+      - [0.38, 0.74]
+      - [0.42, 0.78]
+      - [0.36, 0.80]
+    close_click_norms:
+      - [0.66, 0.24]
+      - [0.70, 0.22]
+    continue_click_norms:
+      - [0.50, 0.78]
 
 safety:
   deadman_seconds: 10

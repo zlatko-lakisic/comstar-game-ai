@@ -23,9 +23,16 @@ def overlay_root() -> Path:
 class ReachSession:
     """Process B Reach session: overlay register and bridge lifecycle."""
 
-    def __init__(self, *, bridge: SessionBridge | None = None) -> None:
+    def __init__(
+        self,
+        *,
+        bridge: SessionBridge | None = None,
+        enable_game_query: bool = True,
+    ) -> None:
         self.bridge = bridge or SessionBridge()
-        self._mcp_bootstrap: SessionMcpBootstrap = GameQueryMcpBootstrap()
+        self._mcp_bootstrap: SessionMcpBootstrap | None = (
+            GameQueryMcpBootstrap() if enable_game_query else None
+        )
 
     @property
     def is_active(self) -> bool:
