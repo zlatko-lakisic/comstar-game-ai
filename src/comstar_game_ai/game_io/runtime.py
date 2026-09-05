@@ -11,7 +11,7 @@ from pathlib import Path
 from comstar_game_ai.game_io.battle.battle_driver import BattleDriver, BattleDriverConfig, load_battle_directive
 from comstar_game_ai.game_io.battle.orders import BattleOrder
 from comstar_game_ai.game_io.capture.capture_loop import CaptureLoop
-from comstar_game_ai.game_io.drivers.hardcoded_campaign import HardcodedCampaignDriver
+from comstar_game_ai.game_io.drivers.hardcoded_campaign import HardcodedCampaignDriver, phase2_accepted
 from comstar_game_ai.game_io.hotkeys import HotkeyManager
 from comstar_game_ai.game_io.input.send_input import SendInputController
 from comstar_game_ai.game_io.safety import ControlMode, SafetyController
@@ -125,6 +125,7 @@ class GameIoRuntime:
         driver.bootstrap_from_logs()
         successes = 0
         desyncs = 0
+        turn_at_start = driver.turns_ended
 
         try:
             if self.safety.mode == ControlMode.IDLE:
@@ -149,12 +150,15 @@ class GameIoRuntime:
                 self.safety.pet_deadman()
                 time.sleep(0.05)
 
-            return {
-                "ok": desyncs == 0,
+            result = {
                 "turns_requested": n,
                 "turns_ok": successes,
                 "desyncs": desyncs,
+                "game_turn_start": turn_at_start,
+                "game_turn_end": driver.turns_ended,
+                "turns_advanced": max(0, driver.turns_ended - turn_at_start),
             }
+            return {"ok": phase2_accepted(result, turns=n), **result}
         finally:
             self.shutdown()
 

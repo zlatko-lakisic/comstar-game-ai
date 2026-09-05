@@ -11,7 +11,7 @@ from comstar_game_ai.game_io.campaign.ui_mode import grab_rgb_image
 from comstar_game_ai.game_io.input.directinput import click_screen, directinput_available, hotkey_shift_enter, tap_key
 from comstar_game_ai.game_io.input.game_focus import game_input_session, post_vk_key, with_game_input
 from comstar_game_ai.game_io.input.send_input import SendInputController
-from comstar_game_ai.game_io.logs.turn_boundary import message_log_snapshot, wait_for_turn_boundary
+from comstar_game_ai.game_io.logs.turn_boundary import latest_turn_end, wait_for_turn_end
 from comstar_game_ai.game_io.window import get_foreground_hwnd
 from comstar_game_ai.shared.config import load_config
 
@@ -77,15 +77,21 @@ def _focus_game(hwnd: int, input_controller: SendInputController, *, attempts: i
 
 
 def _try_after_actuation(
-    before_size: int,
-    before_tail: str,
+    baseline: int | None,
     method: str,
     *,
-    timeout_s: float = 4.0,
+    timeout_s: float = 8.0,
 ) -> tuple[bool, str]:
-    if wait_for_turn_boundary(before_size, before_tail, timeout_s=timeout_s):
-        return True, method
-    return False, ""
+    """Did this actuation end the turn? Only a later autosaved turn number says yes.
+
+    The timeout has to outlast Rome writing the save itself, or a method that worked is
+    scored as a miss and the next one clicks again mid-save.
+    """
+    turn = wait_for_turn_end(baseline, timeout_s=timeout_s)
+    if turn is None:
+        return False, ""
+    _LOGGER.info("turn ended via %s (autosaved turn %s)", method, turn)
+    return True, method
 
 
 def end_turn_campaign(
@@ -100,7 +106,7 @@ def end_turn_campaign(
 
     Rome uses DirectInput — pydirectinput scan codes + HUD click beat SendInput alone.
     """
-    before_size, before_tail = message_log_snapshot()
+    baseline = latest_turn_end()
 
     if not _focus_game(hwnd, input_controller):
         return False, "focus_failed"
@@ -113,14 +119,14 @@ def end_turn_campaign(
     # 1) pydirectinput Shift+Enter (DirectInput path)
     if directinput_available():
         with_game_input(hwnd, hotkey_shift_enter)
-        ok, tag = _try_after_actuation(before_size, before_tail, "pydirect_shift_enter", timeout_s=4.0)
+        ok, tag = _try_after_actuation(baseline, "pydirect_shift_enter", timeout_s=10.0)
         if ok:
             return True, tag
         _focus_game(hwnd, input_controller, attempts=3)
 
     # 2) SendInput scan codes (thread attached during chord)
     input_controller.chord_scancode("shift", "enter", dwell_ms=max(dwell_ms, 80), hwnd=hwnd)
-    ok, tag = _try_after_actuation(before_size, before_tail, "scancode_shift_enter", timeout_s=3.0)
+    ok, tag = _try_after_actuation(baseline, "scancode_shift_enter", timeout_s=8.0)
     if ok:
         return True, tag
 
@@ -155,7 +161,7 @@ def end_turn_campaign(
             return input_controller.click(sx, sy, dwell_ms=max(dwell_ms, 50))
 
         with_game_input(hwnd, _click, activate_click=False)
-        ok, tag = _try_after_actuation(before_size, before_tail, f"click_{x_norm}_{y_norm}", timeout_s=2.5)
+        ok, tag = _try_after_actuation(baseline, f"click_{x_norm}_{y_norm}", timeout_s=8.0)
         if ok:
             return True, tag
 

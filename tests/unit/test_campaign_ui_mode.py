@@ -73,6 +73,46 @@ def _dim_night_map(w: int = 320, h: int = 200) -> Image.Image:
     return img
 
 
+def _open_sea_map(w: int = 320, h: int = 200) -> Image.Image:
+    """A camera over open water: the map centre is flat, so variance tests miss it.
+
+    Measured on a real frame at (1920, 1080): centre variance 0.0002, an order of
+    magnitude under the dim-map floor, while the bottom HUD bar sat at luminance 0.61.
+    """
+    img = Image.new("RGB", (w, h), (36, 82, 108))
+    px = img.load()
+    for y in range(h):
+        for x in range(w):
+            px[x, y] = (34 + (x + y) % 3, 80 + (x + y) % 3, 106 + (x + y) % 3)
+    draw = ImageDraw.Draw(img)
+    draw.rectangle((0, 0, w, int(h * 0.03)), fill=(150, 140, 120))
+    # Bottom HUD bar: bright, and structured by the round buttons sitting on it.
+    draw.rectangle((0, int(h * 0.965), w, h), fill=(228, 216, 186))
+    for cx in range(int(w * 0.4), int(w * 0.65), 20):
+        draw.ellipse((cx, int(h * 0.96), cx + 14, h - 1), fill=(70, 55, 40))
+    return img
+
+
+def test_open_sea_map_is_still_the_campaign_map():
+    """A sea view has no terrain variance, and used to strand the turn as unknown."""
+    result = classify_campaign_image(_open_sea_map())
+    assert result.mode == CampaignUiMode.CAMPAIGN_MAP
+    assert result.detail == "flat_map_with_lit_hud_bar"
+    assert result.center_variance < 0.0015
+
+
+def test_flat_dark_frame_is_not_a_map():
+    """The HUD-bar rescue must not turn a dead capture into a playable map."""
+    result = classify_campaign_image(Image.new("RGB", (320, 200), (6, 6, 8)))
+    assert result.mode != CampaignUiMode.CAMPAIGN_MAP
+
+
+def test_flat_bright_frame_without_a_hud_bar_is_not_a_map():
+    """A loading image is uniformly lit, with no brighter structured bar at the foot."""
+    result = classify_campaign_image(Image.new("RGB", (320, 200), (140, 130, 150)))
+    assert result.mode != CampaignUiMode.CAMPAIGN_MAP
+
+
 def test_dim_night_map_is_still_the_campaign_map():
     """A dark winter camera used to fall through to unknown and stall the turn."""
     result = classify_campaign_image(_dim_night_map())

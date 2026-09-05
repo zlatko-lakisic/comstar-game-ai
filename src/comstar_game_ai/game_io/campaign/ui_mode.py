@@ -226,6 +226,23 @@ def classify_campaign_image(rgb) -> UiClassification:
             detail="dim_map_with_lit_hud",
         )
 
+    # A camera over open sea is nearly featureless — measured centre variance 0.0002,
+    # far under the floor above — so both map tests miss it and the turn was stranded on
+    # a perfectly playable map. The bottom HUD bar is the signal that survives any
+    # camera: it is on screen for the whole strat map, brighter than the map behind it,
+    # and structured by its buttons, which a flat loading image is not.
+    _, hud_luma, hud_var = _region_stats(rgb, (0, int(h * 0.965), w, h))
+    if hud_luma >= 0.30 and hud_luma > center_luma + 0.15 and hud_var >= 0.01:
+        return UiClassification(
+            mode=CampaignUiMode.CAMPAIGN_MAP,
+            confidence=0.65,
+            parchment_ratio=parchment,
+            center_variance=center_var,
+            edge_luminance=edge_luma,
+            center_luminance=center_luma,
+            detail="flat_map_with_lit_hud_bar",
+        )
+
     return UiClassification(
         mode=CampaignUiMode.UNKNOWN,
         confidence=0.3,

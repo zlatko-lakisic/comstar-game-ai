@@ -78,13 +78,54 @@ facts:
     durable: true
     verified: "2026-09-04"
     statement: >
-      Screen state never proves a turn ended. In message_log.txt, the autosave line
-      'Turn <N> End.sav' is proof the turn actually ended, and
-      '****new round start turn(<faction>)****' marks the start of a round. A turn
-      with a round-start line but no matching End.sav line was never ended.
+      Screen state never proves a turn ended. In message_log.txt the autosave line
+      'Turn <N> End.sav' carries the turn number and is written the instant the player
+      ends the turn, before any AI faction moves, so it is both proof and a counter:
+      compare N against the highest N seen before acting. The
+      '****new round start turn(<faction>)****' line is written only once the AI round
+      finishes, seconds to a minute later, so it must never be read as proof that an
+      End Turn just worked — by the time it lands, the next attempt is usually already
+      waiting, and it scores the previous turn a second time. A turn with a round-start
+      line but no matching End.sav line was never ended.
     evidence:
       - "turns 3-7 each have a 'Turn N End.sav' line; turn 8 has none and never ended"
+      - "order in the log: 'between turns' -> 'Turn 18 End.sav' -> 'start of timer time taken for AI turns' -> faction moves -> 'new round start turn(romans_julii)'"
+      - "counting round-start lines scored 20 End Turn attempts as 19 successes while the campaign advanced 10 turns"
       - "path: %LOCALAPPDATA%/Feral Interactive/Total War ROME REMASTERED/VFS/Local/Rome/logs/message_log.txt"
+
+  - id: message_log_can_be_silent_all_session
+    kind: ground_truth
+    durable: true
+    verified: "2026-09-04"
+    statement: >
+      message_log.txt is not a dependable channel. Rome recreates it on every launch, so
+      a campaign played in an earlier session leaves no trace, and a session has been
+      observed writing nothing at all beyond its startup lines: the file stayed frozen
+      at 77 lines and 3610 bytes while the agent drove the campaign from turn 1 to turn
+      19, with no stratmap, round-start or autosave entries. Never treat the absence of
+      a log line as evidence about the game; confirm against the saves folder.
+    evidence:
+      - "the whole run reported turns_ok=0 turns_failed=20 while Turn 19 End.sav was written on disk"
+      - "the same path carried 142691 lines earlier the same day, so the path was right"
+      - "a readiness gate keyed on the log refused to start on a live, playable campaign"
+
+  - id: autosaves_are_the_turn_clock
+    kind: ground_truth
+    durable: true
+    verified: "2026-09-04"
+    statement: >
+      The saves folder is the reliable turn clock, and it distinguishes two events that
+      must not be confused. 'Turn N End.sav' appears the moment the player hands the
+      turn over, before the AI factions move, and proves the End Turn registered.
+      'Turn N+1 Start.sav' appears when the AI round hands control back, and is the only
+      proof the player can act again. Rome keeps just the latest of each and rewrites
+      them per turn. Read the most recently written file rather than the highest number,
+      because abandoned campaigns leave old autosaves behind that would otherwise mask a
+      fresh campaign forever.
+    evidence:
+      - "Turn 21 End.sav at 20:22:52 followed by Turn 22 Start.sav at 20:23:12, a 20s AI round"
+      - "a 2024 campaign left Turn 69 End.sav, so a highest-number read returned 69 against a live turn 11"
+      - "path: <rome_logs>/../saves, sibling of the logs folder"
 
   - id: never_blind_click_the_hud
     kind: hazard

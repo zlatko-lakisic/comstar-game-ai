@@ -9,8 +9,15 @@ import sys
 import time
 from pathlib import Path
 
-from comstar_game_ai.game_io.drivers.hardcoded_campaign import HardcodedCampaignDriver
-from comstar_game_ai.game_io.elevation import ensure_elevation_for_game, strip_elevation_marker
+from comstar_game_ai.game_io.campaign.ui_mode import CampaignUiMode, grab_and_classify
+from comstar_game_ai.game_io.drivers.hardcoded_campaign import HardcodedCampaignDriver, phase2_accepted
+from comstar_game_ai.game_io.elevation import (
+    ensure_elevation_for_game,
+    strip_elevation_marker,
+    tee_output,
+    trail_path_from_argv,
+)
+from comstar_game_ai.game_io.state_machine import GameState
 from comstar_game_ai.game_io.window import find_game_window
 from comstar_game_ai.shared.config import load_config
 
@@ -27,6 +34,11 @@ def _countdown(seconds: int) -> None:
 
 def main() -> int:
     raw_argv = list(sys.argv)
+    stamp = time.strftime("%Y%m%d-%H%M%S")
+    trail = trail_path_from_argv() or str(
+        Path(f"data/runtime/phase2_live_{stamp}.log").resolve()
+    )
+    tee_output(trail)
     sys.argv = [sys.argv[0], *strip_elevation_marker()]
 
     parser = argparse.ArgumentParser(description="Phase 2 live actuation")
@@ -46,13 +58,12 @@ def main() -> int:
         return 1
 
     print(f"OK  game_window: {game.title!r} {game.width}x{game.height}")
+    print(f"OK  trail: {trail}")
 
     import win32process
 
     _, pid = win32process.GetWindowThreadProcessId(game.hwnd)
-    stamp = time.strftime("%Y%m%d-%H%M%S")
-    log_path = str(Path(f"data/runtime/phase2_live_{stamp}.log").resolve())
-    action = ensure_elevation_for_game(pid, argv=raw_argv, log_path=log_path)
+    action = ensure_elevation_for_game(pid, argv=raw_argv, log_path=trail)
     if action == "relaunching":
         print("INFO approve UAC — a new 'Comstar Game AI' window will show the live trail", flush=True)
         print("INFO click Rome during the countdown in that window", flush=True)
@@ -80,12 +91,6 @@ def main() -> int:
         f"turns_seen={driver._julii_turns_seen}"
     )
 
-    if not driver.state.allows_campaign_orders():
-        print(
-            "FAIL: not on campaign map — load campaign save with telemetry mod, then re-run"
-        )
-        return 1
-
     def on_progress(*, index: int, total: int, phase: str, ok: bool | None = None) -> None:
         tag = f"ATTEMPT {index}/{total} game_turn={driver._known_game_turn()}"
         if ok is None:
@@ -98,6 +103,38 @@ def main() -> int:
         flush=True,
     )
     _countdown(max(0, args.seconds))
+
+    # Classify only after the countdown. Before it, Rome may not be focused and the
+    # operator has not had their chance to clear the screen, so an early look judged a
+    # campaign by whatever happened to be on it and refused to start.
+    driver.poll_observation()
+    if not driver.state.allows_campaign_orders():
+        # Rome rewrites message_log.txt on launch and buffers its writes, so a campaign
+        # just entered has flushed nothing to read yet — a fresh campaign sitting on
+        # turn 1 leaves the log silent. Vision is the only evidence available there.
+        classification = grab_and_classify(game.hwnd)
+        print(
+            f"INFO log gate inconclusive (state={driver.state.state.value}, "
+            f"turn={driver.state.turn}); vision says {classification.mode.value} "
+            f"({classification.detail}, confidence {classification.confidence:.2f})",
+            flush=True,
+        )
+        # A panel with the map behind it still means we are in a campaign, and clearing
+        # panels is the loop's job — refusing to start over a senate notice card is a
+        # worse failure than dismissing it. A full-parchment screen could be the front
+        # end, so that one is not accepted here.
+        map_is_behind = classification.detail in ("left_overlay_panel", "panel_over_centre")
+        if classification.mode is CampaignUiMode.CAMPAIGN_MAP or (
+            classification.mode is CampaignUiMode.MODAL and map_is_behind
+        ):
+            driver.state.state = GameState.CAMPAIGN_MAP
+        else:
+            print(
+                "FAIL: not on campaign map — neither the log nor the screen shows the "
+                "strat map. Load or start a campaign, wait for the map, then re-run."
+            )
+            return 1
+
     result = driver.run_turns(
         turns,
         require_ok=False,
@@ -108,6 +145,10 @@ def main() -> int:
     print(
         f"{'OK' if result['desyncs'] == 0 else 'WARN'}  turns_ok={result['turns_ok']} "
         f"turns_failed={result['turns_failed']} desyncs={result['desyncs']}"
+    )
+    print(
+        f"OK  campaign advanced {result['turns_advanced']} turns "
+        f"({result['game_turn_start']} -> {result['game_turn_end']})"
     )
     print(
         f"OK  belief_history={len(driver.belief.history)} armies={len(driver.belief.armies)} "
@@ -126,11 +167,18 @@ def main() -> int:
     out.write_text(json.dumps(report, indent=2), encoding="utf-8")
     print(f"OK  report: {out}")
 
-    if result["desyncs"] == 0 and result["turns_ok"] >= turns:
-        print("\nPASS Phase 2 actuation (20 turns, zero desyncs)")
+    if phase2_accepted(result, turns=turns):
+        print(f"\nPASS Phase 2 actuation ({turns} turns, zero desyncs)")
         return 0
 
-    if result["turns_ok"] > 0:
+    if result["turns_ok"] >= turns and result["turns_advanced"] < turns:
+        print(
+            f"\nFAIL Phase 2 — {result['turns_ok']} cycles reported OK but the campaign "
+            f"advanced {result['turns_advanced']} turns. Turn detection is over-counting."
+        )
+        return 1
+
+    if result["turns_advanced"] > 0:
         print("\nPARTIAL Phase 2 — some turns succeeded; check intent log and Rome console focus")
         return 0
 

@@ -8,8 +8,61 @@ import sys
 from typing import Literal, Sequence
 
 ELEVATION_MARKER = "--comstar-elevation-matched"
+TRAIL_FLAG = "--comstar-trail"
 
 ElevationAction = Literal["ok", "relaunching", "failed"]
+
+
+class _Tee:
+    """Write to the console and a file at once, so an elevated run can be followed."""
+
+    def __init__(self, stream, handle) -> None:
+        self._stream = stream
+        self._handle = handle
+
+    def write(self, text: str) -> int:
+        try:
+            self._handle.write(text)
+            self._handle.flush()
+        except Exception:
+            pass
+        return self._stream.write(text)
+
+    def flush(self) -> None:
+        try:
+            self._handle.flush()
+        except Exception:
+            pass
+        self._stream.flush()
+
+    def isatty(self) -> bool:
+        return getattr(self._stream, "isatty", lambda: False)()
+
+
+def trail_path_from_argv(argv: Sequence[str] | None = None) -> str | None:
+    """The path passed down by ``--comstar-trail=``, set when a parent relaunched us."""
+    args = list(sys.argv if argv is None else argv)
+    prefix = f"{TRAIL_FLAG}="
+    return next((a[len(prefix) :] for a in args if a.startswith(prefix)), None)
+
+
+def tee_output(path: str) -> str | None:
+    """Mirror this process's output into ``path`` as well as its console.
+
+    An elevated child gets its own console, and redirecting it at ShellExecute time just
+    produces a blank window, so the child has to tee its own output. Without this the
+    only copy of a live run's trail is a console window that cannot be read back.
+    """
+    from pathlib import Path
+
+    try:
+        Path(path).parent.mkdir(parents=True, exist_ok=True)
+        handle = open(path, "a", encoding="utf-8", buffering=1)
+    except OSError:
+        return None
+    sys.stdout = _Tee(sys.stdout, handle)
+    sys.stderr = _Tee(sys.stderr, handle)
+    return path
 
 
 def is_current_elevated() -> bool:
@@ -52,8 +105,9 @@ def needs_elevation_for_pid(pid: int) -> bool:
 
 
 def strip_elevation_marker(argv: Sequence[str] | None = None) -> list[str]:
+    """Drop the internal relaunch flags so the caller's own parser never sees them."""
     args = list(sys.argv[1:] if argv is None else argv)
-    return [a for a in args if a != ELEVATION_MARKER]
+    return [a for a in args if a != ELEVATION_MARKER and not a.startswith(f"{TRAIL_FLAG}=")]
 
 
 def relaunch_elevated(
@@ -77,6 +131,9 @@ def relaunch_elevated(
     script = os.path.abspath(sys.argv[0])
     rest = strip_elevation_marker(argv)
     workdir = cwd or os.getcwd()
+    # The child tees its own output to this path; see tee_output.
+    if log_path:
+        rest = [f"{TRAIL_FLAG}={log_path}", *rest]
     py_args = subprocess.list2cmdline([sys.executable, "-u", script, ELEVATION_MARKER, *rest])
     workdir_q = subprocess.list2cmdline([workdir])
 
