@@ -79,6 +79,10 @@ safety:
 paths:
   rome_logs: "%USERPROFILE%/AppData/Local/Feral Interactive/Rome/logs"
   rome_data: null  # discovered at runtime
+  # The game's shipped string tables, which name and explain the UI. Left null so
+  # the usual Steam library locations are searched; set it when the install is
+  # somewhere unusual. Override for one run with COMSTAR_ROME_TEXT.
+  rome_text: null
 
 ipc:
   event_socket_host: "127.0.0.1"

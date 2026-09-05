@@ -1,4 +1,4 @@
-"""Unit tests for Phase 6 Reach wiring."""
+"""Unit tests for Phase 7 Reach wiring."""
 
 from ao_reach.overlay_packer import OverlayPacker
 

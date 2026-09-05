@@ -51,11 +51,79 @@ facts:
   - id: escape_key_is_unreliable
     kind: input
     durable: true
-    verified: "2026-09-04"
+    verified: "2026-09-05"
     statement: >
       Escape closes some panels and is ignored by others — the settlement/building
       browser stayed open through 40+ Escape presses. Always prefer the panel's close
       X; use Escape only as a last resort for a blocking panel with no visible X.
+      The documented exception is the advisor, whose own dismiss button reads
+      "Dismiss advice [ESC]" (ST_ADVISOR_BUTTON_DISMISS). So Escape being unreliable
+      is not a fact about Escape, it is a fact about the other panels: prefer a
+      per-panel dismissal strategy over one global rule.
+    evidence:
+      - "ST_ADVISOR_BUTTON_DISMISS in shared.txt = 'Dismiss advice [ESC]'"
+
+  - id: decision_panels_have_no_close_x
+    kind: semantics
+    durable: true
+    verified: "2026-09-05"
+    statement: >
+      A blocking panel with no close X is not a detector failure — it is how the game
+      says "you must answer this". DECISION panels replace the corner dismiss button
+      with a footer trio at bottom centre (green check accept, red X reject, and a
+      third counter-offer/auto-resolve button). Searching them for a close X finds
+      nothing, correctly, because the button does not exist. Treat "blocking and no
+      close X" as the signature of a decision panel and switch to reading the footer.
+    evidence:
+      - "9 diplomacy frames and 1 battle-deployment frame sat unidentified in the corpus purely because a close-X search returned nothing"
+      - "both panels show the footer trio; neither has a corner X"
+
+  - id: the_game_names_its_own_ui
+    kind: ground_truth
+    durable: true
+    verified: "2026-09-05"
+    statement: >
+      Do not invent names for panels. Rome ships its own UI vocabulary in
+      data/text/*.txt: strat.txt carries the strat-map tooltips (SMT_BUILDING_BROWSER
+      = "Building Browser", SMT_OPEN_FINANCE_WINDOW = "Open finances window",
+      SMT_BATTLE_DEPLOYMENT = "Battle Deployment"), cursor_action_tooltips.txt the
+      action vocabulary, shortcut.txt every key binding. Store the string KEY rather
+      than the English text: the name then resolves from the install, stays correct on
+      a localised copy, and cannot drift from the game.
+    evidence:
+      - "14 of 14 atlas entries resolve against a stock install"
+      - "path: <install>/Contents/Resources/Data/data/text"
+      - "files are UTF-16 LE; comments (U+00AC) are only active when line 1 declares one"
+
+  - id: diplomatic_negotiations_geometry
+    kind: layout
+    durable: true
+    verified: "2026-09-05"
+    statement: >
+      The Diplomatic Negotiations panel is three scrolls in one — faction heir left,
+      the negotiation centre, the diplomat right — so its measured span (x 0.20-0.76,
+      top y 0.13) is wider than the centre scroll alone. It is a DECISION panel: the
+      footer trio sits at bottom centre and there is no close X. Offers are labelled
+      by SMT_THEIR_OFFERS and SMT_YOUR_OFFERS. Its top edge (0.13) is what separates
+      it from the building browser (0.21), which it otherwise heavily overlaps.
+    evidence:
+      - "9 frames; right edge measured 0.75-0.79 across them"
+      - "opened by right-clicking a diplomat onto a target (cursor tooltip diplomacy_mission)"
+
+  - id: battle_deployment_is_the_campaign_boundary
+    kind: hazard
+    durable: true
+    verified: "2026-09-05"
+    statement: >
+      The Battle Deployment panel (SMT_BATTLE_DEPLOYMENT, x 0.16-0.83, top y 0.35) is
+      where the campaign hands over to the battle map. A DECISION panel with no close
+      X; its footer offers auto-resolve, withdraw and fight, with a "Fight night
+      battle" checkbox below. Choosing "fight" is irreversible and hands control to a
+      battle map that no loop can yet drive, so until the battle phase exists the only
+      safe answers are auto-resolve or withdraw.
+    evidence:
+      - "1 frame, from the battle entered at the end of the 25-turn run"
+      - "Julii 200 soldiers vs Gaul 1148 — auto-resolving that is a loss, which is a decision the agent is not yet equipped to weigh"
 
   - id: panel_taxonomy
     kind: semantics
@@ -190,20 +258,52 @@ detector_artifacts:
   - "left_overlay_parchment_ratio >= 0.10 as a panel trigger (the left HUD strip alone reaches it)"
 
 # Frames with hand-verified answers, usable as a scored regression set for any
-# replacement perception model.
+# replacement perception model. Regenerate the signatures with
+# `python scripts/cluster_ui_corpus.py --refresh`.
+#
+# 180 of the 454 frames are NOT scorable and must be excluded rather than explained:
+# 142 are 1936x1119, the window rect captured before the client-rect fix, so every
+# coordinate derived from them is offset; 38 are 100x60 stubs. Nearly 40% of what
+# looked like an unsolved perception corpus was stale evidence of an already-fixed
+# bug — check frame size before attributing a frame to the UI.
 eval_set:
   location: data/runtime/modal-unresolved-*-raw.png
   frame_size: [1920, 1080]
+  total_frames: 454
+  scorable_frames: 274
+  excluded:
+    - count: 142
+      reason: window-rect capture (1936x1119), predates the client-rect fix
+    - count: 38
+      reason: 100x60 stub, failed capture
   expectations:
     - count: 125
       contents: building browser over the centre
-      expect: {blocking: true, close_x: true, mode: modal}
-    - count: 73
-      contents: dim night map with a senate mission card
-      expect: {blocking: false, close_x: true, mode: campaign_map}
-    - count: 18
-      contents: clear campaign map
+      panel: [0.26, 0.74, 0.21]
+      expect: {blocking: true, close_x: true, mode: modal, atlas_id: building_browser}
+    - count: 96
+      contents: senate mission card in the left dock, mostly over a dim night map
+      panel: [0.0, 0.16, 0.07]
+      expect: {blocking: false, close_x: true, atlas_id: senate_mission_card}
+    - count: 9
+      contents: Diplomatic Negotiations, a decision panel with no close X
+      panel: [0.2, 0.76, 0.13]
+      expect: {blocking: true, close_x: false, mode: modal, atlas_id: diplomatic_negotiations}
+    - count: 6
+      contents: left dock notice card
+      panel: [0.0, 0.33, 0.07]
+      expect: {blocking: false, close_x: true, atlas_id: left_dock_notice}
+    - count: 1
+      contents: Battle Deployment, the campaign/battle boundary
+      panel: [0.16, 0.83, 0.35]
+      expect: {blocking: true, close_x: false, mode: modal, atlas_id: battle_deployment}
+    - count: 26
+      contents: clear campaign map, no panel
       expect: {blocking: false, close_x: false, mode: campaign_map}
-    - count: 12
-      contents: left dock notice card over a lit map
-      expect: {blocking: false, close_x: true, mode: campaign_map}
+    - count: 10
+      contents: pause screen
+      expect: {blocking: false, close_x: false, mode: pause}
+    - count: 1
+      contents: classified modal but carries no panel — a genuine misclassification
+      expect: {blocking: false, close_x: false}
+  scored: "237/274 scorable frames identified (86%); 0 unmatched panels; the rest carry no panel"
