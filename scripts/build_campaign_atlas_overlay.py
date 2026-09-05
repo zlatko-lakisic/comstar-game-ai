@@ -23,7 +23,12 @@ from pathlib import Path
 
 import yaml
 
-from comstar_game_ai.game_io.campaign import screen_regions, ui_atlas
+from comstar_game_ai.game_io.campaign import (
+    navigation,
+    screen_regions,
+    settlements,
+    ui_atlas,
+)
 from comstar_game_ai.game_io.campaign.rome_shortcuts import (
     camera_bindings,
     load_shortcuts,
@@ -142,6 +147,137 @@ def _controls(db) -> dict:
     }
 
 
+def _settlements(tables) -> dict:
+    """The read an agent needs every turn: whose settlement is that, and does it need me."""
+    return {
+        "how_to_identify": (
+            "Hover the settlement and read its tooltip. That is the only authoritative "
+            "source: it names the owning faction in full and appends the standing in "
+            "brackets after the tier. Our own settlements append nothing, and the absence "
+            "is the signal."
+        ),
+        "tooltip_anatomy": {
+            "line_1": "settlement name, plus ' (Capital)' when it is a faction capital",
+            "line_2": "owning faction, spelled out — e.g. 'The House of Julii', 'Gaul'",
+            "line_3": "tier, plus ' (<standing>)' unless the settlement is ours",
+            "line_4": (
+                "three unlabelled figures against a coin, a crenellation and a growth "
+                "glyph. Do NOT read these as population or income: the coin figure was "
+                "184 for a settlement whose population is 3500 and turn income 1710. "
+                "Read labelled numbers from the Lists panel instead."
+            ),
+            "owned_only_line": (
+                "'x2 to get further information' appears only on settlements we own, "
+                "because only ours have a details panel — an independent read of ownership"
+            ),
+            "warning": (
+                "'Hold Alt to expand tooltip' does not add stats. Alt reveals an 'open "
+                "Wiki' affordance, and Alt+click hands off to the Steam overlay, which is "
+                "the same hazard as F1. Do not press it."
+            ),
+        },
+        "tiers": [
+            {"id": tier.name.lower(), "rank": tier.rank, "name": tier.label(tables)}
+            for tier in settlements.Tier
+        ],
+        "standings": [
+            {
+                "id": relation.name.lower(),
+                "tooltip_suffix": relation.suffix(tables) or None,
+                "hostile": relation.is_hostile,
+                "ours": relation.is_ours,
+                "from_game_strings": relation.localises,
+            }
+            for relation in settlements.Relation
+        ],
+        "activity_states": [
+            {
+                "id": activity.name.lower(),
+                "legend_label": activity.value,
+                "colour": list(settlements.OVERLAY_STATE_COLOURS[activity]),
+            }
+            for activity in settlements.Activity
+        ],
+        "activity_note": (
+            "Only the strategic overlay (Tab) reports these, and only for settlements we "
+            "own. 'Settlement idle' is the actionable one: it means nothing is being built "
+            "or recruited, so the turn's production is being wasted."
+        ),
+        "faction_colours": {
+            name: list(rgb) for name, rgb in settlements.FACTION_LEGEND_COLOURS.items()
+        },
+        "faction_colour_note": (
+            "Sampled from the overlay's faction legend, which lists only factions already "
+            "met — so sample it per frame rather than trusting this list. Province fill on "
+            "the map is blended with terrain and reads darker than the swatch. Carthage's "
+            "white, the Rebels' taupe, the Greek olive and Seleucid mauve are too close to "
+            "sea, rock and grass to match reliably; the saturated colours are fine."
+        ),
+        "label_pill_colours": {
+            relation.name.lower(): list(rgb)
+            for relation, rgb in settlements.LABEL_PILL_COLOURS.items()
+        },
+        "label_pill_note": (
+            "A prefilter for deciding what to hover, never a verdict. Matching these "
+            "against the overlay legend palette misclassified three of four real "
+            "settlements. Ours and neutral separate on the blue channel (about 140 versus "
+            "59), not on hue. The allied pill is light blue but was never measured cleanly."
+        ),
+        "what_a_settlement_can_tell_us": [
+            "hover: name, owning faction, standing, tier, capital marker, whether ours",
+            "Lists panel (Ctrl+5), Settlements tab: the definitive list of settlements we "
+            "own, with governor, population, growth, public order and turn income all "
+            "labelled — plus per-settlement tax rate and automanage toggles",
+            "Lists footer: locate on map, open construction, open recruitment. Its third "
+            "button sets the faction capital permanently — do not click it by accident",
+            "strategic overlay: tier, standing and activity for everything at once",
+            "Factions panel (Ctrl+3), Diplomatic Standing: explicit ally and enemy lists",
+        ],
+    }
+
+
+def _navigation(db) -> dict:
+    strategies = []
+    for strategy in navigation.STRATEGIES:
+        entry = {
+            "id": strategy.id,
+            "accuracy": strategy.accuracy.value,
+            "requires": " ".join(strategy.requires.split()),
+            "how": " ".join(strategy.how.split()),
+        }
+        if strategy.note:
+            entry["note"] = " ".join(strategy.note.split())
+        strategies.append(entry)
+    zoom = {}
+    if db is not None:
+        for action in (navigation.ZOOM_IN_ACTION, navigation.ZOOM_OUT_ACTION):
+            found = [b for b in db.find(action, keyset="moderntw") if b.chord]
+            if found:
+                zoom[action] = found[0].chord
+    return {
+        "recovery": (
+            "Home (capital_zoom) frames the faction capital in one press from anywhere, "
+            "with no calibration. Because it always works, any other camera move is safe "
+            "to try — this is the undo."
+        ),
+        "strategies": strategies,
+        "zoom": zoom,
+        "zoom_presses_to_clamp": navigation.ZOOM_PRESSES_TO_CLAMP,
+        "radar_hover_names_region_and_owner": (
+            navigation.RADAR_HOVER_YIELDS_REGION_AND_OWNER
+        ),
+        "overlay_is_clickable": navigation.OVERLAY_IS_CLICKABLE,
+        "finding_our_own_territory": (
+            "The radar already draws explored territory in each faction's colour, so our "
+            "land can be found without opening anything: mask the radar for our faction's "
+            "colour and take the centroid. That gets the camera to the right region only — "
+            "a province centroid is not a settlement, and the radar is about 228 px wide "
+            "for the whole Mediterranean. For an exact landing use Home, or the Lists "
+            "panel's locate button for a settlement that is not the capital."
+        ),
+    }
+
+
 def main() -> int:
     tables = load_campaign_tables()
     db = load_shortcuts()
@@ -175,9 +311,15 @@ def main() -> int:
             "Prefer a radar click over held panning to cross distance.",
             "A blocking panel with no close X is a decision panel — read its footer "
             "instead of hunting for a dismiss button.",
+            "If the camera is lost, press Home. It frames the capital from anywhere and "
+            "is the reason any other camera move is safe to attempt.",
+            "Never infer a settlement's owner from colour alone. Colour picks what to "
+            "hover; the tooltip decides.",
         ],
         "regions": _regions(),
         "panels": _panels(tables, db),
+        "settlements": _settlements(tables),
+        "navigation": _navigation(db),
         "controls": _controls(db),
         "coverage": {
             "panels_total": len(ui_atlas.ATLAS),

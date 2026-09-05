@@ -90,7 +90,14 @@ REGIONS: tuple[Region, ...] = (
             "reports where the camera is looking as well as accepting where to go. "
             "Panning with WASD covers a fraction of this per press; a radar click "
             "crosses the map in one action. Toggle with toggle_radar; "
-            "toggle_hires_radar gives a fullscreen version."
+            "toggle_hires_radar gives a fullscreen version. "
+            "It also carries the faction-coloured ownership of everything explored, in "
+            "the same palette the overlay legend states, so our own territory can be "
+            "found on it without opening anything — and hovering it returns a tooltip "
+            "naming the region and its owning faction, which makes it a zero-risk survey "
+            "instrument as well as a control. Read positions off it by sampling, not by "
+            "eye: it is about 228 px wide for the whole Mediterranean, so an eyeballed "
+            "click can miss a province by a long march."
         ),
     ),
     Region(

@@ -532,7 +532,13 @@ ATLAS: tuple[PanelEntry, ...] = (
             "idle' on the left; per-faction colours on the right. Those three states are "
             "the cheapest read available of which settlements still need orders. It "
             "recolours everything the perception layer sees, so any pixel heuristic "
-            "calibrated on the normal map is invalid while it is up."
+            "calibrated on the normal map is invalid while it is up. "
+            "Read-only despite looking exactly like a navigable map: a click inside it "
+            "moved the camera not at all and selected nothing. The legends are worth "
+            "sampling rather than transcribing, since each swatch is drawn by the code "
+            "that tints the icons it explains — see campaign/settlements.py. Eleven "
+            "further layer buttons sit along the bottom edge, each independently "
+            "checkable, and the two enabled by default are why exactly two legends show."
         ),
     ),
 )

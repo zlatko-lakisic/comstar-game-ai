@@ -28,6 +28,9 @@ how_to_use:
 - Prefer a radar click over held panning to cross distance.
 - A blocking panel with no close X is a decision panel — read its footer instead of hunting for a dismiss
   button.
+- If the camera is lost, press Home. It frames the capital from anywhere and is the reason any other camera
+  move is safe to attempt.
+- Never infer a settlement's owner from colour alone. Colour picks what to hover; the tooltip decides.
 regions:
 - id: map_viewport
   kind: viewport
@@ -58,10 +61,14 @@ regions:
   purpose: Strategic minimap of the whole world. Clicking a point jumps the camera there, which is the
     cheap way to traverse the map.
   precision: measured
-  note: A red trapezoid drawn on it is the live camera frustum, so the radar reports where the camera
+  note: 'A red trapezoid drawn on it is the live camera frustum, so the radar reports where the camera
     is looking as well as accepting where to go. Panning with WASD covers a fraction of this per press;
     a radar click crosses the map in one action. Toggle with toggle_radar; toggle_hires_radar gives a
-    fullscreen version.
+    fullscreen version. It also carries the faction-coloured ownership of everything explored, in the
+    same palette the overlay legend states, so our own territory can be found on it without opening anything
+    — and hovering it returns a tooltip naming the region and its owning faction, which makes it a zero-risk
+    survey instrument as well as a control. Read positions off it by sampling, not by eye: it is about
+    228 px wide for the whole Mediterranean, so an eyeballed click can miss a province by a long march.'
 - id: radar_zoom_in
   kind: button
   bounds:
@@ -737,10 +744,212 @@ panels:
     keys: settlement tiers, alerts, and the states ''Recruiting or constructing'', ''Upgrade possible''
     and ''Settlement idle'' on the left; per-faction colours on the right. Those three states are the
     cheapest read available of which settlements still need orders. It recolours everything the perception
-    layer sees, so any pixel heuristic calibrated on the normal map is invalid while it is up.'
+    layer sees, so any pixel heuristic calibrated on the normal map is invalid while it is up. Read-only
+    despite looking exactly like a navigable map: a click inside it moved the camera not at all and selected
+    nothing. The legends are worth sampling rather than transcribing, since each swatch is drawn by the
+    code that tints the icons it explains — see campaign/settlements.py. Eleven further layer buttons
+    sit along the bottom edge, each independently checkable, and the two enabled by default are why exactly
+    two legends show.'
   evidence:
   - 'guided sweep: data/runtime/sweep/recover_1.png'
   - measured geometry is the left legend, the only panel-like region it adds
+settlements:
+  how_to_identify: 'Hover the settlement and read its tooltip. That is the only authoritative source:
+    it names the owning faction in full and appends the standing in brackets after the tier. Our own settlements
+    append nothing, and the absence is the signal.'
+  tooltip_anatomy:
+    line_1: settlement name, plus ' (Capital)' when it is a faction capital
+    line_2: owning faction, spelled out — e.g. 'The House of Julii', 'Gaul'
+    line_3: tier, plus ' (<standing>)' unless the settlement is ours
+    line_4: 'three unlabelled figures against a coin, a crenellation and a growth glyph. Do NOT read these
+      as population or income: the coin figure was 184 for a settlement whose population is 3500 and turn
+      income 1710. Read labelled numbers from the Lists panel instead.'
+    owned_only_line: '''x2 to get further information'' appears only on settlements we own, because only
+      ours have a details panel — an independent read of ownership'
+    warning: '''Hold Alt to expand tooltip'' does not add stats. Alt reveals an ''open Wiki'' affordance,
+      and Alt+click hands off to the Steam overlay, which is the same hazard as F1. Do not press it.'
+  tiers:
+  - id: village
+    rank: 0
+    name: Village
+  - id: town
+    rank: 1
+    name: Town
+  - id: large_town
+    rank: 2
+    name: Large town
+  - id: minor_city
+    rank: 3
+    name: Minor city
+  - id: large_city
+    rank: 4
+    name: Large city
+  - id: huge_city
+    rank: 5
+    name: Huge city
+  standings:
+  - id: ours
+    tooltip_suffix: null
+    hostile: false
+    ours: true
+    from_game_strings: false
+  - id: ally
+    tooltip_suffix: Ally
+    hostile: false
+    ours: false
+    from_game_strings: false
+  - id: neutral
+    tooltip_suffix: Neutral
+    hostile: false
+    ours: false
+    from_game_strings: true
+  - id: at_war
+    tooltip_suffix: At war
+    hostile: true
+    ours: false
+    from_game_strings: true
+  activity_states:
+  - id: working
+    legend_label: Recruiting or constructing
+    colour:
+    - 49
+    - 108
+    - 76
+  - id: upgradeable
+    legend_label: Upgrade possible
+    colour:
+    - 204
+    - 228
+    - 53
+  - id: idle
+    legend_label: Settlement idle
+    colour:
+    - 238
+    - 237
+    - 234
+  activity_note: 'Only the strategic overlay (Tab) reports these, and only for settlements we own. ''Settlement
+    idle'' is the actionable one: it means nothing is being built or recruited, so the turn''s production
+    is being wasted.'
+  faction_colours:
+    The Greek Cities:
+    - 181
+    - 177
+    - 116
+    Rebels:
+    - 143
+    - 134
+    - 109
+    The House of Julii:
+    - 153
+    - 18
+    - 18
+    S.P.Q.R.:
+    - 140
+    - 74
+    - 189
+    The House of Scipii:
+    - 33
+    - 88
+    - 161
+    The Seleucid Empire:
+    - 145
+    - 119
+    - 118
+    The House of Brutii:
+    - 79
+    - 125
+    - 60
+    Macedon:
+    - 0
+    - 0
+    - 0
+    Egypt:
+    - 238
+    - 237
+    - 129
+    Carthage:
+    - 236
+    - 235
+    - 232
+    Gaul:
+    - 72
+    - 177
+    - 41
+  faction_colour_note: Sampled from the overlay's faction legend, which lists only factions already met
+    — so sample it per frame rather than trusting this list. Province fill on the map is blended with
+    terrain and reads darker than the swatch. Carthage's white, the Rebels' taupe, the Greek olive and
+    Seleucid mauve are too close to sea, rock and grass to match reliably; the saturated colours are fine.
+  label_pill_colours:
+    ours:
+    - 205
+    - 191
+    - 140
+    neutral:
+    - 197
+    - 165
+    - 59
+    at_war:
+    - 177
+    - 66
+    - 58
+  label_pill_note: A prefilter for deciding what to hover, never a verdict. Matching these against the
+    overlay legend palette misclassified three of four real settlements. Ours and neutral separate on
+    the blue channel (about 140 versus 59), not on hue. The allied pill is light blue but was never measured
+    cleanly.
+  what_a_settlement_can_tell_us:
+  - 'hover: name, owning faction, standing, tier, capital marker, whether ours'
+  - 'Lists panel (Ctrl+5), Settlements tab: the definitive list of settlements we own, with governor,
+    population, growth, public order and turn income all labelled — plus per-settlement tax rate and automanage
+    toggles'
+  - 'Lists footer: locate on map, open construction, open recruitment. Its third button sets the faction
+    capital permanently — do not click it by accident'
+  - 'strategic overlay: tier, standing and activity for everything at once'
+  - 'Factions panel (Ctrl+3), Diplomatic Standing: explicit ally and enemy lists'
+navigation:
+  recovery: Home (capital_zoom) frames the faction capital in one press from anywhere, with no calibration.
+    Because it always works, any other camera move is safe to try — this is the undo.
+  strategies:
+  - id: capital_zoom
+    accuracy: exact
+    requires: nothing — works from a bare campaign map at any camera position
+    how: tap Home (action capital_zoom, bound in the strat section of both keysets)
+    note: The primitive to build on. Also selects the capital, so the bottom HUD bar switches to its governor
+      — convenient, but it means the camera move is not side-effect free with respect to selection.
+  - id: locate_via_lists
+    accuracy: exact
+    requires: Ctrl+5 (Lists), Settlements sub-tab, a row selected
+    how: open Lists, click the settlement's row, then the magnifier in the footer, which the game names
+      'Locate position of settlement'
+    note: 'The general form of capital_zoom: reaches any settlement we own, not just the capital. Closes
+      the Lists panel on use, so it costs no separate dismissal. Its two neighbouring footer buttons are
+      not harmless — the third sets the faction capital permanently — so click the magnifier by position,
+      carefully.'
+  - id: radar_click
+    accuracy: coarse
+    requires: the radar, which is always present unless toggled off with Ctrl+M
+    how: click a point on the radar to centre the camera on the matching map point
+    note: 'Coarse for a structural reason, not a fixable one: the radar is about 228 px wide for the whole
+      Mediterranean, so one radar pixel is a long march, and a province centroid is not a settlement.
+      Good for ''get me to that region'', then hand off to zoom and a look. Pair with zoom_out first so
+      the landing frame covers enough ground to contain something.'
+  - id: arrow_pan
+    accuracy: imprecise
+    requires: nothing; not in descr_shortcuts.txt, so Rome handles it natively
+    how: tap or hold the arrow keys
+    note: Distance per press did not scale with the number of presses, so this is for nudging a target
+      into frame, never for crossing the map. Reach for Home or locate_via_lists instead and pan only
+      to fine-tune.
+  zoom:
+    zoom_in: z
+    zoom_out: x
+  zoom_presses_to_clamp: 8
+  radar_hover_names_region_and_owner: true
+  overlay_is_clickable: false
+  finding_our_own_territory: 'The radar already draws explored territory in each faction''s colour, so
+    our land can be found without opening anything: mask the radar for our faction''s colour and take
+    the centroid. That gets the camera to the right region only — a province centroid is not a settlement,
+    and the radar is about 228 px wide for the whole Mediterranean. For an exact landing use Home, or
+    the Lists panel''s locate button for a settlement that is not the capital.'
 controls:
   available: true
   source: data/text/descr_shortcuts.txt
