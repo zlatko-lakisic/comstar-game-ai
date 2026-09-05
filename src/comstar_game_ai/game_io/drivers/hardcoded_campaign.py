@@ -22,7 +22,7 @@ from comstar_game_ai.game_io.console.actuator import ConsoleActuator
 from comstar_game_ai.game_io.intent_record import IntentRecordWriter
 from comstar_game_ai.game_io.logs.campaign_probe import latest_julii_autosave_turn, summarize_julii_turn_markers
 from comstar_game_ai.game_io.logs.message_log import MessageLogTailer, default_message_log_path
-from comstar_game_ai.game_io.logs.turn_boundary import latest_turn_end
+from comstar_game_ai.game_io.logs.turn_boundary import latest_turn_end, latest_turn_start
 from comstar_game_ai.game_io.logs.scripting_log import ScriptingLogTailer
 from comstar_game_ai.game_io.state_machine import GameState, GameStateDetector
 from comstar_game_ai.game_io.verification import VerificationPipeline, VerificationResult
@@ -74,6 +74,7 @@ class HardcodedCampaignDriver:
     last_ui_detail: str = field(default="", init=False)
     last_orders: list[str] = field(default_factory=list, init=False)
     _last_debug_capture_ts: float = field(default=0.0, init=False)
+    _turn_marker_cache: dict[str, tuple[float, int]] = field(default_factory=dict, init=False)
 
     def __post_init__(self) -> None:
         self.actuator.state = self.state
@@ -297,7 +298,11 @@ class HardcodedCampaignDriver:
 
     def _known_game_turn(self) -> int:
         """Best available Julii turn from autosave / inferred state (game truth)."""
-        return max(int(self.state.turn or 0), int(self._last_autosave_turn or 0))
+        return max(
+            int(self.state.turn or 0),
+            int(self._last_autosave_turn or 0),
+            self.turn_started,
+        )
 
     @property
     def game_turn(self) -> int:
@@ -312,7 +317,26 @@ class HardcodedCampaignDriver:
         to 'Turn N Start' markers, which would read a fresh campaign as already one turn
         in and leave a 20-turn run one short of acceptance.
         """
-        return int(latest_turn_end() or 0)
+        return self._cached_turn("end", latest_turn_end)
+
+    @property
+    def turn_started(self) -> int:
+        """Turn the player is currently on, i.e. the AI round has handed control back."""
+        return self._cached_turn("start", latest_turn_start)
+
+    def _cached_turn(self, key: str, source: Callable[[], int | None]) -> int:
+        """Read a turn marker, briefly cached — these scan the saves folder on disk.
+
+        Progress reporting asks for the turn on every line it prints, and the wait loops
+        poll several times a second.
+        """
+        now = time.monotonic()
+        cached_at, value = self._turn_marker_cache.get(key, (0.0, 0))
+        if now - cached_at < 0.5:
+            return value
+        value = int(source() or 0)
+        self._turn_marker_cache[key] = (now, value)
+        return value
 
     def _blocking_ui_present(self) -> bool:
         """Decision buttons, or a panel over the map centre that swallows End Turn.
@@ -392,12 +416,15 @@ class HardcodedCampaignDriver:
     ) -> bool:
         """Wait until Julii's turn returns after End Turn.
 
-        Only a higher game turn counts. A new Julii round-start used to count too, but
-        that line arrives once the AI round finishes, which is often after the next
-        attempt has already begun waiting — so it scored the previous turn twice and the
-        run reported nearly twice as many turns as the campaign actually played.
+        The proof is `Turn N Start.sav`, which Rome writes when the AI round hands
+        control back. A new Julii round-start line used to count too, but that arrives
+        late and often after the next attempt has begun waiting, so it scored the
+        previous turn twice; and the inferred turn from message_log counts for nothing
+        when Rome writes no log at all, which stalled every attempt for the full
+        timeout while the campaign advanced normally underneath.
         """
         timeout = timeout_s if timeout_s is not None else self.turn_wait_timeout_s
+        started_baseline = self.turn_started
         baseline = int(turn_before if turn_before is not None else self._known_game_turn())
         deadline = time.time() + timeout
         last_ui = -999.0
@@ -405,13 +432,15 @@ class HardcodedCampaignDriver:
             self.poll_observation()
             self._refresh_turn_from_message_log()
             current = self._known_game_turn()
-            if current > baseline:
+            started = self.turn_started
+            if started > started_baseline or current > baseline:
                 if on_progress:
-                    on_progress(
-                        index=index,
-                        total=total,
-                        phase=f"game turn advanced {baseline} -> {current}",
+                    why = (
+                        f"player turn began {started_baseline} -> {started}"
+                        if started > started_baseline
+                        else f"game turn advanced {baseline} -> {current}"
                     )
+                    on_progress(index=index, total=total, phase=why)
                 return True
             now = time.time()
             if self.use_vision and now - last_ui >= 3.0:
@@ -423,6 +452,7 @@ class HardcodedCampaignDriver:
                         total=total,
                         phase=(
                             f"wait status game_turn={current} baseline={baseline} "
+                            f"turn_started={started} (from {started_baseline}) "
                             f"ui={mode.value} rounds={self._julii_round_starts} "
                             f"autosaves={self._autosave_events}"
                         ),
@@ -449,9 +479,12 @@ class HardcodedCampaignDriver:
                 last_ui = now
             time.sleep(0.25)
         _LOGGER.warning(
-            "timed out waiting for player turn advance (baseline=%s now=%s rounds=%s autosaves=%s)",
+            "timed out waiting for player turn advance "
+            "(baseline=%s now=%s turn_started=%s from %s rounds=%s autosaves=%s)",
             baseline,
             self._known_game_turn(),
+            self.turn_started,
+            started_baseline,
             self._julii_round_starts,
             self._autosave_events,
         )

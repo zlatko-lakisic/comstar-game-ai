@@ -16,6 +16,11 @@ from comstar_game_ai.game_io.logs.message_log import default_message_log_path, d
 # attempt's wait window, where it read as an instant success and double-counted turns.
 _TURN_END_RE = re.compile(r"Turn\s+(\d+)\s+End", re.I)
 
+# `Turn 22 Start.sav` is written once the AI round finishes and control returns to the
+# player, about 20s after `Turn 21 End.sav` on the reference machine. Handing the turn
+# over and getting the next one back are separate events and need separate proof.
+_TURN_START_RE = re.compile(r"Turn\s+(\d+)\s+Start", re.I)
+
 # The log runs to tens of megabytes over a campaign, and turn numbers only ever climb,
 # so the highest one is always near the end.
 _TAIL_BYTES = 262_144
@@ -41,8 +46,17 @@ def latest_turn_end() -> int | None:
     return max(candidates) if candidates else None
 
 
-def _latest_turn_end_from_saves() -> int | None:
-    """Turn number of the most recently written `...Turn N End.sav` autosave.
+def latest_turn_start() -> int | None:
+    """Turn number the player is currently playing, once the AI round has handed back.
+
+    `Turn N End.sav` proves the turn was handed over; only `Turn N+1 Start.sav` proves
+    control came back. Waiting on the wrong one starts issuing orders mid-AI-round.
+    """
+    return _newest_turn_in_saves(_TURN_START_RE)
+
+
+def _newest_turn_in_saves(pattern: re.Pattern[str]) -> int | None:
+    """Turn number on the most recently written autosave matching ``pattern``.
 
     Deliberately the newest file rather than the highest number: the folder keeps
     autosaves from earlier campaigns, and an abandoned campaign that reached turn 69
@@ -60,7 +74,7 @@ def _latest_turn_end_from_saves() -> int | None:
     for entry in entries:
         if entry.suffix.lower() != ".sav":
             continue
-        match = _TURN_END_RE.search(entry.name)
+        match = pattern.search(entry.name)
         if match is None:
             continue
         try:
@@ -71,6 +85,10 @@ def _latest_turn_end_from_saves() -> int | None:
             newest_mtime = mtime
             newest_turn = int(match.group(1))
     return newest_turn
+
+
+def _latest_turn_end_from_saves() -> int | None:
+    return _newest_turn_in_saves(_TURN_END_RE)
 
 
 def _latest_turn_end_from_log() -> int | None:

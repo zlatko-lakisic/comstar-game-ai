@@ -4,7 +4,11 @@ import time
 import pytest
 
 import comstar_game_ai.game_io.logs.turn_boundary as turn_boundary
-from comstar_game_ai.game_io.logs.turn_boundary import latest_turn_end, wait_for_turn_end
+from comstar_game_ai.game_io.logs.turn_boundary import (
+    latest_turn_end,
+    latest_turn_start,
+    wait_for_turn_end,
+)
 
 AUTOSAVE = (
     'Campaign saved: "./saves/save_Autosave   The House of Julii   Turn {n} End.sav"'
@@ -133,6 +137,33 @@ def test_start_autosaves_are_not_ended_turns(tmp_path, monkeypatch):
     (saves / "save_Autosave   The House of Julii   Turn 14 Start.sav").write_bytes(b"s")
     monkeypatch.setattr(turn_boundary, "default_saves_dir", lambda: saves)
     assert latest_turn_end() is None
+
+
+def test_turn_start_marks_control_coming_back(tmp_path, monkeypatch):
+    """Ending a turn and getting the next one back are separate events.
+
+    Observed 20s apart: `Turn 21 End.sav` at 8:22:52, `Turn 22 Start.sav` at 8:23:12.
+    Treating the End save as the player's next turn issues orders mid-AI-round.
+    """
+    saves = tmp_path / "saves"
+    saves.mkdir()
+    now = time.time()
+    for name, age_s in (
+        (SAVE_NAME.format(n=21), 40),
+        ("save_Autosave   The House of Julii   Turn 22 Start.sav", 20),
+    ):
+        path = saves / name
+        path.write_bytes(b"savegame")
+        os.utime(path, (now - age_s, now - age_s))
+    monkeypatch.setattr(turn_boundary, "default_saves_dir", lambda: saves)
+
+    assert latest_turn_end() == 21
+    assert latest_turn_start() == 22
+
+
+def test_turn_start_is_none_before_any_start_autosave(tmp_path, monkeypatch):
+    _saves(tmp_path, monkeypatch, {5: 10})
+    assert latest_turn_start() is None
 
 
 def test_finds_the_turn_in_a_log_longer_than_the_tail_window(tmp_path, monkeypatch):
