@@ -53,16 +53,34 @@ def test_only_notices_are_non_blocking():
         assert entry.blocking is (entry.panel_class is not PanelClass.NOTICE)
 
 
-def test_decision_panels_have_no_close_button_and_others_do():
+def test_decision_panels_are_never_dismissed_by_a_close_button():
     # The invariant that resolved the corpus: a close-X search coming back empty on
     # a blocking panel means "decision panel", not "detector failed".
     for entry in ui_atlas.verified():
-        if entry.panel_class is PanelClass.DECISION:
-            assert not entry.expects_close_x
-            assert entry.geometry.close_x is None, f"{entry.id} should have no close X"
-        else:
-            assert entry.expects_close_x
+        if entry.panel_class is not PanelClass.DECISION:
+            continue
+        assert not entry.expects_close_x
+        assert entry.geometry.close_x is None, f"{entry.id} should have no close X"
+
+
+def test_a_panel_carries_close_x_coordinates_exactly_when_it_is_closed_that_way():
+    # Tied to the dismissal strategy rather than the class, because a notice that is
+    # toggled off — the strategic overlay — has no close button either, and inventing
+    # coordinates for one would send a click into the map behind it.
+    for entry in ui_atlas.verified():
+        if entry.expects_close_x:
             assert entry.geometry.close_x is not None, f"{entry.id} needs a close X"
+        else:
+            assert entry.geometry.close_x is None, (
+                f"{entry.id} is not dismissed by a close X but carries its coordinates"
+            )
+
+
+def test_the_strategic_overlay_is_toggled_rather_than_closed():
+    entry = BY_ID["campaign_map_overlays"]
+    assert entry.dismiss == (Dismiss.LEAVE_OPEN,)
+    assert not entry.expects_close_x
+    assert entry.geometry.close_x is None
 
 
 def test_decision_panels_are_answered_not_dismissed():
@@ -103,9 +121,89 @@ def test_escape_is_only_trusted_where_the_game_documents_it():
             continue
         if entry.id == "advisor":
             continue
+        if entry.status is ui_atlas.Status.EXTERNAL:
+            # Not an in-game panel, so the close X is not a dismissal it can offer.
+            continue
         assert entry.dismiss[0] is Dismiss.CLOSE_X, (
             f"{entry.id} reaches for Escape before the close X"
         )
+
+
+def test_external_entries_are_neither_capture_work_nor_verified_panels():
+    external = [e for e in ATLAS if e.status is ui_atlas.Status.EXTERNAL]
+    assert external, "the F1 hazard should be recorded, not deleted"
+    for entry in external:
+        assert entry.hazard, f"{entry.id} is external without saying why that matters"
+        assert entry.geometry is None, f"{entry.id} is not an in-game panel to measure"
+        assert entry not in ui_atlas.verified()
+        assert entry not in ui_atlas.unseen()
+
+
+def test_help_window_is_recorded_as_leaving_the_game():
+    entry = BY_ID["help_window"]
+    assert entry.status is ui_atlas.Status.EXTERNAL
+    assert "steam" in entry.hazard.lower(), (
+        "the whole point of the entry is that F1 hands off to the Steam overlay"
+    )
+
+
+# --- The shared overview frame -----------------------------------------------
+
+
+def test_the_ctrl_number_panels_are_tabs_of_one_window():
+    tabs = [e for e in ATLAS if e.tab_of == "overview_window"]
+    # Seven crests on the strip, so seven tabs.
+    assert len(tabs) == 7, [e.id for e in tabs]
+    for entry in tabs:
+        assert entry.geometry is ui_atlas.OVERVIEW_FRAME, (
+            f"{entry.id} measured to its own geometry; they share one frame"
+        )
+        assert entry.status is ui_atlas.Status.VERIFIED
+
+
+def test_every_overview_tab_is_reachable_by_its_own_chord():
+    db = load_shortcuts()
+    resolved = {}
+    for keyset in db.keysets:
+        for binding in db.bindings(keyset):
+            resolved.setdefault(binding.action, binding)
+
+    chords = set()
+    for entry in ATLAS:
+        if entry.tab_of != "overview_window":
+            continue
+        binding = resolved.get(entry.shortcut_action)
+        assert binding is not None, f"{entry.id} names an action that does not resolve"
+        chords.add(binding.chord)
+    assert chords == {f"ctrl+{n}" for n in range(1, 8)}
+
+
+def test_one_tab_centre_per_tab():
+    tabs = [e for e in ATLAS if e.tab_of == "overview_window"]
+    assert len(ui_atlas.OVERVIEW_TAB_CENTRES) == len(tabs)
+    for x, y in ui_atlas.OVERVIEW_TAB_CENTRES:
+        # Inside the frame, and on the strip along its top edge.
+        assert ui_atlas.OVERVIEW_FRAME.left < x < ui_atlas.OVERVIEW_FRAME.right
+        assert ui_atlas.OVERVIEW_FRAME.top < y < 0.25
+
+
+# --- Panels with preconditions ------------------------------------------------
+
+
+def test_settlement_scoped_panels_declare_what_they_need():
+    for panel_id in ("construction_window", "training_window"):
+        entry = BY_ID[panel_id]
+        assert entry.requires, f"{panel_id} does nothing without a selection; say so"
+        assert "settlement" in entry.requires
+        # They dock against the right edge rather than spanning the centre, which is
+        # why panel_bounds cannot measure them and the sweep reported no panel.
+        assert not entry.geometry.spans_centre()
+        assert entry.geometry.right >= 0.99
+
+
+def test_panels_needing_no_precondition_say_nothing():
+    assert not BY_ID["faction_summary"].requires
+    assert not BY_ID["campaign_map_overlays"].requires
 
 
 def test_building_browser_spans_the_centre_and_notices_do_not():
@@ -218,5 +316,5 @@ def test_geometry_spans_centre_is_exclusive_at_the_edges():
 
 
 def test_status_and_class_vocabularies_are_closed():
-    assert {s.value for s in Status} == {"verified", "unseen"}
+    assert {s.value for s in Status} == {"verified", "unseen", "external"}
     assert {c.value for c in PanelClass} == {"decision", "notice", "obstructing"}

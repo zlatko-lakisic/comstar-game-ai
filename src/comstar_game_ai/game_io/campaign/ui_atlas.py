@@ -64,6 +64,12 @@ class Status(Enum):
     VERIFIED = "verified"
     #: Named by the game's strings, but never yet captured. Needs guided capture.
     UNSEEN = "unseen"
+    #: Opened, and found not to be an in-game panel at all. `help_window` is the
+    #: case: its shortcut hands off to the Steam overlay. Such an entry has been
+    #: investigated, so it is not capture work, but it has no geometry to measure
+    #: and no close button to find, so it is not a verified panel either. Recorded
+    #: rather than deleted so the hazard is not rediscovered the hard way.
+    EXTERNAL = "external"
 
 
 @dataclass(frozen=True)
@@ -98,6 +104,16 @@ class PanelEntry:
     opened_by: str = ""
     #: The `descr_shortcuts.txt` action that opens it, when a key does.
     shortcut_action: str = ""
+    #: Set when this panel is a tab of a shared window rather than a window of its
+    #: own. Seven entries here are tabs of one frame, which is why they all measure
+    #: to identical geometry; treating them as separate windows means seven copies
+    #: of one close button and a detector that cannot tell which tab is showing.
+    tab_of: str = ""
+    #: What must already be true for the shortcut to do anything. Empty means the
+    #: shortcut works from a bare campaign map.
+    requires: str = ""
+    #: Why this panel must not be opened by an unattended agent.
+    hazard: str = ""
     geometry: PanelGeometry | None = None
     #: Frames or log lines backing the measured parts of this entry.
     evidence: tuple[str, ...] = ()
@@ -125,14 +141,33 @@ class PanelEntry:
     def expects_close_x(self) -> bool:
         """Whether this panel should have a close button at all.
 
-        Decision panels do not: the check/X/counter trio at the bottom centre
-        replaces the corner dismiss button. This is why a close-X search returning
-        nothing is a classification signal rather than a detector failure — the
-        nine diplomacy frames in the corpus were unidentified for exactly this
-        reason, having been searched for a button the panel never had.
-        """
-        return self.panel_class is not PanelClass.DECISION
+        Tied to how the panel is dismissed rather than to its class. Decision panels
+        have none — the check/X/counter trio at the bottom centre replaces the corner
+        button — which is why a close-X search returning nothing is a classification
+        signal rather than a detector failure: the nine diplomacy frames in the corpus
+        went unidentified having been searched for a button the panel never had.
 
+        But class alone is too blunt. `campaign_map_overlays` is a notice with no close
+        button either, because it is left by pressing Tab again rather than dismissed,
+        and demanding a close X of it would mean inventing coordinates for a control
+        that does not exist.
+        """
+        return Dismiss.CLOSE_X in self.dismiss
+
+
+#: The one frame behind all seven Ctrl+N tabs, measured during the guided sweep.
+#:
+#: Every one of the seven measured to these numbers to the pixel, which is the
+#: evidence that they are tabs and not windows. The game says so too: a loading-screen
+#: tip describes Move Followers as "the Move Followers tab of the Faction Summary
+#: panel". The tab strip is the row of seven round crests along the top edge.
+OVERVIEW_FRAME = PanelGeometry(left=0.257, right=0.743, top=0.123, close_x=(0.740, 0.139))
+
+#: Where the tab strip's crests sit, left to right, as Ctrl+1 through Ctrl+7.
+OVERVIEW_TAB_CENTRES: tuple[tuple[float, float], ...] = (
+    (0.303, 0.172), (0.368, 0.172), (0.434, 0.172), (0.499, 0.172),
+    (0.564, 0.172), (0.630, 0.172), (0.695, 0.172),
+)
 
 #: The panels reachable from the campaign map.
 #:
@@ -181,10 +216,20 @@ ATLAS: tuple[PanelEntry, ...] = (
         name_key="SMT_OPEN_SENATE_WINDOW",
         panel_class=PanelClass.OBSTRUCTING,
         dismiss=(Dismiss.CLOSE_X,),
-        status=Status.UNSEEN,
-        opened_by="laurel-wreath button at the bottom-left of the HUD",
+        status=Status.VERIFIED,
+        opened_by="laurel-wreath button at the bottom-left of the HUD, or Ctrl+2",
         shortcut_action="senate_button",
-        note="Roman factions only; it is where standing missions and Senate favour live.",
+        tab_of="overview_window",
+        geometry=OVERVIEW_FRAME,
+        evidence=(
+            "guided sweep: data/runtime/sweep/senate_window.png",
+            "titles itself 'The Senate'; tab 2 of the overview frame",
+        ),
+        note=(
+            "Roman factions only. Two sub-tabs, Policy and Current Standing. Policy "
+            "shows a grid of faction crests; selecting one shows the Senate's opinion "
+            "of that faction, so the grid is a selector and not a set of buttons."
+        ),
     ),
     PanelEntry(
         id="left_dock_notice",
@@ -257,20 +302,45 @@ ATLAS: tuple[PanelEntry, ...] = (
     PanelEntry(
         id="construction_window",
         name_key="SMT_OPEN_CONSTRUCTION_WINDOW",
-        panel_class=PanelClass.OBSTRUCTING,
+        panel_class=PanelClass.NOTICE,
         dismiss=(Dismiss.CLOSE_X,),
-        status=Status.UNSEEN,
-        opened_by="construction button on the settlement scroll",
+        status=Status.VERIFIED,
+        opened_by="construction button on the settlement scroll, or 6 with a settlement selected",
         shortcut_action="construction_button",
+        requires="a settlement selected on the map",
+        geometry=PanelGeometry(left=0.855, right=1.0, top=0.44, close_x=(0.857, 0.452)),
+        evidence=(
+            "guided sweep: data/runtime/sweep/settlement_panel.png, hover_constr_c1.png",
+            "6 pressed on a bare map does nothing; with Arretium selected it opens",
+        ),
+        note=(
+            "Not a window. It docks against the right edge as a grid of building icons "
+            "with a Repair grid beneath, and leaves the map playable, so it is a notice "
+            "by behaviour despite being a construction control. Hovering an icon yields "
+            "the building's name, cost, build time and full effect list, which is how to "
+            "read the options without clicking: a click queues the build and spends money."
+        ),
     ),
     PanelEntry(
         id="training_window",
         name_key="SMT_OPEN_TRAINING_WINDOW",
-        panel_class=PanelClass.OBSTRUCTING,
+        panel_class=PanelClass.NOTICE,
         dismiss=(Dismiss.CLOSE_X,),
-        status=Status.UNSEEN,
-        opened_by="recruitment button on the settlement scroll",
+        status=Status.VERIFIED,
+        opened_by="recruitment button on the settlement scroll, or 5 with a settlement selected",
         shortcut_action="recruitment_button",
+        requires="a settlement selected on the map",
+        geometry=PanelGeometry(left=0.855, right=1.0, top=0.44, close_x=(0.857, 0.452)),
+        evidence=(
+            "guided sweep: data/runtime/sweep/training_window.png",
+            "right-edge dock titled 'Recruitment' with a 'Retrain' grid beneath",
+        ),
+        note=(
+            "The recruitment counterpart of construction_window and the same shape: a "
+            "right-edge dock of unit cards. The bottom bar gains a queue readout ('1/20') "
+            "while it is open. Unit cards match the extracted install art under "
+            "kb/cards/units, so a card can be identified rather than merely located."
+        ),
     ),
     PanelEntry(
         id="mercenary_recruitment",
@@ -285,36 +355,90 @@ ATLAS: tuple[PanelEntry, ...] = (
         name_key="SMT_OPEN_DIPLOMACY_WINDOW",
         panel_class=PanelClass.OBSTRUCTING,
         dismiss=(Dismiss.CLOSE_X,),
-        status=Status.UNSEEN,
-        opened_by="diplomacy button on the bottom-left HUD",
+        status=Status.VERIFIED,
+        opened_by="diplomacy button on the bottom-left HUD, or Ctrl+3",
         shortcut_action="diplomacy_overview_button",
+        tab_of="overview_window",
+        geometry=OVERVIEW_FRAME,
+        evidence=(
+            "guided sweep: data/runtime/sweep/diplomacy_window.png",
+            "titles itself 'Factions'; tab 3 of the overview frame",
+        ),
+        note=(
+            "The game titles this tab 'Factions', not diplomacy, and it conducts none: "
+            "it reports standing. Sub-tabs are Ranking and Diplomatic Standing, and the "
+            "detail pane carries a reputation bar, a territory minimap, and rows for "
+            "allies, enemies, trade partners, embargoes and protectorates. Actual "
+            "negotiation happens in `diplomatic_negotiations`, a decision panel."
+        ),
     ),
     PanelEntry(
         id="finance_window",
         name_key="SMT_OPEN_FINANCE_WINDOW",
         panel_class=PanelClass.OBSTRUCTING,
         dismiss=(Dismiss.CLOSE_X,),
-        status=Status.UNSEEN,
-        opened_by="coin button on the bottom-left HUD",
+        status=Status.VERIFIED,
+        opened_by="coin button on the bottom-left HUD, or Ctrl+4",
         shortcut_action="finances_button",
+        tab_of="overview_window",
+        geometry=OVERVIEW_FRAME,
+        evidence=(
+            "guided sweep: data/runtime/sweep/finance_window.png",
+            "titles itself 'Finance & Family'; tab 4 of the overview frame",
+        ),
+        note=(
+            "Sub-tabs are Financial Overview and Family Tree. Income and expenditure "
+            "rows carry a chevron that expands a breakdown. The footer holds an "
+            "Automanage checkbox, Automanage Tax / Everything radios and an AI Spend "
+            "Policy slider — all of which change how the faction is run, so they are "
+            "read-only as far as an unattended agent is concerned."
+        ),
     ),
     PanelEntry(
         id="faction_summary",
         name_key="SMT_FACTION_BUTTON_TOOLTIP",
         panel_class=PanelClass.OBSTRUCTING,
         dismiss=(Dismiss.CLOSE_X,),
-        status=Status.UNSEEN,
-        opened_by="faction button on the bottom-left HUD; right-click instead locates the capital",
+        status=Status.VERIFIED,
+        opened_by="faction button on the bottom-left HUD, or Ctrl+1; right-click instead locates the capital",
         shortcut_action="faction_overview_button",
+        tab_of="overview_window",
+        geometry=OVERVIEW_FRAME,
+        evidence=(
+            "guided sweep: data/runtime/sweep/faction_summary.png",
+            "titles itself 'Faction Summary'; tab 1 of the overview frame",
+        ),
+        note=(
+            "The tab the whole frame is named after. Carries the faction leader with his "
+            "three attribute rows, the victory conditions, the current Senate mission with "
+            "a locate button, faction stats, six ranking rows, and diplomatic standing. "
+            "The densest single source of faction state available without acting."
+        ),
     ),
     PanelEntry(
         id="lists_scroll",
         name_key="SMT_SHOW_FACTION_LISTS",
         panel_class=PanelClass.OBSTRUCTING,
         dismiss=(Dismiss.CLOSE_X,),
-        status=Status.UNSEEN,
-        opened_by="lists button on the bottom-left HUD",
+        status=Status.VERIFIED,
+        opened_by="lists button on the bottom-left HUD, or Ctrl+5",
         shortcut_action="lists_button",
+        tab_of="overview_window",
+        geometry=OVERVIEW_FRAME,
+        evidence=(
+            "guided sweep: data/runtime/sweep/lists_scroll.png",
+            "titles itself 'Lists'; tab 5 of the overview frame",
+            "button tooltips captured in hover_lists_btn1..3.png",
+        ),
+        note=(
+            "Sub-tabs are Settlements, Military Forces and Agents, over a sortable list "
+            "with a filter dropdown. The settlement detail pane holds the per-settlement "
+            "controls: Automanage / Construction / Recruitment checkboxes and a tax-rate "
+            "stepper. Of its three footer buttons the game names the first two 'Locate "
+            "position of settlement' and 'Explore settlement on Battle Map', but the third "
+            "is 'Make this settlement the faction capital' — a permanent change sitting "
+            "one icon away from two harmless ones."
+        ),
     ),
     PanelEntry(
         id="options_window",
@@ -329,22 +453,40 @@ ATLAS: tuple[PanelEntry, ...] = (
         id="help_window",
         name_key="show_help",
         panel_class=PanelClass.OBSTRUCTING,
-        dismiss=(Dismiss.CLOSE_X, Dismiss.ESCAPE),
-        status=Status.UNSEEN,
-        opened_by="the show_help shortcut key",
+        dismiss=(Dismiss.ESCAPE,),
+        status=Status.EXTERNAL,
+        opened_by="F1",
         shortcut_action="show_help",
+        hazard=(
+            "F1 does not open an in-game panel. It asks Steam to open the wiki in the "
+            "overlay browser, which covers the entire screen, is outside the game's UI "
+            "so no panel detector can see it, and clears only on Shift+Tab. On this "
+            "install the browser then fails with 'BrowserView.Create initial URL not "
+            "valid', so the payoff is nil and the cost is a blind agent."
+        ),
+        evidence=("guided sweep: data/runtime/sweep/fixed_f1.png shows the Steam overlay",),
+        note="Left in the atlas precisely so the hazard is recorded rather than rediscovered.",
     ),
     PanelEntry(
         id="retinue_panel",
         name_key="SMT_ANCILLARIES",
         panel_class=PanelClass.OBSTRUCTING,
         dismiss=(Dismiss.CLOSE_X,),
-        status=Status.UNSEEN,
-        opened_by="retinue button on the bottom-left HUD",
+        status=Status.VERIFIED,
+        opened_by="retinue button on the bottom-left HUD, or Ctrl+6",
         shortcut_action="retinue_button",
+        tab_of="overview_window",
+        geometry=OVERVIEW_FRAME,
+        evidence=(
+            "guided sweep: data/runtime/sweep/retinue_panel.png",
+            "titles itself 'Move Followers'; tab 6 of the overview frame",
+            "a loading-screen tip calls it a tab of the Faction Summary panel",
+        ),
         note=(
-            "Rome calls retinue members ancillaries. They attach to a named character "
-            "and modify his traits, so this panel is character-scoped, not faction-scoped."
+            "Rome calls retinue members ancillaries and this tab calls them followers. "
+            "Two filtered lists — faction characters and their followers — over a detail "
+            "pane showing the selected character's traits. Character-scoped, not faction-"
+            "scoped, and the only tab whose purpose is to move something rather than read it."
         ),
     ),
     PanelEntry(
@@ -352,13 +494,21 @@ ATLAS: tuple[PanelEntry, ...] = (
         name_key="",
         panel_class=PanelClass.OBSTRUCTING,
         dismiss=(Dismiss.CLOSE_X,),
-        status=Status.UNSEEN,
-        opened_by="agent hub button on the bottom-left HUD",
+        status=Status.VERIFIED,
+        opened_by="agent hub button on the bottom-left HUD, or Ctrl+7",
         shortcut_action="agent_hub_button",
+        tab_of="overview_window",
+        geometry=OVERVIEW_FRAME,
+        evidence=(
+            "guided sweep: data/runtime/sweep/agent_hub.png",
+            "titles itself 'Agent Hub'; tab 7 of the overview frame",
+        ),
         note=(
-            "Bound to Ctrl+7 in both keysets but named by no shipped string: a "
-            "Remastered addition the original text tables predate. Its existence is "
-            "known only from the binding database, so it must be named by capture."
+            "Bound to Ctrl+7 in both keysets but named by no shipped string: a Remastered "
+            "addition the original text tables predate, and capture is the only way to "
+            "name it. Three filter dropdowns over an agent list, with a 'Send Agent to' "
+            "list of missions carrying success percentages. The one tab with a commit "
+            "button — a gold Confirm at the footer that dispatches the agent for real."
         ),
     ),
     PanelEntry(
@@ -366,14 +516,23 @@ ATLAS: tuple[PanelEntry, ...] = (
         name_key="toggle_overlays",
         panel_class=PanelClass.NOTICE,
         dismiss=(Dismiss.LEAVE_OPEN,),
-        status=Status.UNSEEN,
-        opened_by="the campaign_map_overlays_button, bound to Tab",
+        status=Status.VERIFIED,
+        opened_by="Tab in the moderntw keyset, Ctrl+Tab in default",
         shortcut_action="campaign_map_overlays_button",
+        geometry=PanelGeometry(left=0.0, right=0.123, top=0.368, close_x=None),
+        evidence=(
+            "guided sweep: data/runtime/sweep/recover_1.png",
+            "measured geometry is the left legend, the only panel-like region it adds",
+        ),
         note=(
-            "Recolours the map itself rather than opening a scroll, which is why it is "
-            "a notice: nothing is covered and nothing needs dismissing. Toggling it "
-            "changes every colour the perception layer sees, so any pixel heuristic "
-            "calibrated on the normal map is invalid while an overlay is active."
+            "Replaces the map with a framed strategic view rather than opening a scroll, "
+            "so nothing needs dismissing — Tab again leaves it. Two legends dock at the "
+            "edges and both are checkbox filters, not keys: settlement tiers, alerts, and "
+            "the states 'Recruiting or constructing', 'Upgrade possible' and 'Settlement "
+            "idle' on the left; per-faction colours on the right. Those three states are "
+            "the cheapest read available of which settlements still need orders. It "
+            "recolours everything the perception layer sees, so any pixel heuristic "
+            "calibrated on the normal map is invalid while it is up."
         ),
     ),
 )

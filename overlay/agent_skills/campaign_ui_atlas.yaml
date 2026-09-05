@@ -363,11 +363,24 @@ panels:
   expects_close_x: true
   dismiss:
   - close_x
-  status: unseen
-  opened_by: laurel-wreath button at the bottom-left of the HUD
+  status: verified
+  opened_by: laurel-wreath button at the bottom-left of the HUD, or Ctrl+2
   shortcut_action: senate_button
   shortcut: ctrl+2
-  note: Roman factions only; it is where standing missions and Senate favour live.
+  geometry:
+    left: 0.257
+    right: 0.743
+    top: 0.123
+    spans_centre: true
+    close_x:
+    - 0.74
+    - 0.139
+  note: Roman factions only. Two sub-tabs, Policy and Current Standing. Policy shows a grid of faction
+    crests; selecting one shows the Senate's opinion of that faction, so the grid is a selector and not
+    a set of buttons.
+  evidence:
+  - 'guided sweep: data/runtime/sweep/senate_window.png'
+  - titles itself 'The Senate'; tab 2 of the overview frame
 - id: left_dock_notice
   name: Show location of event
   name_key: ST_ADVISOR_BUTTON_ZOOM_TO
@@ -441,7 +454,7 @@ panels:
   name_key: ST_ADVISOR_BUTTON_DISMISS
   class: notice
   blocking: false
-  expects_close_x: true
+  expects_close_x: false
   dismiss:
   - escape
   status: unseen
@@ -451,27 +464,56 @@ panels:
 - id: construction_window
   name: Open construction window for selected settlement
   name_key: SMT_OPEN_CONSTRUCTION_WINDOW
-  class: obstructing
-  blocking: true
+  class: notice
+  blocking: false
   expects_close_x: true
   dismiss:
   - close_x
-  status: unseen
-  opened_by: construction button on the settlement scroll
+  status: verified
+  opened_by: construction button on the settlement scroll, or 6 with a settlement selected
   shortcut_action: construction_button
   shortcut: '6'
+  geometry:
+    left: 0.855
+    right: 1.0
+    top: 0.44
+    spans_centre: false
+    close_x:
+    - 0.857
+    - 0.452
+  note: 'Not a window. It docks against the right edge as a grid of building icons with a Repair grid
+    beneath, and leaves the map playable, so it is a notice by behaviour despite being a construction
+    control. Hovering an icon yields the building''s name, cost, build time and full effect list, which
+    is how to read the options without clicking: a click queues the build and spends money.'
+  evidence:
+  - 'guided sweep: data/runtime/sweep/settlement_panel.png, hover_constr_c1.png'
+  - 6 pressed on a bare map does nothing; with Arretium selected it opens
 - id: training_window
   name: Open unit training scroll for selected settlement
   name_key: SMT_OPEN_TRAINING_WINDOW
-  class: obstructing
-  blocking: true
+  class: notice
+  blocking: false
   expects_close_x: true
   dismiss:
   - close_x
-  status: unseen
-  opened_by: recruitment button on the settlement scroll
+  status: verified
+  opened_by: recruitment button on the settlement scroll, or 5 with a settlement selected
   shortcut_action: recruitment_button
   shortcut: '5'
+  geometry:
+    left: 0.855
+    right: 1.0
+    top: 0.44
+    spans_centre: false
+    close_x:
+    - 0.857
+    - 0.452
+  note: 'The recruitment counterpart of construction_window and the same shape: a right-edge dock of unit
+    cards. The bottom bar gains a queue readout (''1/20'') while it is open. Unit cards match the extracted
+    install art under kb/cards/units, so a card can be identified rather than merely located.'
+  evidence:
+  - 'guided sweep: data/runtime/sweep/training_window.png'
+  - right-edge dock titled 'Recruitment' with a 'Retrain' grid beneath
 - id: mercenary_recruitment
   name: Open mercenary recruitment scroll for selected army
   name_key: SMT_OPEN_MERCENARY_RECRUITMENT
@@ -490,10 +532,25 @@ panels:
   expects_close_x: true
   dismiss:
   - close_x
-  status: unseen
-  opened_by: diplomacy button on the bottom-left HUD
+  status: verified
+  opened_by: diplomacy button on the bottom-left HUD, or Ctrl+3
   shortcut_action: diplomacy_overview_button
   shortcut: ctrl+3
+  geometry:
+    left: 0.257
+    right: 0.743
+    top: 0.123
+    spans_centre: true
+    close_x:
+    - 0.74
+    - 0.139
+  note: 'The game titles this tab ''Factions'', not diplomacy, and it conducts none: it reports standing.
+    Sub-tabs are Ranking and Diplomatic Standing, and the detail pane carries a reputation bar, a territory
+    minimap, and rows for allies, enemies, trade partners, embargoes and protectorates. Actual negotiation
+    happens in `diplomatic_negotiations`, a decision panel.'
+  evidence:
+  - 'guided sweep: data/runtime/sweep/diplomacy_window.png'
+  - titles itself 'Factions'; tab 3 of the overview frame
 - id: finance_window
   name: Open finances window
   name_key: SMT_OPEN_FINANCE_WINDOW
@@ -502,10 +559,25 @@ panels:
   expects_close_x: true
   dismiss:
   - close_x
-  status: unseen
-  opened_by: coin button on the bottom-left HUD
+  status: verified
+  opened_by: coin button on the bottom-left HUD, or Ctrl+4
   shortcut_action: finances_button
   shortcut: ctrl+4
+  geometry:
+    left: 0.257
+    right: 0.743
+    top: 0.123
+    spans_centre: true
+    close_x:
+    - 0.74
+    - 0.139
+  note: Sub-tabs are Financial Overview and Family Tree. Income and expenditure rows carry a chevron that
+    expands a breakdown. The footer holds an Automanage checkbox, Automanage Tax / Everything radios and
+    an AI Spend Policy slider — all of which change how the faction is run, so they are read-only as far
+    as an unattended agent is concerned.
+  evidence:
+  - 'guided sweep: data/runtime/sweep/finance_window.png'
+  - titles itself 'Finance & Family'; tab 4 of the overview frame
 - id: faction_summary
   name: Open faction summary window\nUse right mouse button to locate faction capital
   name_key: SMT_FACTION_BUTTON_TOOLTIP
@@ -514,10 +586,24 @@ panels:
   expects_close_x: true
   dismiss:
   - close_x
-  status: unseen
-  opened_by: faction button on the bottom-left HUD; right-click instead locates the capital
+  status: verified
+  opened_by: faction button on the bottom-left HUD, or Ctrl+1; right-click instead locates the capital
   shortcut_action: faction_overview_button
   shortcut: ctrl+1
+  geometry:
+    left: 0.257
+    right: 0.743
+    top: 0.123
+    spans_centre: true
+    close_x:
+    - 0.74
+    - 0.139
+  note: The tab the whole frame is named after. Carries the faction leader with his three attribute rows,
+    the victory conditions, the current Senate mission with a locate button, faction stats, six ranking
+    rows, and diplomatic standing. The densest single source of faction state available without acting.
+  evidence:
+  - 'guided sweep: data/runtime/sweep/faction_summary.png'
+  - titles itself 'Faction Summary'; tab 1 of the overview frame
 - id: lists_scroll
   name: Show lists scroll
   name_key: SMT_SHOW_FACTION_LISTS
@@ -526,10 +612,27 @@ panels:
   expects_close_x: true
   dismiss:
   - close_x
-  status: unseen
-  opened_by: lists button on the bottom-left HUD
+  status: verified
+  opened_by: lists button on the bottom-left HUD, or Ctrl+5
   shortcut_action: lists_button
   shortcut: ctrl+5
+  geometry:
+    left: 0.257
+    right: 0.743
+    top: 0.123
+    spans_centre: true
+    close_x:
+    - 0.74
+    - 0.139
+  note: 'Sub-tabs are Settlements, Military Forces and Agents, over a sortable list with a filter dropdown.
+    The settlement detail pane holds the per-settlement controls: Automanage / Construction / Recruitment
+    checkboxes and a tax-rate stepper. Of its three footer buttons the game names the first two ''Locate
+    position of settlement'' and ''Explore settlement on Battle Map'', but the third is ''Make this settlement
+    the faction capital'' — a permanent change sitting one icon away from two harmless ones.'
+  evidence:
+  - 'guided sweep: data/runtime/sweep/lists_scroll.png'
+  - titles itself 'Lists'; tab 5 of the overview frame
+  - button tooltips captured in hover_lists_btn1..3.png
 - id: options_window
   name: Set game options
   name_key: SMT_OPEN_OPTIONS_WINDOW
@@ -547,14 +650,16 @@ panels:
   name_key: show_help
   class: obstructing
   blocking: true
-  expects_close_x: true
+  expects_close_x: false
   dismiss:
-  - close_x
   - escape
-  status: unseen
-  opened_by: the show_help shortcut key
+  status: external
+  opened_by: F1
   shortcut_action: show_help
   shortcut: f1
+  note: Left in the atlas precisely so the hazard is recorded rather than rediscovered.
+  evidence:
+  - 'guided sweep: data/runtime/sweep/fixed_f1.png shows the Steam overlay'
 - id: retinue_panel
   name: Ancillaries
   name_key: SMT_ANCILLARIES
@@ -563,12 +668,26 @@ panels:
   expects_close_x: true
   dismiss:
   - close_x
-  status: unseen
-  opened_by: retinue button on the bottom-left HUD
+  status: verified
+  opened_by: retinue button on the bottom-left HUD, or Ctrl+6
   shortcut_action: retinue_button
   shortcut: ctrl+6
-  note: Rome calls retinue members ancillaries. They attach to a named character and modify his traits,
-    so this panel is character-scoped, not faction-scoped.
+  geometry:
+    left: 0.257
+    right: 0.743
+    top: 0.123
+    spans_centre: true
+    close_x:
+    - 0.74
+    - 0.139
+  note: Rome calls retinue members ancillaries and this tab calls them followers. Two filtered lists —
+    faction characters and their followers — over a detail pane showing the selected character's traits.
+    Character-scoped, not faction-scoped, and the only tab whose purpose is to move something rather than
+    read it.
+  evidence:
+  - 'guided sweep: data/runtime/sweep/retinue_panel.png'
+  - titles itself 'Move Followers'; tab 6 of the overview frame
+  - a loading-screen tip calls it a tab of the Faction Summary panel
 - id: agent_hub
   name: null
   name_key: ''
@@ -577,28 +696,51 @@ panels:
   expects_close_x: true
   dismiss:
   - close_x
-  status: unseen
-  opened_by: agent hub button on the bottom-left HUD
+  status: verified
+  opened_by: agent hub button on the bottom-left HUD, or Ctrl+7
   shortcut_action: agent_hub_button
   shortcut: ctrl+7
+  geometry:
+    left: 0.257
+    right: 0.743
+    top: 0.123
+    spans_centre: true
+    close_x:
+    - 0.74
+    - 0.139
   note: 'Bound to Ctrl+7 in both keysets but named by no shipped string: a Remastered addition the original
-    text tables predate. Its existence is known only from the binding database, so it must be named by
-    capture.'
+    text tables predate, and capture is the only way to name it. Three filter dropdowns over an agent
+    list, with a ''Send Agent to'' list of missions carrying success percentages. The one tab with a commit
+    button — a gold Confirm at the footer that dispatches the agent for real.'
+  evidence:
+  - 'guided sweep: data/runtime/sweep/agent_hub.png'
+  - titles itself 'Agent Hub'; tab 7 of the overview frame
 - id: campaign_map_overlays
   name: Toggle Colour Overlays
   name_key: toggle_overlays
   class: notice
   blocking: false
-  expects_close_x: true
+  expects_close_x: false
   dismiss:
   - leave_open
-  status: unseen
-  opened_by: the campaign_map_overlays_button, bound to Tab
+  status: verified
+  opened_by: Tab in the moderntw keyset, Ctrl+Tab in default
   shortcut_action: campaign_map_overlays_button
   shortcut: tab
-  note: 'Recolours the map itself rather than opening a scroll, which is why it is a notice: nothing is
-    covered and nothing needs dismissing. Toggling it changes every colour the perception layer sees,
-    so any pixel heuristic calibrated on the normal map is invalid while an overlay is active.'
+  geometry:
+    left: 0.0
+    right: 0.123
+    top: 0.368
+    spans_centre: false
+  note: 'Replaces the map with a framed strategic view rather than opening a scroll, so nothing needs
+    dismissing — Tab again leaves it. Two legends dock at the edges and both are checkbox filters, not
+    keys: settlement tiers, alerts, and the states ''Recruiting or constructing'', ''Upgrade possible''
+    and ''Settlement idle'' on the left; per-faction colours on the right. Those three states are the
+    cheapest read available of which settlements still need orders. It recolours everything the perception
+    layer sees, so any pixel heuristic calibrated on the normal map is invalid while it is up.'
+  evidence:
+  - 'guided sweep: data/runtime/sweep/recover_1.png'
+  - measured geometry is the left legend, the only panel-like region it adds
 controls:
   available: true
   source: data/text/descr_shortcuts.txt
@@ -707,22 +849,11 @@ controls:
     cam_speed: shift
 coverage:
   panels_total: 19
-  panels_verified: 5
+  panels_verified: 15
   panels_unseen:
-  - senate_window
   - advisor
-  - construction_window
-  - training_window
   - mercenary_recruitment
-  - diplomacy_window
-  - finance_window
-  - faction_summary
-  - lists_scroll
   - options_window
-  - help_window
-  - retinue_panel
-  - agent_hub
-  - campaign_map_overlays
   regions_total: 20
   regions_unverified:
   - map_viewport
