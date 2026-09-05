@@ -1,7 +1,23 @@
 """Acceptance: 20-turn hardcoded campaign (dry, no Rome)."""
 
+import pytest
+
+import comstar_game_ai.game_io.logs.turn_boundary as turn_boundary
 from comstar_game_ai.game_io.drivers.hardcoded_campaign import HardcodedCampaignDriver, phase2_accepted
 from comstar_game_ai.game_io.state_machine import GameState
+
+
+@pytest.fixture(autouse=True)
+def _isolate_turn_sources(tmp_path, monkeypatch):
+    """Keep the dry run off this machine's real autosaves and log.
+
+    Without this the run reads whatever campaign happens to be open, and a live game
+    advancing turns in the background makes the dry run look like it drove them.
+    """
+    empty = tmp_path / "saves-empty"
+    empty.mkdir()
+    monkeypatch.setattr(turn_boundary, "default_saves_dir", lambda: empty)
+    monkeypatch.setattr(turn_boundary, "default_message_log_path", lambda: tmp_path / "absent.txt")
 
 
 def _dry_run(turns=20):

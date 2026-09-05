@@ -91,25 +91,6 @@ def main() -> int:
         f"turns_seen={driver._julii_turns_seen}"
     )
 
-    if not driver.state.allows_campaign_orders():
-        # Rome rewrites message_log.txt on launch and buffers its writes, so a campaign
-        # just entered has flushed nothing to read yet — a fresh campaign sitting on
-        # turn 1 leaves the log silent. Vision is the only evidence available there.
-        classification = grab_and_classify(game.hwnd)
-        print(
-            f"INFO log gate inconclusive (state={driver.state.state.value}, "
-            f"turn={driver.state.turn}); vision says {classification.mode.value} "
-            f"({classification.detail}, confidence {classification.confidence:.2f})"
-        )
-        if classification.mode is CampaignUiMode.CAMPAIGN_MAP:
-            driver.state.state = GameState.CAMPAIGN_MAP
-        else:
-            print(
-                "FAIL: not on campaign map — neither the log nor the screen shows the "
-                "strat map. Load or start a campaign, wait for the map, then re-run."
-            )
-            return 1
-
     def on_progress(*, index: int, total: int, phase: str, ok: bool | None = None) -> None:
         tag = f"ATTEMPT {index}/{total} game_turn={driver._known_game_turn()}"
         if ok is None:
@@ -122,6 +103,38 @@ def main() -> int:
         flush=True,
     )
     _countdown(max(0, args.seconds))
+
+    # Classify only after the countdown. Before it, Rome may not be focused and the
+    # operator has not had their chance to clear the screen, so an early look judged a
+    # campaign by whatever happened to be on it and refused to start.
+    driver.poll_observation()
+    if not driver.state.allows_campaign_orders():
+        # Rome rewrites message_log.txt on launch and buffers its writes, so a campaign
+        # just entered has flushed nothing to read yet — a fresh campaign sitting on
+        # turn 1 leaves the log silent. Vision is the only evidence available there.
+        classification = grab_and_classify(game.hwnd)
+        print(
+            f"INFO log gate inconclusive (state={driver.state.state.value}, "
+            f"turn={driver.state.turn}); vision says {classification.mode.value} "
+            f"({classification.detail}, confidence {classification.confidence:.2f})",
+            flush=True,
+        )
+        # A panel with the map behind it still means we are in a campaign, and clearing
+        # panels is the loop's job — refusing to start over a senate notice card is a
+        # worse failure than dismissing it. A full-parchment screen could be the front
+        # end, so that one is not accepted here.
+        map_is_behind = classification.detail in ("left_overlay_panel", "panel_over_centre")
+        if classification.mode is CampaignUiMode.CAMPAIGN_MAP or (
+            classification.mode is CampaignUiMode.MODAL and map_is_behind
+        ):
+            driver.state.state = GameState.CAMPAIGN_MAP
+        else:
+            print(
+                "FAIL: not on campaign map — neither the log nor the screen shows the "
+                "strat map. Load or start a campaign, wait for the map, then re-run."
+            )
+            return 1
+
     result = driver.run_turns(
         turns,
         require_ok=False,

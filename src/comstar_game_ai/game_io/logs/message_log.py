@@ -13,10 +13,28 @@ def expand_user_path(path_str: str) -> Path:
     return Path(os.path.expandvars(os.path.expanduser(path_str)))
 
 
-def default_message_log_path() -> Path:
+def default_rome_logs_dir() -> Path:
     cfg = load_config()
     logs = cfg.get("paths", {}).get("rome_logs") or "%USERPROFILE%/AppData/Local/Feral Interactive/Rome/logs"
-    return expand_user_path(logs) / "message_log.txt"
+    return expand_user_path(logs)
+
+
+def default_message_log_path() -> Path:
+    return default_rome_logs_dir() / "message_log.txt"
+
+
+def default_saves_dir() -> Path:
+    """Rome's save folder, the sibling of its log folder.
+
+    Autosaves are the only turn record that is always written: a session has been
+    observed playing a full campaign while message_log.txt stayed frozen at its
+    startup contents.
+    """
+    cfg = load_config()
+    saves = cfg.get("paths", {}).get("rome_saves")
+    if saves:
+        return expand_user_path(saves)
+    return default_rome_logs_dir().parent / "saves"
 
 
 @dataclass

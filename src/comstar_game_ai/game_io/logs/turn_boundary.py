@@ -1,17 +1,19 @@
-"""Detect campaign turn boundaries in message_log."""
+"""Detect campaign turn boundaries from Rome's autosaves and message_log."""
 
 from __future__ import annotations
 
 import re
 import time
 
-from comstar_game_ai.game_io.logs.message_log import default_message_log_path
+from comstar_game_ai.game_io.logs.message_log import default_message_log_path, default_saves_dir
 
-# Rome writes `Campaign saved: "...Turn 18 End.sav"` the moment the player ends a turn,
-# before the AI factions move, so the turn number in that line is the only proof a turn
-# actually ended. The `new round start turn(...)` line marks the player's *next* turn and
-# arrives seconds later, once the AI round finishes — late enough to land inside the next
-# End Turn attempt's wait window, where it read as an instant success.
+# Ending a turn makes Rome autosave `Turn 18 End.sav` and log a matching line, both
+# before the AI factions move, so that turn number is the proof a turn actually ended.
+# The same pattern matches the filename and the log line.
+#
+# The `new round start turn(...)` line is not proof: it arrives once the AI round
+# finishes, seconds to a minute later, which usually falls inside the next End Turn
+# attempt's wait window, where it read as an instant success and double-counted turns.
 _TURN_END_RE = re.compile(r"Turn\s+(\d+)\s+End", re.I)
 
 # The log runs to tens of megabytes over a campaign, and turn numbers only ever climb,
@@ -29,7 +31,49 @@ def message_log_snapshot() -> tuple[int, str]:
 
 
 def latest_turn_end() -> int | None:
-    """Highest turn number Rome has autosaved, or None if it has autosaved none."""
+    """Highest turn Rome has recorded as ended, or None if it has ended none.
+
+    Both records are consulted and the higher wins, because neither is always written:
+    a session has been observed playing a whole campaign with message_log.txt frozen at
+    its startup contents, while the autosave file for every ended turn appeared on disk.
+    """
+    candidates = [n for n in (_latest_turn_end_from_saves(), _latest_turn_end_from_log()) if n]
+    return max(candidates) if candidates else None
+
+
+def _latest_turn_end_from_saves() -> int | None:
+    """Turn number of the most recently written `...Turn N End.sav` autosave.
+
+    Deliberately the newest file rather than the highest number: the folder keeps
+    autosaves from earlier campaigns, and an abandoned campaign that reached turn 69
+    would otherwise mask a fresh one sitting on turn 3 forever.
+    """
+    saves = default_saves_dir()
+    if not saves.is_dir():
+        return None
+    newest_turn: int | None = None
+    newest_mtime = -1.0
+    try:
+        entries = list(saves.iterdir())
+    except OSError:
+        return None
+    for entry in entries:
+        if entry.suffix.lower() != ".sav":
+            continue
+        match = _TURN_END_RE.search(entry.name)
+        if match is None:
+            continue
+        try:
+            mtime = entry.stat().st_mtime
+        except OSError:
+            continue
+        if mtime > newest_mtime:
+            newest_mtime = mtime
+            newest_turn = int(match.group(1))
+    return newest_turn
+
+
+def _latest_turn_end_from_log() -> int | None:
     path = default_message_log_path()
     if not path.is_file():
         return None
