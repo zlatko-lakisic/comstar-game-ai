@@ -13,6 +13,7 @@ CLI (`comstar-overlay --self-test`) rather than from pytest. The judging lives i
 from __future__ import annotations
 
 import sys
+import time
 from dataclasses import dataclass, field
 
 from comstar_game_ai.overlay_ui.checks import (
@@ -119,7 +120,24 @@ def _style_outcome(surfaces) -> CheckOutcome:
     )
 
 
-def run_overlay_self_tests(*, settle_ms: int = SETTLE_MS) -> OverlaySelfTestReport:
+def countdown(seconds: int) -> None:
+    """Give the operator time to focus the game before anything is measured.
+
+    Launched from a console, the console holds focus, and the non-activation check
+    would then be answered about the console rather than the game. Phase 2's live
+    script learned the same lesson.
+    """
+    if seconds <= 0:
+        return
+    print(f"click the game window and leave it focused — starting in {seconds}s", flush=True)
+    for remaining in range(seconds, 0, -1):
+        print(f"  {remaining}...", flush=True)
+        time.sleep(1)
+
+
+def run_overlay_self_tests(
+    *, settle_ms: int = SETTLE_MS, countdown_seconds: int = 5
+) -> OverlaySelfTestReport:
     report = OverlaySelfTestReport()
     if sys.platform != "win32":
         report.fail("Windows required")
@@ -140,6 +158,8 @@ def run_overlay_self_tests(*, settle_ms: int = SETTLE_MS) -> OverlaySelfTestRepo
         report.fail("no game window found — start the game and load a campaign, then re-run")
         return report
 
+    countdown(countdown_seconds)
+
     app = QApplication.instance() or QApplication(sys.argv)
     # Test-pattern mode fills the client area with a colour the game never
     # produces, so capture exclusion is proved rather than assumed.
@@ -151,10 +171,12 @@ def run_overlay_self_tests(*, settle_ms: int = SETTLE_MS) -> OverlaySelfTestRepo
         loop.exec()
         app.processEvents()
 
-        report.record(_style_outcome(surfaces))
-        report.record(non_activation_verdict(foreground_window(), game.hwnd))
-
         overlay_hwnds = surfaces.hwnds()
+        report.record(_style_outcome(surfaces))
+        report.record(
+            non_activation_verdict(foreground_window(), game.hwnd, overlay_hwnds=overlay_hwnds)
+        )
+
         samples = [
             (label, window_from_point(x, y)) for label, (x, y) in _sample_points(surfaces)
         ]

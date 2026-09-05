@@ -49,6 +49,10 @@ Because this design already assumes silent failure is the normal failure, verify
 
 **Built 2026-09-04** as `comstar-overlay --self-test`, which runs all three window checks against the full overlay and exits non-zero on any failure. The verdicts live in `overlay_ui/checks.py` and are unit tested against synthetic frames, including the case that matters most: a check must not pass because the overlay never appeared.
 
+**Passed 2026-09-05** against a live game, all five surfaces up: styles on all five, non-activation, click through at seven sampled points, and capture exclusion with **0 stray pixels** in a 1920x1080 frame. An exact zero, rather than a tolerated few, means `WDA_EXCLUDEFROMCAPTURE` is holding against the mss capture path and no part of the overlay reaches the vision model.
+
+The harness runs a countdown before it measures anything. Launched from a console, the console holds focus, and without the countdown the non-activation check gets answered about the console instead of the game. For the same reason the verdict distinguishes three cases, not two: the game has focus, an overlay surface has focus, or something else does — reporting the third as "the overlay stole focus" would send the reader hunting a bug that is not there.
+
 ## 2. The overlay can silently break actuation, in the hardest way to diagnose
 
 This is the most important thing on this page.
