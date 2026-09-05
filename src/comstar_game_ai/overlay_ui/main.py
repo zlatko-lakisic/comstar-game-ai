@@ -109,12 +109,19 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="fill the client area with the capture-exclusion test pattern",
     )
+    parser.add_argument(
+        "--countdown",
+        type=int,
+        default=5,
+        metavar="SECONDS",
+        help="seconds to focus the game before --self-test measures anything (default 5)",
+    )
     args = parser.parse_args(argv)
 
     if args.self_test:
         from comstar_game_ai.overlay_ui.live_checks import run_overlay_self_tests
 
-        report = run_overlay_self_tests()
+        report = run_overlay_self_tests(countdown_seconds=args.countdown)
         print(report.render())
         return 0 if report.ok else 1
 

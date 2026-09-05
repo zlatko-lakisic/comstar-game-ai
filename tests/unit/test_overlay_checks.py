@@ -133,9 +133,19 @@ def test_non_activation_passes_when_the_game_kept_focus():
 
 
 def test_non_activation_fails_when_a_surface_took_focus():
-    outcome = non_activation_verdict(OVERLAY_HWNDS[0], GAME_HWND)
+    outcome = non_activation_verdict(OVERLAY_HWNDS[0], GAME_HWND, overlay_hwnds=OVERLAY_HWNDS)
     assert not outcome.ok
-    assert "stole foreground" in outcome.detail
+    assert "overlay surface took focus" in outcome.detail
+
+
+def test_a_third_party_holding_focus_is_reported_as_inconclusive():
+    """Launched from a console, the console has focus. Blaming the overlay for
+    that sends the reader hunting a bug that is not there."""
+    console_hwnd = 0x7777
+    outcome = non_activation_verdict(console_hwnd, GAME_HWND, overlay_hwnds=OVERLAY_HWNDS)
+    assert not outcome.ok
+    assert "neither the game nor the overlay" in outcome.detail
+    assert "re-run" in outcome.detail
 
 
 def test_outcomes_are_truthy_by_ok():

@@ -110,12 +110,34 @@ def click_through_verdict(
     )
 
 
-def non_activation_verdict(foreground_hwnd: int, game_hwnd: int) -> CheckOutcome:
-    """Pass when showing the overlay left the game in the foreground."""
+def non_activation_verdict(
+    foreground_hwnd: int,
+    game_hwnd: int,
+    *,
+    overlay_hwnds: Iterable[int] = (),
+) -> CheckOutcome:
+    """Pass when showing the overlay left the game in the foreground.
+
+    Three outcomes, not two. If something that is neither the game nor an overlay
+    surface holds focus — the console this was launched from, most likely — then
+    the check proves nothing, and saying "the overlay stole focus" would send the
+    reader hunting a bug that is not there.
+    """
     if foreground_hwnd == game_hwnd:
         return CheckOutcome("non_activation", True, f"game hwnd {game_hwnd} still foreground")
+
+    if foreground_hwnd in set(overlay_hwnds):
+        return CheckOutcome(
+            "non_activation",
+            False,
+            f"an overlay surface took focus from the game: hwnd {foreground_hwnd} "
+            f"is a surface, expected game hwnd {game_hwnd}",
+        )
+
     return CheckOutcome(
         "non_activation",
         False,
-        f"overlay stole foreground: expected game hwnd {game_hwnd}, got {foreground_hwnd}",
+        f"neither the game nor the overlay has focus (hwnd {foreground_hwnd}); the game "
+        f"must be the foreground window for this check to mean anything — click the game "
+        f"during the countdown and re-run",
     )
