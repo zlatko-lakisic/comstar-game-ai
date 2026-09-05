@@ -67,6 +67,14 @@ safety:
   kill_hotkey: "ctrl+shift+end"
   takeover_hotkey: "ctrl+shift+home"
   handback_hotkey: "ctrl+shift+pause"
+  # Human-override triggers, off until validated on a live campaign. A false
+  # positive here aborts a run in progress, so they are armed deliberately.
+  # Foreground loss is the safer one and the one to try first. Mouse motion needs
+  # every synthetic move declared to the watchdog first, otherwise the agent's own
+  # clicks read as a human grabbing the mouse.
+  human_override_on_foreground_loss: false
+  human_override_on_mouse: false
+  human_override_tolerance_px: 6
 
 paths:
   rome_logs: "%USERPROFILE%/AppData/Local/Feral Interactive/Rome/logs"

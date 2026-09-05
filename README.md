@@ -4,7 +4,7 @@
 
 ![Roman formations on a dry plain, annotated with a thin cyan machine layer](docs/images/hero.png)
 
-> **Status: phases 0–2 complete, phase 3 (overlay) next.** Design is recorded in [`docs/`](docs/); [`docs/cursor-handoff.md`](docs/cursor-handoff.md) is the build brief.
+> **Status: phases 0–2 complete, phase 3 (overlay) in progress.** Design is recorded in [`docs/`](docs/); [`docs/cursor-handoff.md`](docs/cursor-handoff.md) is the build brief.
 
 ---
 

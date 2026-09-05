@@ -28,8 +28,8 @@ phases:
     name: Overlay
     summary: Process C, four surfaces, event stream, takeover handshake, three control transitions.
     accepts: Capture exclusion, click through and non activation self tests all pass with the full overlay live. Kill switch releases everything from any state.
-    evidence: null
-    status: not_started
+    evidence: "4 Sep 2026: kill switch half of the acceptance is met and tested — takeover() deadlocked on a non-reentrant lock and left the lock held, so the kill switch could not run at all; with that fixed, kill releases input from all four control modes. The five surfaces render and route the full event stream, asserted against painted pixels offscreen. The three window self tests are implemented as `comstar-overlay --self-test` and their verdicts are unit tested, but they have not been run against a live game yet, which is what closes this phase."
+    status: in_progress
     blocked_by: null
   - id: 4
     name: Battle loop

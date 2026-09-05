@@ -10,11 +10,13 @@ from pathlib import Path
 
 from comstar_game_ai.game_io.battle.battle_driver import BattleDriver, BattleDriverConfig, load_battle_directive
 from comstar_game_ai.game_io.battle.orders import BattleOrder
+from comstar_game_ai.game_io.campaign.ui_mode import CampaignUiMode, grab_and_classify
 from comstar_game_ai.game_io.capture.capture_loop import CaptureLoop
 from comstar_game_ai.game_io.drivers.hardcoded_campaign import HardcodedCampaignDriver, phase2_accepted
 from comstar_game_ai.game_io.hotkeys import HotkeyManager
 from comstar_game_ai.game_io.input.send_input import SendInputController
 from comstar_game_ai.game_io.safety import ControlMode, SafetyController
+from comstar_game_ai.game_io.watchdog import HumanOverrideWatch
 from comstar_game_ai.game_io.window import find_game_window
 from comstar_game_ai.shared.config import load_config
 from comstar_game_ai.shared.ipc.events import EventKind
@@ -43,6 +45,7 @@ class GameIoRuntime:
     directive_store: DirectiveStore = field(default_factory=DirectiveStore)
     _capture: CaptureLoop | None = field(default=None, init=False)
     _game_hwnd: int | None = field(default=None, init=False)
+    _override_watch: HumanOverrideWatch | None = field(default=None, init=False)
 
     def __post_init__(self) -> None:
         cfg = load_config()
@@ -93,11 +96,18 @@ class GameIoRuntime:
         except OSError as exc:
             _LOGGER.warning("hotkeys unavailable: %s", exc)
 
+        self._override_watch = HumanOverrideWatch.from_config(self.safety, game.hwnd)
+        if self._override_watch.armed:
+            self._override_watch.start()
+            _LOGGER.info("human override watch armed")
+
         self._publish_control()
         return True
 
     def shutdown(self) -> None:
         self.hotkeys.stop()
+        if self._override_watch:
+            self._override_watch.stop()
         if self._capture:
             self._capture.stop()
         self._release_all_input()
@@ -107,7 +117,33 @@ class GameIoRuntime:
         self.safety.kill(reason="hotkey")
         self._publish_control()
 
+    def refuse_takeover_reason(self) -> str | None:
+        """Why the agent must not take control now, or None.
+
+        The design offers takeover only in a playable state. The gate refuses on a
+        *confident* reading of an unplayable screen rather than demanding a
+        confident reading of a playable one: in phase 2 a readiness gate that
+        required positive proof refused to start on a live, playable campaign,
+        because dim winter maps and open sea both classify as unknown.
+        """
+        if self._game_hwnd is None:
+            return None
+        try:
+            classification = grab_and_classify(self._game_hwnd)
+        except Exception:
+            return None
+        if classification.mode is CampaignUiMode.PAUSE and classification.confidence >= 0.6:
+            return f"game is paused or on a menu ({classification.detail})"
+        return None
+
     def _on_takeover(self) -> None:
+        refusal = self.refuse_takeover_reason()
+        if refusal is not None:
+            _LOGGER.warning("takeover refused: %s", refusal)
+            self.publisher.publish(
+                EventKind.AO_STATUS, {"phase": "takeover refused", "summary": refusal}
+            )
+            return
         self.safety.takeover()
         self._publish_control()
 
@@ -137,15 +173,27 @@ class GameIoRuntime:
                     break
 
                 driver.poll_observation()
+                self.publisher.publish(
+                    EventKind.INTENT_DECLARED, {"summary": f"end turn {turn_idx + 1}"}
+                )
+
                 ok = driver.run_turn_stub(wait_for_next_turn=True)
                 if ok:
                     successes += 1
                 else:
                     desyncs += 1
 
+                # The turn either advanced on disk or it did not, so this is a real
+                # verification rather than a restatement of the intent: it is what
+                # turns the overlay red when a turn silently fails to end.
                 self.publisher.publish(
-                    EventKind.INTENT_DECLARED,
-                    {"summary": f"turn {turn_idx + 1}", "ok": ok},
+                    EventKind.VERIFICATION,
+                    {
+                        "ok": ok,
+                        "summary": f"turn {turn_idx + 1} "
+                        + ("advanced" if ok else "did not advance"),
+                        "game_turn": driver.turns_ended,
+                    },
                 )
                 self.safety.pet_deadman()
                 time.sleep(0.05)

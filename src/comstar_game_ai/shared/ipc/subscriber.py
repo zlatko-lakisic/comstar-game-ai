@@ -56,8 +56,18 @@ class EventSubscriber:
                 buf += chunk
                 while b"\n" in buf:
                     line, buf = buf.split(b"\n", 1)
-                    if line.strip():
-                        self.on_event(IpcEvent.from_json(line.decode("utf-8")))
+                    if not line.strip():
+                        continue
+                    # One malformed line must not take the reader thread down and
+                    # silence the overlay for the rest of the session.
+                    try:
+                        event = IpcEvent.from_json(line.decode("utf-8"))
+                    except Exception:
+                        continue
+                    try:
+                        self.on_event(event)
+                    except Exception:
+                        continue
         finally:
             conn.close()
 
