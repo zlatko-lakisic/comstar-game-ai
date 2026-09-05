@@ -47,6 +47,8 @@ Affinity stays because it costs three API calls at startup and covers the case w
 
 Because this design already assumes silent failure is the normal failure, verify rather than trust. At startup, render a known test pattern into every overlay surface, take a capture through the real capture path, and assert the pattern is absent. Refuse to run if it is present.
 
+**Built 2026-09-04** as `comstar-overlay --self-test`, which runs all three window checks against the full overlay and exits non-zero on any failure. The verdicts live in `overlay_ui/checks.py` and are unit tested against synthetic frames, including the case that matters most: a check must not pass because the overlay never appeared.
+
 ## 2. The overlay can silently break actuation, in the hardest way to diagnose
 
 This is the most important thing on this page.
@@ -85,11 +87,11 @@ Two ways out:
 | **Hotkey confirmation** | The overlay displays the ask, the answer is a keypress. No focus steal, and it is symmetric with the kill switch, which is already a hotkey |
 | Separate interactive window | A small ordinary window that does activate. Focus stealing is acceptable here because it happens before actuation begins, but it is a second window type to manage |
 
-**Proposal, open: hotkey confirmation.** Same mechanism grants control and revokes it.
+**Decided 2026-09-04: hotkey confirmation.** Same mechanism grants control and revokes it: `ctrl+shift+home` takes over, `ctrl+shift+pause` hands back, `ctrl+shift+end` kills, all registered in Process A and all configurable under `safety` in `config/default.yaml`.
 
 ### Where detection and control live
 
-**Proposal, open: Process A detects the game and owns the control state machine. Process C displays it.**
+**Decided 2026-09-04: Process A detects the game and owns the control state machine. Process C displays it.**
 
 The reasoning: the kill switch hotkey must live in A regardless, because it has to work when C is dead. The window watchdog is already an A concern. Putting takeover in A means one hotkey handler, one owner of control state, and the event stream stays one way, which keeps every path to the mouse and keyboard inside the process that owns the kill switch.
 
@@ -123,25 +125,27 @@ If the game window closes or loses foreground while the agent holds control, the
 
 A borderless topmost window sized to the game window, painting only an edge gradient with the interior fully transparent. Follows the game window if it moves or the resolution changes, which needs a window position watcher.
 
-**Proposal, open: colour encodes state rather than being constant.** A static glow says the app is running. A state coloured glow says what it is doing, which is more useful at a glance and costs nothing extra:
+**Decided 2026-09-04: colour encodes state rather than being constant.** A static glow says the app is running. A state coloured glow says what it is doing, which is more useful at a glance and costs nothing extra. Frozen and deliberating collapsed into one state, since the battle loop freezes the game precisely in order to deliberate, leaving five:
 
 | State | Meaning |
 |-------|---------|
 | Acting | Issuing orders |
-| Deliberating | Waiting on AO |
-| Frozen | Battle paused for a decision cycle |
-| Suspended | Human touched the mouse, agent stood down |
-| Fault | Actuation verification failed |
+| Deliberating | Battle frozen, waiting on AO |
+| Suspended | Human touched the mouse, agent stood down, or control is being handed back |
+| Fault | Actuation verification failed, or the kill switch fired |
+| Idle | No agent control |
+
+The colours are fixed in `overlay_ui/state.py` and match the legend in `docs/images/overlay-mockup.html`, which is the version an operator will have learned to read.
 
 ### 4.2 Cursor indicator
 
 A ring following the pointer with a short fading trail, and a brief pulse at click points.
 
-**Proposal, open: distinguish synthetic from human movement by colour.** The safety layer already suspends the agent when the human moves the mouse, so showing which one is driving makes that visible rather than inferred.
+**Decided 2026-09-04: distinguish synthetic from human movement by colour.** The safety layer already suspends the agent when the human moves the mouse, so showing which one is driving makes that visible rather than inferred. Synthetic uses the deliberating cyan, human the idle grey.
 
-**Proposal, open: show intent before movement.** A ghost marker at the destination a moment before the cursor travels there, so the overlay shows what the agent is about to do rather than only what it did. This makes the intent record from D1 visible in real time.
+**Decided 2026-09-04: show intent before movement.** A hollow marker at the destination, on the end of a dashed leash, drawn when the intent is declared rather than when the cursor arrives. Hollow because the click has not happened yet. This is what gives an operator time to hit the kill switch before a bad order lands, and it makes the intent record from D1 visible in real time.
 
-**Open:** trail length and decay.
+**Decided 2026-09-04: twelve trail points, no time-based decay.** The trail fades by position in the queue rather than by age, so it costs one repaint per pointer event and nothing at all while the pointer is still — which is most of a frozen battle.
 
 ### 4.3 Virtual keyboard
 
@@ -185,15 +189,25 @@ One way, from A and B into C.
 | AO result or error | B | Chat window |
 | Agent suspended or resumed | A | Suspended state |
 
-## 6. Rendering, open
+## 6. Rendering
 
-The host app is Python. Options, none chosen:
+**Decided 2026-09-04: PySide6, frameless and translucent, with the native extended styles applied through ctypes.**
 
-- **PySide6** frameless translucent always on top window, with the native extended styles applied through ctypes. Keeps everything in one language.
-- **A small C# or WPF overlay process.** Best native window control, adds a second language and a build step.
-- **A web view.** Easiest to style, heaviest at runtime, and transparency plus click through is fiddly.
+The alternatives were a C# or WPF overlay process, which buys the best native window control at the price of a second language and a build step, and a web view, which is the easiest to style and the fiddliest to make both transparent and click through. Neither price is worth paying while the whole overlay is five windows drawing a border, a chip, a key row, a cursor ring and a scrollback.
 
 Whichever is chosen, the overlay must be cheap to redraw. In battles the game is frozen most of the time, so this matters less than it would otherwise, but campaign play runs continuously.
+
+### 6.1 What was built, 2026-09-04
+
+Five surfaces rather than four: the edge glow and the state chip are separate top-level windows, because the glow has to span the whole client area to frame it while the chip has to be small enough to sit in a corner without covering the map.
+
+Three decisions had to be made without a live game to test against, and each was made in the direction that fails safe:
+
+- **The click through self test asks the OS, it does not click.** `WindowFromPoint` honours `WS_EX_TRANSPARENT`, so asking which window owns a point *is* the click through question, and unlike injecting a real click it cannot mutate a live campaign to answer it.
+- **Capture exclusion is proved, not assumed.** `--self-test` fills the client area with a colour Rome's earth-sea-parchment palette never produces, then asserts it is absent from a captured frame. The stroke-only glow of normal operation could pass that test by being too faint to detect.
+- **The human override triggers ship disarmed.** Foreground loss and mouse motion are both real signals, but a false positive aborts a run in progress, and the mouse trigger cannot tell the agent's own clicks from a human's until every input path declares its synthetic moves. They are wired, tested against fake inputs, and left off in config until a live run can confirm them.
+
+The alignment target is the **client** rect, not the window rect, matching the capture path: on the reference machine those differ by a 31 px title bar and an 8 px border, which is enough to put every surface out of register with the coordinates Process A derives from a frame.
 
 ## 7. Consequences for existing documents
 

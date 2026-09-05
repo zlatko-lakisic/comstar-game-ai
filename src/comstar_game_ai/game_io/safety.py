@@ -31,7 +31,11 @@ class SafetyController:
     on_handback: Callable[[], None] | None = None
     _deadman_deadline: float | None = field(default=None, init=False)
     _timer: threading.Timer | None = field(default=None, init=False)
-    _lock: threading.Lock = field(default_factory=threading.Lock, init=False)
+    # Reentrant: takeover() holds the lock and calls arm_deadman(), which takes it
+    # again. With a plain Lock that deadlocked forever, and because the lock was then
+    # never released the kill switch could no longer run — the one thing that must
+    # always work.
+    _lock: threading.RLock = field(default_factory=threading.RLock, init=False)
 
     def __post_init__(self) -> None:
         cfg = load_config().get("safety", {})
