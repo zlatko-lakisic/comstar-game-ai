@@ -449,19 +449,23 @@ Console wrapper with the fair play gate. `SendInput` actuator with dwell and hov
 Process C, four surfaces, event stream, takeover handshake, three control transitions.
 **Accept:** capture exclusion, click through and non activation self tests all pass with the full overlay live. Kill switch releases everything from any state.
 
-### Phase 4. Battle loop
+### Phase 4. Campaign UI atlas
+Parse the game's own string tables — `tooltips.txt`, `cursor_action_tooltips.txt`, `strat.txt`, `diplomacy.txt`, `event_titles.txt`, `event_strings.txt`, `shortcut.txt` — and join them to measured on-screen geometry, so every panel has both a meaning and a locator. Catalogue every panel, dialog, control and cursor action reachable from the campaign map: what it is, what it means, what it is for, how it opens, how it closes, and whether it blocks.
+**Accept:** zero unknowns across the captured frame corpus, each frame resolved to a named panel carrying a purpose and a close affordance; every campaign cursor action in `cursor_action_tooltips.txt` represented in the atlas; a held-out frame set named correctly.
+
+### Phase 5. Battle loop
 `toggle_game_update` freeze cycle, `output_unit_positions` parse, deployment phase handling, post battle harvest.
 **Accept:** a complete battle fought at a fixed tick with no manual intervention, and an after action record written.
 
-### Phase 5. Deterministic predictors
+### Phase 6. Deterministic predictors
 Built from `Battle_and_Campaign_Formulae.md`, `EDU`, `EDB`, `Campaign_Map_Pathfinding.md`. Melee and charge resolution, fatigue and morale, auto resolve estimate, siege duration, economy projection, movement reachability. Prediction log from the first line.
 **Accept:** every predictor output paired with an observed outcome in the log.
 
-### Phase 6. AO integration
+### Phase 7. AO integration
 Reach session overlay, mTLS enrolment, `direct_agent` calls, view compositor, neutral directive fallback, cancellation on stale.
 **Accept:** directives influence play, a move is never blocked, every failure path resolves to neutral.
 
-### Phase 7. Learning
+### Phase 8. Learning
 After action records, corpus, consolidation.
 **Accept:** observable records ingest over mTLS; privileged material never indexed; consolidator stub runs offline.
 

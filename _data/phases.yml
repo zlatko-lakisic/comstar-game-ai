@@ -1,7 +1,7 @@
 # Bump `updated` whenever a phase status changes.
 updated: "2026-09-05"
 current_phase: 4
-total: 7
+total: 8
 phases:
   - id: 0
     name: Preconditions and capture
@@ -21,7 +21,7 @@ phases:
     name: Actuation
     summary: Console wrapper with the fair play gate, SendInput actuator with dwell and hover, diff based order computation, verification tiers, intent record, vision located HUD controls and modal dismissal.
     accepts: 20 consecutive turns driven end to end, hardcoded, no reasoning, zero desyncs between intended and actual.
-    evidence: "4 Sep 2026: drove a Julii campaign from turn 1 to turn 25, hardcoded and unattended, verified against Rome's own turn autosaves rather than the run's counters. The run ended when a battle was entered, which belongs to phase 4."
+    evidence: "4 Sep 2026: drove a Julii campaign from turn 1 to turn 25, hardcoded and unattended, verified against Rome's own turn autosaves rather than the run's counters. The run ended when a battle was entered, which belongs to the battle loop phase."
     status: done
     blocked_by: null
   - id: 3
@@ -32,27 +32,34 @@ phases:
     status: done
     blocked_by: null
   - id: 4
+    name: Campaign UI atlas
+    summary: Parse the game's own string tables and join them to measured on-screen geometry, so every panel has both a meaning and a locator. Catalogue every panel, dialog, control and cursor action on the campaign map: what it is, what it means, what it is for, how it opens, how it closes, and whether it blocks.
+    accepts: Zero unknowns across the captured frame corpus, each frame resolved to a named panel carrying a purpose and a close affordance. Every campaign cursor action in the game's own tooltips represented in the atlas, and a held-out frame set named correctly.
+    evidence: null
+    status: in_progress
+    blocked_by: null
+  - id: 5
     name: Battle loop
     summary: toggle_game_update freeze cycle, output_unit_positions parse, deployment phase handling, post battle harvest.
     accepts: A complete battle fought at a fixed tick with no manual intervention, and an after action record written.
     evidence: null
     status: not_started
     blocked_by: null
-  - id: 5
+  - id: 6
     name: Deterministic predictors
     summary: "Built from Battle_and_Campaign_Formulae.md: melee and charge resolution, fatigue and morale, auto resolve estimate, siege duration, economy projection, movement reachability."
     accepts: Every predictor output paired with an observed outcome in the log.
     evidence: null
     status: not_started
     blocked_by: null
-  - id: 6
+  - id: 7
     name: AO integration
     summary: Reach session overlay, mTLS enrolment, direct_agent calls, view compositor, neutral directive fallback, cancellation on stale.
     accepts: Directives influence play, a move is never blocked, every failure path resolves to neutral.
     evidence: null
     status: not_started
     blocked_by: null
-  - id: 7
+  - id: 8
     name: Learning
     summary: After action records, the experience corpus, offline consolidation into doctrine.
     accepts: Records written and retrievable, consolidation produces doctrine.
