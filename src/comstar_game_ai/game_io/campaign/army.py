@@ -24,13 +24,23 @@ order on that left-click. A nameplate click before the sword appears selects
 the settlement — Enemy SEGESTA Village this turn — instead of attacking.
 Town attack is a siege. A field-army click is Battle Deployment (Phase 5).
 Do not click a Gallic stack: that would declare war.
+
+For attack safety, a selected general is not enough evidence that the whole stack is
+selected: a map click on the general model can narrow selection to the bodyguard.
+Reacquire via Lists → Military Forces → locate and confirm multiple unit cards before
+issuing an attack order.
 """
 
 from __future__ import annotations
+from collections.abc import Sequence
 
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 from comstar_game_ai.game_io.campaign import construction
+
+if TYPE_CHECKING:
+    from PIL import Image
 
 
 @dataclass(frozen=True)
@@ -55,6 +65,7 @@ FIELD_CONSTRUCTION_CLOSE_X = (0.830, 0.419)
 MAP_ORDER_BUTTON = "left"
 MAP_ORDER_TELL = "cursor_glyph"
 ATTACK_CURSOR = "sword"
+MIN_SAFE_ATTACK_UNITS = 2
 
 CONTROLS: tuple[HudControl, ...] = (
     HudControl(
@@ -94,3 +105,58 @@ BY_CONTROL: dict[str, HudControl] = {control.id: control for control in CONTROLS
 
 def mutating_controls() -> tuple[HudControl, ...]:
     return tuple(control for control in CONTROLS if control.hazard)
+
+
+def attack_requires_full_stack(selected_units: int, *, minimum_units: int = MIN_SAFE_ATTACK_UNITS) -> bool:
+    """Require at least two selected unit cards before attacking.
+
+    A general alone can move and fight, but unattended campaign logic should not send
+    the bodyguard in by itself because a map reselect silently narrowed the selection.
+    """
+    return selected_units >= max(1, int(minimum_units))
+
+
+def count_selected_unit_cards(image: Image.Image) -> int:
+    """Count visible selected-army unit cards in the bottom HUD.
+
+    The measured army HUD keeps the selected stack's unit cards in the bottom-centre
+    strip. Cards are warm parchment with dark separators between them, so a 1-D density
+    scan is enough to estimate how many are present without OCR.
+    """
+    import numpy as np
+
+    rgb = np.asarray(image.convert("RGB"))
+    height, width = rgb.shape[:2]
+    strip = rgb[int(height * 0.84) : int(height * 0.96), int(width * 0.25) : int(width * 0.73)]
+    if strip.size == 0:
+        return 0
+
+    r = strip[:, :, 0].astype(np.int16)
+    g = strip[:, :, 1].astype(np.int16)
+    b = strip[:, :, 2].astype(np.int16)
+    parchment = (r >= 140) & (g >= 105) & (b >= 60) & (r >= g) & (g >= b)
+    dense_cols = parchment.mean(axis=0) >= 0.22
+    runs = _true_runs(dense_cols)
+    return sum(1 for start, end in runs if end - start >= 12)
+
+
+def attack_safe_stack_selected(image: Image.Image, *, minimum_units: int = MIN_SAFE_ATTACK_UNITS) -> bool:
+    """Whether the screenshot shows enough selected unit cards for a safe attack."""
+    return attack_requires_full_stack(
+        count_selected_unit_cards(image),
+        minimum_units=minimum_units,
+    )
+
+
+def _true_runs(values: Sequence[bool]) -> list[tuple[int, int]]:
+    runs: list[tuple[int, int]] = []
+    start: int | None = None
+    for idx, value in enumerate(values):
+        if value and start is None:
+            start = idx
+        elif not value and start is not None:
+            runs.append((start, idx))
+            start = None
+    if start is not None:
+        runs.append((start, len(values)))
+    return runs
