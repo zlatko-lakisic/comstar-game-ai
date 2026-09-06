@@ -69,6 +69,60 @@ def _stop_overlay(proc: subprocess.Popen | None) -> None:
     print("OK  overlay closed")
 
 
+def _start_deliberation(interval_s: float, log_path: Path) -> subprocess.Popen | None:
+    """Bring up Process B beside this run so one command puts AO in the loop.
+
+    Its output goes to its own file rather than this console: model chatter
+    interleaved with the turn trail makes both unreadable, and the trail is the
+    thing an operator watches during a live run.
+    """
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    handle = log_path.open("w", encoding="utf-8")
+    proc = subprocess.Popen(
+        [
+            sys.executable,
+            "-m",
+            "comstar_game_ai.agent.main",
+            "--deliberate-loop",
+            "--interval",
+            str(interval_s),
+        ],
+        stdout=handle,
+        stderr=subprocess.STDOUT,
+    )
+    print(f"OK  deliberation started (pid {proc.pid}) — log: {log_path}")
+    return proc
+
+
+def _stop_deliberation(proc: subprocess.Popen | None) -> None:
+    if proc is None or proc.poll() is not None:
+        return
+    proc.terminate()
+    try:
+        proc.wait(timeout=10)
+    except subprocess.TimeoutExpired:
+        proc.kill()
+    print("OK  deliberation stopped")
+
+
+def _wait_for_first_directive(
+    store: DirectiveStore, *, newer_than: float, timeout_s: float
+) -> bool:
+    """Whether Process B has written a directive of its own during this run.
+
+    A file left by an earlier session does not count. Without this check a dead AO
+    is indistinguishable from a thoughtful one: the driver would read hold every
+    turn and the campaign would sit still for twenty turns before anyone noticed.
+    """
+    deadline = time.time() + timeout_s
+    while time.time() < deadline:
+        stored = store.read()
+        if stored is not None and float(stored.ts or 0.0) >= newer_than:
+            return True
+        time.sleep(1.0)
+    return False
+
+
 def _countdown(seconds: int) -> None:
     if seconds <= 0:
         return
@@ -102,6 +156,25 @@ def main() -> int:
         help="do not start the operator overlay, and publish no events to it",
     )
     parser.set_defaults(overlay=True)
+    parser.add_argument(
+        "--directives",
+        dest="directives",
+        action="store_true",
+        default=None,
+        help="put AO in the loop: start Process B and plan each turn from its directive",
+    )
+    parser.add_argument(
+        "--no-directives",
+        dest="directives",
+        action="store_false",
+        help="ignore any directive on disk and plan from the loop's own policy",
+    )
+    parser.add_argument(
+        "--deliberate-interval",
+        type=float,
+        default=45.0,
+        help="Seconds between AO directives with --directives (default 45)",
+    )
     args = parser.parse_args()
 
     cfg = load_config()
@@ -136,9 +209,13 @@ def main() -> int:
     targets = combat_cfg.get("attack_targets") or []
 
     directive_cfg = (cfg.get("campaign", {}).get("directive") or {})
-    directive_store = (
-        DirectiveStore(directive_cfg.get("path")) if directive_cfg.get("enabled") else None
+    # The flag wins over config so a single command can put AO in the loop without
+    # editing YAML, and --no-directives can take it back out for a comparison run.
+    directives_on = (
+        bool(directive_cfg.get("enabled")) if args.directives is None else args.directives
     )
+    directive_max_age_s = float(directive_cfg.get("max_age_s", 900))
+    directive_store = DirectiveStore(directive_cfg.get("path")) if directives_on else None
 
     driver = HardcodedCampaignDriver(
         player_faction=faction,
@@ -151,7 +228,7 @@ def main() -> int:
         army_lists_row_norm=(float(row[0]), float(row[1])) if row else None,
         attack_targets=tuple((float(t[0]), float(t[1])) for t in targets),
         directive_store=directive_store,
-        directive_max_age_s=float(directive_cfg.get("max_age_s", 900)),
+        directive_max_age_s=directive_max_age_s,
     )
     print(
         f"INFO combat: auto_resolve={driver.auto_resolve_battles} "
@@ -160,10 +237,7 @@ def main() -> int:
     if directive_store is None:
         print("INFO directives: off — the loop plans from its own policy")
     else:
-        print(
-            f"INFO directives: reading {directive_store.path} "
-            f"(run `comstar-agent --deliberate-loop` to write them)"
-        )
+        print(f"INFO directives: reading {directive_store.path}")
     ingested = driver.bootstrap_from_logs()
     print(f"INFO bootstrap_from_logs: {ingested} records")
     print(
@@ -200,7 +274,37 @@ def main() -> int:
         else:
             print("INFO no overlay listening — the run publishes nothing")
 
+    # Also before the countdown: AO's first call has to reach ada and come back, so
+    # the seconds the operator spends focusing Rome are the warm-up.
+    deliberation_proc = None
+    directives_started_at = time.time()
+    if directive_store is not None:
+        deliberation_proc = _start_deliberation(
+            args.deliberate_interval,
+            Path(f"data/runtime/deliberate_{stamp}.log"),
+        )
+
     _countdown(max(0, args.seconds))
+
+    if directive_store is not None:
+        # A stale file on disk is not evidence that anyone is thinking, so this waits
+        # for a directive written since Process B came up. If none arrives, the run
+        # continues on the loop's own policy: twenty turns of standing still because
+        # ada was unreachable is a worse outcome than twenty turns without AO.
+        if _wait_for_first_directive(
+            directive_store, newer_than=directives_started_at, timeout_s=90.0
+        ):
+            print(f"OK  first directive in: {driver.current_directive().intent.objective}")
+        else:
+            alive = deliberation_proc is not None and deliberation_proc.poll() is None
+            print(
+                "WARN no directive after 90s "
+                f"({'Process B still running' if alive else 'Process B exited'}) — "
+                "continuing on the loop's own policy. Check the deliberate log; "
+                "ada may be down or llama3.1:8b not pulled."
+            )
+            driver.directive_store = None
+            directive_store = None
 
     # Classify only after the countdown. Before it, Rome may not be focused and the
     # operator has not had their chance to clear the screen, so an early look judged a
@@ -232,6 +336,7 @@ def main() -> int:
                 "strat map. Load or start a campaign, wait for the map, then re-run."
             )
             _stop_overlay(overlay_proc)
+            _stop_deliberation(deliberation_proc)
             return 1
 
     try:
@@ -243,8 +348,10 @@ def main() -> int:
         )
     except BaseException:
         # Ctrl+C and the kill switch included: a stranded overlay sits on top of
-        # every other window, so it must not survive an abandoned run.
+        # every other window, and a stranded Process B keeps talking to ada, so
+        # neither may survive an abandoned run.
         _stop_overlay(overlay_proc)
+        _stop_deliberation(deliberation_proc)
         raise
 
     print(
@@ -263,10 +370,16 @@ def main() -> int:
         f"OK  attacks_ordered={result['attacks_ordered']} "
         f"battles_auto_resolved={result['battles_resolved']}"
     )
+    if driver.directive_store is not None:
+        print(f"OK  last directive: {driver.last_directive or 'none read'}")
 
     report = {
         "game": {"title": game.title, "rect": game.rect},
         "turns": result,
+        "directives": {
+            "enabled": driver.directive_store is not None,
+            "last": driver.last_directive,
+        },
         "state": driver.state.state.value,
         "belief_history_len": len(driver.belief.history),
         "intent_log": str(driver.intent_writer.path),
@@ -279,6 +392,7 @@ def main() -> int:
     # Left up through the run and the report, so the last state is still on screen
     # while the numbers print. Only closed if this script started it.
     _stop_overlay(overlay_proc)
+    _stop_deliberation(deliberation_proc)
 
     if phase2_accepted(result, turns=turns):
         print(f"\nPASS Phase 2 actuation ({turns} turns, zero desyncs)")
