@@ -300,6 +300,76 @@ LEARNINGS: tuple[Learning, ...] = (
         evidence="prebattle_now2.png then autoresolve_result2.png back on the map",
     ),
     Learning(
+        id="logging_off_makes_the_run_blind",
+        action="Run 20 turns against a Rome launched without enable_logging",
+        outcome="Zero belief records: no scripting_log.txt at all, message_log frozen at launch",
+        valence=Valence.BAD,
+        lesson=(
+            "Check that the log is growing before a run, not that the mod is enabled. "
+            "comstar-telemetry loaded and wrote nothing, because script_log output "
+            "needs the game's logging switch. Autosave filenames were the only turn "
+            "evidence left, and nothing recorded what changed in the campaign."
+        ),
+        evidence=(
+            "20260906 run: mod_loading.txt shows comstar-telemetry enabled; "
+            "message_log.txt mtime = launch time, 'Logging disabled' in its header; "
+            "belief_history=0 armies=0 settlements=0"
+        ),
+    ),
+    Learning(
+        id="empty_belief_reads_as_a_decision",
+        action="Plan a turn with no characters or settlements in belief",
+        outcome="No moves planned, and the trail looked identical to a deliberate hold",
+        valence=Valence.BAD,
+        lesson=(
+            "A blind run and a cautious run are indistinguishable unless belief counts "
+            "are reported per turn. _planned_moves needs both a character and a "
+            "settlement, so an empty store silently disables movement whatever the "
+            "directive says."
+        ),
+        evidence="20260906 run: 20 turns of 'halt_ai julii, list_characters, run_ai' with belief empty",
+    ),
+    Learning(
+        id="ai_turn_banner_reads_as_a_modal",
+        action="Classify the screen while another faction takes its turn",
+        outcome="modal / left_overlay_panel at 0.69-0.84 confidence, with nothing to dismiss",
+        valence=Valence.BAD,
+        lesson=(
+            "The between-turns faction banner is a wait state, not a panel. Each one "
+            "cost a 180s-timeout vision call that answered 'nothing over the map', and "
+            "the handler then clicked by geometry anyway."
+        ),
+        evidence="dialog-6/10/20 frames: Rebels, Numidia and Gaul turn banners over the map",
+    ),
+    Learning(
+        id="parked_cursor_makes_its_own_panel",
+        action="Leave the cursor where the last click landed on the map",
+        outcome="A character tooltip opened under it and classified as a modal",
+        valence=Valence.BAD,
+        lesson=(
+            "Park the cursor on neutral chrome after clicking. Rome's hover tooltips "
+            "are parchment, so our own idle pointer manufactures the panels the loop "
+            "then tries to dismiss."
+        ),
+        evidence="dialog-16 frame: Numerius Flaminius tooltip under a cursor left on the map",
+    ),
+    Learning(
+        id="passive_turns_drift_into_deficit",
+        action="End 20 turns without managing the economy",
+        outcome="Net income -191: expenditure was salaries and upkeep alone, +287 in one turn",
+        valence=Valence.MIXED,
+        lesson=(
+            "Ending turns is not neutral. Ten in-game years of family growth add "
+            "generals, each with a bodyguard and a salary, while recruitment and "
+            "construction stayed at 0 — so the deficit came from time passing, not "
+            "from anything the loop ordered."
+        ),
+        evidence=(
+            "tip_alt2.png Financial Overview at 261 BC: income 4360 "
+            "(taxes 1949, trade 541, farming 1536, other 334) vs upkeep 4551"
+        ),
+    ),
+    Learning(
         id="field_construction_opens_from_the_town_disc",
         action="Click Construction <6> with Flavius in the field",
         outcome="Watchtower and fort cards opened.",

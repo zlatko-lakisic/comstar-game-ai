@@ -19,6 +19,7 @@ from comstar_game_ai.game_io.elevation import (
     tee_output,
     trail_path_from_argv,
 )
+from comstar_game_ai.game_io.logs.telemetry_health import telemetry_health
 from comstar_game_ai.game_io.state_machine import GameState
 from comstar_game_ai.game_io.window import find_game_window
 from comstar_game_ai.shared.config import load_config
@@ -170,6 +171,11 @@ def main() -> int:
         help="ignore any directive on disk and plan from the loop's own policy",
     )
     parser.add_argument(
+        "--allow-blind",
+        action="store_true",
+        help="run even when Rome's logs are off, i.e. with no telemetry and no belief",
+    )
+    parser.add_argument(
         "--deliberate-interval",
         type=float,
         default=45.0,
@@ -186,6 +192,20 @@ def main() -> int:
 
     print(f"OK  game_window: {game.title!r} {game.width}x{game.height}")
     print(f"OK  trail: {trail}")
+
+    # Before elevation and before any input: a Rome launched by hand has its logs off,
+    # and nothing inside the game reveals that. Turns still advance, so the run looks
+    # healthy for twenty minutes and ends with an empty belief store.
+    health = telemetry_health()
+    print(f"{'OK ' if health.ok else 'WARN'} {health.summary}")
+    if not health.ok and not args.allow_blind:
+        print(
+            "FAIL: telemetry is off, so this run would drive the campaign blind — no "
+            "characters, no settlements, no record of what changed. Relaunch with "
+            "scripts/launch_rome.ps1 (it passes -enable_logging "
+            "-verbose_script_logging), or re-run with --allow-blind to accept it."
+        )
+        return 1
 
     import win32process
 
@@ -358,10 +378,16 @@ def main() -> int:
         f"{'OK' if result['desyncs'] == 0 else 'WARN'}  turns_ok={result['turns_ok']} "
         f"turns_failed={result['turns_failed']} desyncs={result['desyncs']}"
     )
+    resets = result.get("turn_baseline_resets", 0)
     print(
         f"OK  campaign advanced {result['turns_advanced']} turns "
-        f"({result['game_turn_start']} -> {result['game_turn_end']})"
+        f"(endpoints seen: {result['game_turn_start']} -> {result['game_turn_end']})"
     )
+    if resets:
+        print(
+            f"INFO turn baseline re-read {resets}x — Rome's saves folder still holds an "
+            "earlier campaign, so the endpoints above are not a measure of this run"
+        )
     print(
         f"OK  belief_history={len(driver.belief.history)} armies={len(driver.belief.armies)} "
         f"settlements={len(driver.belief.settlements)}"

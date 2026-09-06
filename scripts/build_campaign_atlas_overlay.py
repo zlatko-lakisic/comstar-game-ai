@@ -686,9 +686,10 @@ def main() -> int:
             "content": {"file": "campaign_learnings.md"},
             "inject": {
                 "heading": "## Measured campaign learnings",
-                # Raised with the combat records from the Segesta siege. The corpus
-                # only grows, so this is a ceiling to revisit, not a fixed budget.
-                "max_chars": 4400,
+                # Raised with the combat records from the Segesta siege, then with
+                # what the first blind 20-turn run taught. The corpus only grows, so
+                # this is a ceiling to revisit, not a fixed budget.
+                "max_chars": 5400,
             },
             "learnings": doc["learnings"],
         },

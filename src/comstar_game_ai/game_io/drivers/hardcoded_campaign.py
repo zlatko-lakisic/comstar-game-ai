@@ -96,6 +96,9 @@ class HardcodedCampaignDriver:
     attacks_ordered: int = field(default=0, init=False)
     _publish_failures: int = field(default=0, init=False)
     _combat: CombatDirector | None = field(default=None, init=False)
+    _turn_advances: int = field(default=0, init=False)
+    _last_started_seen: int = field(default=0, init=False)
+    _turn_baseline_resets: int = field(default=0, init=False)
     _julii_turns_seen: int = field(default=0, init=False)
     _julii_turn_ready: bool = field(default=False, init=False)
     _julii_round_starts: int = field(default=0, init=False)
@@ -335,6 +338,7 @@ class HardcodedCampaignDriver:
 
     def poll_observation(self) -> int:
         self._refresh_turn_from_message_log()
+        self._note_turn_started(self.turn_started)
         count = self._poll_message_log_turns()
         for record in self.log_tailer.poll():
             count += 1
@@ -342,6 +346,31 @@ class HardcodedCampaignDriver:
         if count:
             self.belief.decay()
         return count
+
+    def _note_turn_started(self, started: int) -> None:
+        """Track turn advances as they happen, from the turn Rome says we are playing.
+
+        Counted here rather than subtracted from the endpoints at the end of a run.
+        Rome's saves folder keeps earlier campaigns, so before this session ends its
+        first turn the newest `Turn N End.sav` necessarily belongs to a previous one:
+        a run from turn 2 to 20 measured itself against a leftover turn 25 and scored
+        -6, which the old `max(0, ...)` reported as zero turns driven.
+
+        A number going *down* is that same leftover, or a reloaded save. It is never a
+        turn going backwards, so it re-baselines instead of counting.
+        """
+        if started <= 0:
+            return
+        if self._last_started_seen == 0:
+            self._last_started_seen = started
+            return
+        if started < self._last_started_seen:
+            self._last_started_seen = started
+            self._turn_baseline_resets += 1
+            return
+        if started > self._last_started_seen:
+            self._turn_advances += started - self._last_started_seen
+            self._last_started_seen = started
 
     def _ingest_script_record(self, record: dict[str, str]) -> None:
         event = record.get("event")
@@ -805,6 +834,11 @@ class HardcodedCampaignDriver:
                     )
                     if ok:
                         self._julii_turn_ready = True
+                        # The wait loop spends its time classifying AI-turn banners and
+                        # hover tooltips as modals, and returns the moment the turn
+                        # lands without looking again. Verifying on that leftover state
+                        # failed a cycle whose turn had demonstrably advanced.
+                        self._sync_ui(handle_modal=False)
 
         if wait_for_next_turn and ok and not self.auto_end_turn:
             # Orders-only mode: still wait for an external turn advance if requested.
@@ -876,11 +910,15 @@ class HardcodedCampaignDriver:
             "turns_failed": fail_count,
             "requested": n,
             "desyncs": fail_count,
-            # The campaign's own count, so a run cannot pass on cycles that reported
-            # success without moving the game on.
+            # Endpoints are reported for context only. They are read from Rome's saves
+            # folder, which keeps earlier campaigns, so subtracting them can produce a
+            # negative and once scored an 18-turn run as zero.
             "game_turn_start": turn_at_start,
             "game_turn_end": turn_at_end,
-            "turns_advanced": max(0, turn_at_end - turn_at_start),
+            # Every advance counted as it was proven by a new `Turn N Start.sav`, so a
+            # cycle still cannot pass by reporting success without moving the game on.
+            "turns_advanced": self._turn_advances,
+            "turn_baseline_resets": self._turn_baseline_resets,
             "attacks_ordered": self.attacks_ordered,
             "battles_resolved": self.battles_resolved,
         }
