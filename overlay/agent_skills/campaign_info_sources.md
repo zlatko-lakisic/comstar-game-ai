@@ -19,7 +19,7 @@ One surface per question. Do not substitute a nearby number.
 - What can this settlement build, and what does a building do: `construction_window` — Select the town, press 6; not A left-click queues the spend.
 - What can this settlement recruit: `training_window` — Select the town, press 5; not A left-click queues the unit and spends money.
 - What unlocks a building, unit, or agent in this town: `building_browser` — Tree disc (0.934, 0.968) or right-click Construction; not Green and red tree lines are not accept/reject.
-- Who is this spy or diplomat, and what can they do this turn: `agent_selection_hud` — Click the character on the map, or Lists → Agents → locate; not The centre strip is agents at this place, not this character's followers.
+- Who is this spy or diplomat, and what can they do this turn: `agent_selection_hud` — Click the character, or Lists → Agents → locate; not The centre strip is agents at this place, not this character's followers.
 - What traits and followers does this character have: `character_scroll` — Click the traits HUD button; not Alt+click opens the Steam wiki.
 - Which agents do we have, and where are they: `lists_scroll` — Ctrl+5, Agents sub-tab; not A SEND-list row only stages the path.
 - How far is a send target, and which one is nearest: `agent_selection_hud` — Select the agent; not A model standing next to the spy on the 3D map is not the distance read.

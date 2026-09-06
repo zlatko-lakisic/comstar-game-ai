@@ -265,6 +265,41 @@ LEARNINGS: tuple[Learning, ...] = (
         evidence="army_sword_on_segesta.png / army_attack_segesta2.png; operator: left-click after glyph",
     ),
     Learning(
+        id="map_click_on_the_general_narrows_the_stack",
+        action="Reselect Flavius with a map click, then attack",
+        outcome="The HUD showed one unit card, so the order would have sent the bodyguard alone",
+        valence=Valence.BAD,
+        lesson=(
+            "A selected general is not a selected army. Reacquire through Lists → "
+            "Military Forces → locate, and count unit cards before ordering an attack."
+        ),
+        evidence="field_selected.png single card vs army_lists.png Flavius Julius, 5 units",
+    ),
+    Learning(
+        id="attack_glyph_is_a_change_not_a_value",
+        action="Compare the cursor handle over own land and over the rebel stack",
+        outcome="It changed, and the click on the changed handle issued the attack",
+        valence=Valence.MIXED,
+        lesson=(
+            "Baseline the cursor in the same session and watch it change. The handle "
+            "identifies the glyph within one session only, so a stored number is not "
+            "evidence of a target."
+        ),
+        evidence="cur_land.bmp vs cur_stack_0.24_0.38.bmp; attack issued on the changed handle",
+    ),
+    Learning(
+        id="auto_resolve_clears_battle_deployment",
+        action="Click auto-resolve at (0.43, 0.72) on Battle Deployment",
+        outcome="The battle resolved and the campaign map came back",
+        valence=Valence.GOOD,
+        lesson=(
+            "Auto-resolve is the only safe answer while there is no battle loop. "
+            "Resolve it before the modal handler, which reads it as an ordinary "
+            "parchment panel and would click a decision button."
+        ),
+        evidence="prebattle_now2.png then autoresolve_result2.png back on the map",
+    ),
+    Learning(
         id="field_construction_opens_from_the_town_disc",
         action="Click Construction <6> with Flavius in the field",
         outcome="Watchtower and fort cards opened.",

@@ -10,6 +10,7 @@ from typing import Callable
 
 from comstar_game_ai.agent.belief.entities import Army, ExistenceStatus
 from comstar_game_ai.agent.belief.store import BeliefStore
+from comstar_game_ai.game_io.campaign.combat import CombatDirector
 from comstar_game_ai.game_io.campaign.modal import ensure_campaign_map, localize_colored_modal_buttons
 from comstar_game_ai.game_io.campaign.orders import CampaignPlanner
 from comstar_game_ai.game_io.campaign.ui_mode import (
@@ -26,6 +27,8 @@ from comstar_game_ai.game_io.logs.turn_boundary import latest_turn_end, latest_t
 from comstar_game_ai.game_io.logs.scripting_log import ScriptingLogTailer
 from comstar_game_ai.game_io.state_machine import GameState, GameStateDetector
 from comstar_game_ai.game_io.verification import VerificationPipeline, VerificationResult
+from comstar_game_ai.shared.ipc.events import EventKind
+from comstar_game_ai.shared.ipc.publisher import EventPublisher
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -64,6 +67,24 @@ class HardcodedCampaignDriver:
     end_turn_delay_s: float = 0.0
     use_vision: bool = False
     planner: CampaignPlanner | None = None
+    # Answer a Battle Deployment panel with auto-resolve before the modal handler
+    # sees it. That panel reads as a plain modal, and the handler is willing to click
+    # a decision button on it — 'fight' would hand control to a battle map no loop
+    # can drive. Phase 2 lost a run to exactly this.
+    auto_resolve_battles: bool = True
+    # The attack step is opt-in: it needs a measured Lists row for the stack and at
+    # least one target, and it refuses to act on anything less than the game's own
+    # evidence (full stack in the HUD, attack glyph under the cursor).
+    attack_enabled: bool = False
+    army_lists_row_norm: tuple[float, float] | None = None
+    attack_targets: tuple[tuple[float, float], ...] = ()
+    # Set to feed the operator overlay (Process C). None means nobody is watching,
+    # which is the normal case: the campaign loop must never wait on a spectator.
+    publisher: EventPublisher | None = None
+    battles_resolved: int = field(default=0, init=False)
+    attacks_ordered: int = field(default=0, init=False)
+    _publish_failures: int = field(default=0, init=False)
+    _combat: CombatDirector | None = field(default=None, init=False)
     _julii_turns_seen: int = field(default=0, init=False)
     _julii_turn_ready: bool = field(default=False, init=False)
     _julii_round_starts: int = field(default=0, init=False)
@@ -81,6 +102,23 @@ class HardcodedCampaignDriver:
         if self.planner is None:
             self.planner = CampaignPlanner(player_faction=self.player_faction)
 
+    def _publish(self, kind: EventKind, payload: dict[str, object] | None = None) -> None:
+        """Tell the overlay what just happened. Never let it cost the run.
+
+        A publish to an overlay that died costs a connect timeout every call, so the
+        publisher is dropped after a few failures rather than taxing every turn.
+        """
+        if self.publisher is None:
+            return
+        try:
+            self.publisher.publish(kind, dict(payload or {}))
+            self._publish_failures = 0
+        except Exception:
+            self._publish_failures += 1
+            if self._publish_failures >= 3:
+                _LOGGER.warning("overlay stopped accepting events — no longer publishing")
+                self.publisher = None
+
     def _resolve_hwnd(self) -> int | None:
         try:
             shell = self.actuator.shell
@@ -90,6 +128,43 @@ class HardcodedCampaignDriver:
         except Exception:
             return None
 
+    def combat_director(self) -> CombatDirector | None:
+        """Combat helper bound to the live window, or None in a dry run."""
+        hwnd = self._resolve_hwnd()
+        shell = self.actuator.shell
+        controller = shell.input_controller if shell else None
+        if hwnd is None or controller is None:
+            return None
+        if self._combat is None or self._combat.hwnd != hwnd:
+            self._combat = CombatDirector(hwnd=hwnd, controller=controller)
+        return self._combat
+
+    def resolve_pending_battle(self) -> bool:
+        """Auto-resolve a pending battle. True only when one was there and cleared."""
+        if not (self.use_vision and self.auto_resolve_battles):
+            return False
+        director = self.combat_director()
+        if director is None or not director.battle_pending():
+            return False
+        self._publish(EventKind.INTENT_DECLARED, {"summary": "battle deployment up — auto-resolving"})
+        resolved = director.resolve_battle()
+        self._publish(
+            EventKind.VERIFICATION,
+            {"ok": resolved, "summary": "battle auto-resolved" if resolved else "battle panel stuck"},
+        )
+        if resolved:
+            self.battles_resolved += 1
+            self.belief.history.append(
+                {
+                    "event": "BattleAutoResolved",
+                    "source": "combat_director",
+                    "turn": str(self.state.turn or ""),
+                }
+            )
+        else:
+            _LOGGER.warning("battle panel did not clear after auto-resolve")
+        return resolved
+
     def _sync_ui(self, *, handle_modal: bool = True) -> CampaignUiMode:
         """Classify the live window. Dry tests leave use_vision=False so this is a no-op."""
         if not self.use_vision:
@@ -97,6 +172,9 @@ class HardcodedCampaignDriver:
         hwnd = self._resolve_hwnd()
         if hwnd is None:
             return CampaignUiMode.UNKNOWN
+        # Before the modal handler, not after: it cannot tell Battle Deployment from
+        # any other parchment panel, and its decision-button click is irreversible.
+        self.resolve_pending_battle()
         if handle_modal:
             shell = self.actuator.shell
             classification = ensure_campaign_map(
@@ -490,6 +568,70 @@ class HardcodedCampaignDriver:
         )
         return False
 
+    def _run_combat_step(
+        self,
+        *,
+        on_progress: Callable[..., None] | None = None,
+        index: int = 0,
+        total: int = 0,
+    ) -> None:
+        """Acquire the whole stack, order one attack, and resolve the battle it opens.
+
+        A refusal is a normal outcome, not a turn failure: on most turns no target
+        offers the attack glyph, and the alternative to refusing is a bodyguard
+        charging a settlement alone or a click that declares a war.
+        """
+        if not (self.use_vision and self.attack_enabled and self.attack_targets):
+            return
+        director = self.combat_director()
+        if director is None:
+            return
+
+        if self.army_lists_row_norm is not None:
+            selection = director.acquire_stack(self.army_lists_row_norm)
+        else:
+            selection = director.selected_stack()
+        if not selection.safe_to_attack:
+            if on_progress:
+                on_progress(
+                    index=index,
+                    total=total,
+                    phase=f"attack skipped — {selection.reason}",
+                )
+            self._publish(
+                EventKind.INTENT_DECLARED,
+                {"summary": f"attack skipped — {selection.reason}"},
+            )
+            return
+
+        for target in self.attack_targets:
+            outcome = director.attack(target)
+            if not outcome.ordered:
+                continue
+            self.attacks_ordered += 1
+            self.battles_resolved += int(outcome.battle_resolved)
+            self._publish(
+                EventKind.INTENT_DECLARED,
+                {"summary": f"attack {target} with {outcome.unit_cards} unit cards"},
+            )
+            if on_progress:
+                on_progress(
+                    index=index,
+                    total=total,
+                    phase=(
+                        f"attacked {target} with {outcome.unit_cards} unit cards, "
+                        f"battle {'resolved' if outcome.battle_resolved else 'left open'}"
+                    ),
+                )
+            return
+
+        if on_progress:
+            on_progress(
+                index=index,
+                total=total,
+                phase=f"no target offered an attack order ({director.last_reason})",
+            )
+
     def run_turn_stub(
         self,
         *,
@@ -536,6 +678,10 @@ class HardcodedCampaignDriver:
                 total=total,
                 phase=f"orders on turn {self.state.turn}: {', '.join(self.last_orders)}",
             )
+        self._publish(
+            EventKind.INTENT_DECLARED,
+            {"summary": f"turn {self.state.turn}: {', '.join(self.last_orders)}"},
+        )
 
         start = time.perf_counter()
         ok = True
@@ -544,6 +690,8 @@ class HardcodedCampaignDriver:
             if not sent:
                 _LOGGER.warning("order failed: %s (%s)", order.command, order.reason)
             ok = sent and ok
+
+        self._run_combat_step(on_progress=on_progress, index=index, total=total)
 
         if self.auto_end_turn and ok:
             ready = self.wait_until_ready_for_end_turn(
@@ -607,6 +755,13 @@ class HardcodedCampaignDriver:
         outcomes = self.verification.verify(action, expected, observed=observed)
         verified = all(o.result != VerificationResult.FAIL for o in outcomes)
         ok = ok and verified
+        self._publish(
+            EventKind.VERIFICATION,
+            {
+                "ok": bool(ok),
+                "summary": f"turn {self.state.turn} ui={self.last_ui_mode} game_turn={self._known_game_turn()}",
+            },
+        )
 
         latency_ms = (time.perf_counter() - start) * 1000.0
         observed["verification"] = [o.result.value for o in outcomes]
@@ -625,6 +780,7 @@ class HardcodedCampaignDriver:
         fail_count = 0
         self.poll_observation()
         self._refresh_turn_from_message_log()
+        self._publish(EventKind.CONTROL_STATE, {"state": "agent"})
         turn_at_start = self.turns_ended
         for i in range(n):
             self.poll_observation()
@@ -646,6 +802,7 @@ class HardcodedCampaignDriver:
                     break
         self._refresh_turn_from_message_log()
         turn_at_end = self.turns_ended
+        self._publish(EventKind.CONTROL_STATE, {"state": "idle"})
         return {
             "turns_ok": ok_count,
             "turns_failed": fail_count,
@@ -656,4 +813,6 @@ class HardcodedCampaignDriver:
             "game_turn_start": turn_at_start,
             "game_turn_end": turn_at_end,
             "turns_advanced": max(0, turn_at_end - turn_at_start),
+            "attacks_ordered": self.attacks_ordered,
+            "battles_resolved": self.battles_resolved,
         }

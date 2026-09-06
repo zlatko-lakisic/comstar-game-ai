@@ -24,4 +24,7 @@ Measured action → outcome. Trust the outcome. Failures stay in the list.
 - GOOD: Compare SEND SPY character rows after the spy reached Patavium → Senaculus of Sabis sat above Eporedorix and showed the smaller turn count. Distance is the `[n]` glyph on the send row.
 - GOOD: Click the tree disc at (0.934, 0.968) with Arretium selected → Building Browser opened. That disc is the opener.
 - MIXED: Left-click Segesta's nameplate with Flavius selected → Selected Enemy SEGESTA Village. Wait for the sword cursor.
+- BAD: Reselect Flavius with a map click, then attack → The HUD showed one unit card, so the order would have sent the bodyguard alone. A selected general is not a selected army.
+- MIXED: Compare the cursor handle over own land and over the rebel stack → It changed, and the click on the changed handle issued the attack. Baseline the cursor in the same session and watch it change.
+- GOOD: Click auto-resolve at (0.43, 0.72) on Battle Deployment → The battle resolved and the campaign map came back. Auto-resolve is the only safe answer while there is no battle loop.
 - GOOD: Click Construction <6> with Flavius in the field → Watchtower and fort cards opened. A card click spends.

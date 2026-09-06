@@ -5,6 +5,8 @@ from __future__ import annotations
 
 import argparse
 import json
+import socket
+import subprocess
 import sys
 import time
 from pathlib import Path
@@ -20,6 +22,50 @@ from comstar_game_ai.game_io.elevation import (
 from comstar_game_ai.game_io.state_machine import GameState
 from comstar_game_ai.game_io.window import find_game_window
 from comstar_game_ai.shared.config import load_config
+from comstar_game_ai.shared.ipc.events import EventKind
+from comstar_game_ai.shared.ipc.publisher import EventPublisher
+
+
+def _overlay_listening(host: str, port: int, timeout: float = 0.4) -> bool:
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as probe:
+        probe.settimeout(timeout)
+        return probe.connect_ex((host, port)) == 0
+
+
+def _start_overlay(host: str, port: int, *, wait_s: float = 12.0) -> subprocess.Popen | None:
+    """Bring up Process C, or attach to the one already running.
+
+    Returns the process only when this script started it, so an overlay the operator
+    launched by hand is left running when the acceptance run ends.
+    """
+    if _overlay_listening(host, port):
+        print("OK  overlay already listening — attaching to it")
+        return None
+
+    proc = subprocess.Popen([sys.executable, "-m", "comstar_game_ai.overlay_ui.main"])
+    deadline = time.time() + wait_s
+    while time.time() < deadline:
+        if proc.poll() is not None:
+            print(f"WARN overlay exited immediately (code {proc.returncode}) — running without it")
+            return None
+        if _overlay_listening(host, port):
+            print(f"OK  overlay up (pid {proc.pid})")
+            return proc
+        time.sleep(0.4)
+    print("WARN overlay did not start listening — running without it")
+    return proc
+
+
+def _stop_overlay(proc: subprocess.Popen | None) -> None:
+    """Close an overlay this script started. One that was already up is left alone."""
+    if proc is None or proc.poll() is not None:
+        return
+    proc.terminate()
+    try:
+        proc.wait(timeout=5)
+    except subprocess.TimeoutExpired:
+        proc.kill()
+    print("OK  overlay closed")
 
 
 def _countdown(seconds: int) -> None:
@@ -48,6 +94,13 @@ def main() -> int:
         default=8,
         help="Countdown before first key/click so you can focus Rome (default 8; 0 skips)",
     )
+    parser.add_argument(
+        "--no-overlay",
+        dest="overlay",
+        action="store_false",
+        help="do not start the operator overlay, and publish no events to it",
+    )
+    parser.set_defaults(overlay=True)
     args = parser.parse_args()
 
     cfg = load_config()
@@ -77,12 +130,24 @@ def main() -> int:
     ready_timeout = float(cfg.get("campaign", {}).get("end_turn_ready_timeout_s", 30))
     legacy_delay = float(cfg.get("campaign", {}).get("end_turn_delay_s", 0))
 
+    combat_cfg = (cfg.get("campaign", {}).get("combat") or {})
+    row = combat_cfg.get("army_lists_row_norm")
+    targets = combat_cfg.get("attack_targets") or []
+
     driver = HardcodedCampaignDriver(
         player_faction=faction,
         use_vision=True,
         auto_end_turn=auto_end,
         end_turn_ready_timeout_s=ready_timeout,
         end_turn_delay_s=legacy_delay,
+        auto_resolve_battles=bool(combat_cfg.get("auto_resolve_battles", True)),
+        attack_enabled=bool(combat_cfg.get("attack_enabled", False)),
+        army_lists_row_norm=(float(row[0]), float(row[1])) if row else None,
+        attack_targets=tuple((float(t[0]), float(t[1])) for t in targets),
+    )
+    print(
+        f"INFO combat: auto_resolve={driver.auto_resolve_battles} "
+        f"attack={driver.attack_enabled} targets={len(driver.attack_targets)}"
     )
     ingested = driver.bootstrap_from_logs()
     print(f"INFO bootstrap_from_logs: {ingested} records")
@@ -102,6 +167,24 @@ def main() -> int:
         f"INFO running {turns} attempts (vision dismiss + observe + End Turn on readiness)...",
         flush=True,
     )
+
+    # Started before the countdown, so the surfaces are up over the game while the
+    # operator is still looking at it, and a broken overlay is obvious before any
+    # input is injected.
+    overlay_proc = None
+    if args.overlay:
+        ipc = cfg.get("ipc") or {}
+        host = ipc.get("event_socket_host", "127.0.0.1")
+        port = int(ipc.get("event_socket_port", 9876))
+        overlay_proc = _start_overlay(host, port)
+        if _overlay_listening(host, port):
+            publisher = EventPublisher(host=host, port=port)
+            publisher.publish(EventKind.CONTROL_STATE, {"state": "idle"})
+            driver.publisher = publisher
+            print(f"OK  publishing overlay events to {host}:{port}")
+        else:
+            print("INFO no overlay listening — the run publishes nothing")
+
     _countdown(max(0, args.seconds))
 
     # Classify only after the countdown. Before it, Rome may not be focused and the
@@ -133,14 +216,21 @@ def main() -> int:
                 "FAIL: not on campaign map — neither the log nor the screen shows the "
                 "strat map. Load or start a campaign, wait for the map, then re-run."
             )
+            _stop_overlay(overlay_proc)
             return 1
 
-    result = driver.run_turns(
-        turns,
-        require_ok=False,
-        wait_for_next_turn=True,
-        on_progress=on_progress,
-    )
+    try:
+        result = driver.run_turns(
+            turns,
+            require_ok=False,
+            wait_for_next_turn=True,
+            on_progress=on_progress,
+        )
+    except BaseException:
+        # Ctrl+C and the kill switch included: a stranded overlay sits on top of
+        # every other window, so it must not survive an abandoned run.
+        _stop_overlay(overlay_proc)
+        raise
 
     print(
         f"{'OK' if result['desyncs'] == 0 else 'WARN'}  turns_ok={result['turns_ok']} "
@@ -154,6 +244,10 @@ def main() -> int:
         f"OK  belief_history={len(driver.belief.history)} armies={len(driver.belief.armies)} "
         f"settlements={len(driver.belief.settlements)}"
     )
+    print(
+        f"OK  attacks_ordered={result['attacks_ordered']} "
+        f"battles_auto_resolved={result['battles_resolved']}"
+    )
 
     report = {
         "game": {"title": game.title, "rect": game.rect},
@@ -166,6 +260,10 @@ def main() -> int:
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(report, indent=2), encoding="utf-8")
     print(f"OK  report: {out}")
+
+    # Left up through the run and the report, so the last state is still on screen
+    # while the numbers print. Only closed if this script started it.
+    _stop_overlay(overlay_proc)
 
     if phase2_accepted(result, turns=turns):
         print(f"\nPASS Phase 2 actuation ({turns} turns, zero desyncs)")

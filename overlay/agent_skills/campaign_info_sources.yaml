@@ -139,7 +139,7 @@ sources:
 - id: agent_identity
   question: Who is this spy or diplomat, and what can they do this turn?
   surface: agent_selection_hud
-  how: Click the character on the map, or Lists → Agents → locate. Do not click Disband.
+  how: Click the character, or Lists → Agents → locate. Do not click Disband.
   reads: 'Left card: name, type, location, age, Influence or Subterfuge. Green range on the map. Right
     list titles SEND EMISSARY or SEND SPY with success % and turns-to-arrive.'
   trap: The centre strip is agents at this place, not this character's followers. Followers are on the

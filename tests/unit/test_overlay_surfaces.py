@@ -110,6 +110,27 @@ def test_the_glow_does_not_paint_over_the_map(surfaces):
     assert centre.alpha() == 0, "the edge glow filled the middle of the screen"
 
 
+def test_the_glow_bleeds_inward_from_the_edge(surfaces):
+    """The hue is the state at a glance; the line alone reads as window chrome."""
+    surfaces.glow.set_state(SurfaceState.ACTING)
+    image = _render(surfaces.glow, 400, 300)
+    border = surfaces.glow.BORDER_WIDTH * 2
+    depth = int(min(400, 300) * surfaces.glow.GLOW_DEPTH_RATIO)
+
+    just_inside = image.pixelColor(200, border + 2).alpha()
+    deeper = image.pixelColor(200, border + depth // 2).alpha()
+    assert just_inside > deeper > 0, "no falloff between the border and the map"
+
+
+def test_the_hue_is_gone_before_the_middle_of_the_map(surfaces):
+    """Tinting where the operator is looking would be worse than no overlay at all."""
+    surfaces.glow.set_state(SurfaceState.FAULT)
+    image = _render(surfaces.glow, 400, 300)
+    for fraction in (0.25, 0.4, 0.5, 0.6, 0.75):
+        y = int(image.height() * fraction)
+        assert image.pixelColor(image.width() // 2, y).alpha() == 0
+
+
 def test_test_pattern_mode_covers_the_frame(app):
     """The capture-exclusion self test is only meaningful if this really paints."""
     surfaces = OverlaySurfaces(NO_GAME_WINDOW, test_pattern=True, sync_ms=10_000_000)
