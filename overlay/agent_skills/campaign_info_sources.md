@@ -1,0 +1,27 @@
+One surface per question. Do not substitute a nearby number.
+
+- Who owns this settlement, and how do we stand with them: `settlement_hover` — Hover the settlement on the 3D map until the tooltip fires; not Pills are a prefilter, not a verdict.
+- Which of our towns still need orders: `map_overlay.settlements` — Open Map Overlay (eye, or Tab); not The overlay replaces the 3D map.
+- What is this owned settlement's population and income: `lists_scroll` — Ctrl+5, Settlements row; not Hover figures are not population or income.
+- How much money do we have this turn: `treasury_readout` — Read the top-right HUD; not Finance's 'Boundless' is a band, not a number.
+- Where is the money coming from and going: `finance_window` — Ctrl+4, Financial Overview; not Automanage radios change how the faction is run.
+- Who are we allied with, and who are we at war with: `diplomacy_window` — Ctrl+3, Diplomatic Standing, select our crest; not This tab reports standing; it does not negotiate.
+- How does a foreign settlement stand relative to us, including indirect ties: `map_overlay.diplomacy` — Open Map Overlay; not A hover says Ally / At war / Neutral only.
+- What has the Senate asked us to do, and how long is left: `event_log.missions` — Left-edge eagle disc, or Faction Summary (Ctrl+1); not This is not the Senate overview (Ctrl+2).
+- Who leads us, what are we trying to win, and what is the headline state: `faction_summary` — Bottom-left standard, or Ctrl+1; not The seven top crests are other tabs.
+- How popular are we with the Senate and the People, and which offices are open: `senate_window` — Second crest on the overview strip, or Ctrl+2; not The Policy grid is a selector.
+- Who owns a province we are not looking at: `radar` — Hover the radar; not A radar click is coarse.
+- Where is our capital, and how do we recover a lost camera: `capital_zoom` — Press Home; not Home is recovery, not a free look.
+- How do we frame a town we own that is not the capital: `lists_scroll` — Ctrl+5, Settlements, first footer; not The third footer button sets the faction capital permanently.
+- What urgent empire problems is the game flagging: `event_log.alerts` — Left-edge horn disc; not Clicking the already-selected tab collapses the dock.
+- What happened to us and to other factions: `event_log.news` — Left-edge sealed-scrolls disc; not Same dismiss rules as Alerts.
+- What built, recruited, or arrived in the end-of-turn report: `event_log.reports` — Left-edge coins disc; not Same dismiss rules as Alerts.
+- What can this settlement build, and what does a building do: `construction_window` — Select the town, press 6; not A left-click queues the spend.
+- What can this settlement recruit: `training_window` — Select the town, press 5; not A left-click queues the unit and spends money.
+- What unlocks a building, unit, or agent in this town: `building_browser` — Tree disc (0.934, 0.968) or right-click Construction; not Green and red tree lines are not accept/reject.
+- Who is this spy or diplomat, and what can they do this turn: `agent_selection_hud` — Click the character on the map, or Lists → Agents → locate; not The centre strip is agents at this place, not this character's followers.
+- What traits and followers does this character have: `character_scroll` — Click the traits HUD button; not Alt+click opens the Steam wiki.
+- Which agents do we have, and where are they: `lists_scroll` — Ctrl+5, Agents sub-tab; not A SEND-list row only stages the path.
+- How far is a send target, and which one is nearest: `agent_selection_hud` — Select the agent; not A model standing next to the spy on the 3D map is not the distance read.
+- Which armies and fleets do we have: `lists_scroll` — Ctrl+5, Military Forces; not The Settlements footer 3 sets the capital.
+- How do we send an army or agent to a map target: `map_viewport` — Select the character, hover until the cursor glyph changes, then left-click; not 2004 cursor strings say Right click.

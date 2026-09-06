@@ -1,0 +1,340 @@
+"""Tests for the campaign UI atlas.
+
+The load-bearing test here is `test_every_name_key_resolves_in_the_shipped_tables`.
+The atlas stores string keys instead of English text so it cannot drift from the
+game, but that only holds if the keys are real; an invented key is silently
+name-less. It needs the install, so it skips rather than fails on CI.
+"""
+
+from __future__ import annotations
+
+import pytest
+
+from comstar_game_ai.game_io.campaign import ui_atlas
+from comstar_game_ai.game_io.campaign.rome_shortcuts import load_shortcuts
+from comstar_game_ai.game_io.campaign.rome_strings import (
+    default_text_dir,
+    load_campaign_tables,
+)
+from comstar_game_ai.game_io.campaign.ui_atlas import (
+    ATLAS,
+    BY_ID,
+    Dismiss,
+    PanelClass,
+    PanelGeometry,
+    Status,
+    match_geometry,
+)
+
+
+@pytest.fixture(scope="module")
+def tables():
+    if default_text_dir() is None:
+        pytest.skip("Rome text directory not present on this machine")
+    loaded = load_campaign_tables()
+    if not loaded:
+        pytest.skip("no campaign string tables could be read")
+    return loaded
+
+
+def test_ids_are_unique():
+    assert len(BY_ID) == len(ATLAS)
+
+
+def test_every_entry_has_a_dismissal_strategy():
+    for entry in ATLAS:
+        assert entry.dismiss, f"{entry.id} has no way out"
+
+
+def test_only_notices_are_non_blocking():
+    # Decision panels block for a different reason than obstructing ones, but they
+    # do block: the turn waits for an answer.
+    for entry in ATLAS:
+        assert entry.blocking is (entry.panel_class is not PanelClass.NOTICE)
+
+
+def test_decision_panels_are_never_dismissed_by_a_close_button():
+    # The invariant that resolved the corpus: a close-X search coming back empty on
+    # a blocking panel means "decision panel", not "detector failed".
+    for entry in ui_atlas.verified():
+        if entry.panel_class is not PanelClass.DECISION:
+            continue
+        assert not entry.expects_close_x
+        assert entry.geometry.close_x is None, f"{entry.id} should have no close X"
+
+
+def test_a_panel_carries_close_x_coordinates_exactly_when_it_is_closed_that_way():
+    # Tied to the dismissal strategy rather than the class, because a notice that is
+    # toggled off — the strategic overlay — has no close button either, and inventing
+    # coordinates for one would send a click into the map behind it.
+    for entry in ui_atlas.verified():
+        if entry.expects_close_x:
+            assert entry.geometry.close_x is not None, f"{entry.id} needs a close X"
+        else:
+            assert entry.geometry.close_x is None, (
+                f"{entry.id} is not dismissed by a close X but carries its coordinates"
+            )
+
+
+def test_the_strategic_overlay_is_toggled_rather_than_closed():
+    entry = BY_ID["campaign_map_overlays"]
+    assert entry.dismiss == (Dismiss.LEAVE_OPEN, Dismiss.ESCAPE)
+    assert not entry.expects_close_x
+    assert entry.geometry.close_x is None
+
+
+def test_every_overview_tab_closes_with_the_x_or_escape():
+    for entry in ATLAS:
+        if entry.tab_of != "overview_window":
+            continue
+        assert entry.dismiss == (Dismiss.CLOSE_X, Dismiss.ESCAPE), entry.id
+
+
+def test_decision_panels_are_answered_not_dismissed():
+    for entry in ATLAS:
+        if entry.panel_class is not PanelClass.DECISION:
+            continue
+        assert entry.dismiss == (Dismiss.DECISION_BUTTON,), (
+            f"{entry.id} must be answered; there is no button to dismiss it"
+        )
+
+
+def test_notices_may_be_left_open_but_obstructing_panels_may_not():
+    for entry in ATLAS:
+        leaves_open = Dismiss.LEAVE_OPEN in entry.dismiss
+        if entry.panel_class is PanelClass.OBSTRUCTING:
+            assert not leaves_open, f"{entry.id} blocks input and cannot be left open"
+
+
+def test_verified_entries_carry_geometry_and_evidence():
+    for entry in ui_atlas.verified():
+        assert entry.geometry is not None, f"{entry.id} is verified without geometry"
+        assert entry.evidence, f"{entry.id} is verified without evidence"
+
+
+def test_unseen_entries_are_the_guided_capture_worklist():
+    unseen = ui_atlas.unseen()
+    assert unseen, "nothing left to capture would mean the atlas is complete"
+    for entry in unseen:
+        assert entry.geometry is None, f"{entry.id} has geometry but is marked unseen"
+        assert entry.opened_by, f"{entry.id} cannot be captured without a way to open it"
+
+
+def test_escape_is_only_trusted_where_the_game_documents_it():
+    # The advisor's own button reads "Dismiss advice [ESC]". Everything else that
+    # lists Escape must try the close X first.
+    for entry in ATLAS:
+        if Dismiss.ESCAPE not in entry.dismiss:
+            continue
+        if entry.id == "advisor":
+            continue
+        if entry.id == "campaign_map_overlays":
+            # Not a dialog, so there is no close X to try first. Escape and the
+            # eye toggle are the two ways out.
+            continue
+        if entry.status is ui_atlas.Status.EXTERNAL:
+            # Not an in-game panel, so the close X is not a dismissal it can offer.
+            continue
+        assert entry.dismiss[0] is Dismiss.CLOSE_X, (
+            f"{entry.id} reaches for Escape before the close X"
+        )
+
+
+def test_external_entries_are_neither_capture_work_nor_verified_panels():
+    external = [e for e in ATLAS if e.status is ui_atlas.Status.EXTERNAL]
+    assert external, "the F1 hazard should be recorded, not deleted"
+    for entry in external:
+        assert entry.hazard, f"{entry.id} is external without saying why that matters"
+        assert entry.geometry is None, f"{entry.id} is not an in-game panel to measure"
+        assert entry not in ui_atlas.verified()
+        assert entry not in ui_atlas.unseen()
+
+
+def test_help_window_is_recorded_as_leaving_the_game():
+    entry = BY_ID["help_window"]
+    assert entry.status is ui_atlas.Status.EXTERNAL
+    assert "steam" in entry.hazard.lower(), (
+        "the whole point of the entry is that F1 hands off to the Steam overlay"
+    )
+
+
+# --- The shared overview frame -----------------------------------------------
+
+
+def test_the_ctrl_number_panels_are_tabs_of_one_window():
+    tabs = [e for e in ATLAS if e.tab_of == "overview_window"]
+    # Seven crests on the strip, so seven tabs.
+    assert len(tabs) == 7, [e.id for e in tabs]
+    for entry in tabs:
+        assert entry.geometry is ui_atlas.OVERVIEW_FRAME, (
+            f"{entry.id} measured to its own geometry; they share one frame"
+        )
+        assert entry.status is ui_atlas.Status.VERIFIED
+
+
+def test_every_overview_tab_is_reachable_by_its_own_chord():
+    db = load_shortcuts()
+    resolved = {}
+    for keyset in db.keysets:
+        for binding in db.bindings(keyset):
+            resolved.setdefault(binding.action, binding)
+
+    chords = set()
+    for entry in ATLAS:
+        if entry.tab_of != "overview_window":
+            continue
+        binding = resolved.get(entry.shortcut_action)
+        assert binding is not None, f"{entry.id} names an action that does not resolve"
+        chords.add(binding.chord)
+    assert chords == {f"ctrl+{n}" for n in range(1, 8)}
+
+
+def test_one_tab_centre_per_tab():
+    tabs = [e for e in ATLAS if e.tab_of == "overview_window"]
+    assert len(ui_atlas.OVERVIEW_TAB_CENTRES) == len(tabs)
+    for x, y in ui_atlas.OVERVIEW_TAB_CENTRES:
+        # Inside the frame, and on the strip along its top edge.
+        assert ui_atlas.OVERVIEW_FRAME.left < x < ui_atlas.OVERVIEW_FRAME.right
+        assert ui_atlas.OVERVIEW_FRAME.top < y < 0.25
+
+
+# --- Panels with preconditions ------------------------------------------------
+
+
+def test_settlement_scoped_panels_declare_what_they_need():
+    for panel_id in ("construction_window", "training_window"):
+        entry = BY_ID[panel_id]
+        assert entry.requires, f"{panel_id} does nothing without a selection; say so"
+        assert "settlement" in entry.requires
+        # They dock against the right edge rather than spanning the centre, which is
+        # why panel_bounds cannot measure them and the sweep reported no panel.
+        assert not entry.geometry.spans_centre()
+        assert entry.geometry.right >= 0.99
+
+
+def test_panels_needing_no_precondition_say_nothing():
+    assert not BY_ID["faction_summary"].requires
+    assert not BY_ID["campaign_map_overlays"].requires
+
+
+def test_building_browser_spans_the_centre_and_notices_do_not():
+    assert BY_ID["building_browser"].geometry.spans_centre()
+    assert not BY_ID["senate_mission_card"].geometry.spans_centre()
+    assert not BY_ID["left_dock_notice"].geometry.spans_centre()
+
+
+def test_every_name_key_resolves_in_the_shipped_tables(tables):
+    missing = [e.id for e in ATLAS if e.name_key and e.name(tables) is None]
+    assert not missing, f"atlas keys absent from the game's tables: {missing}"
+
+
+def test_a_panel_without_a_name_key_must_explain_itself():
+    # Remastered added UI the original tables never named. That is allowed, but it
+    # has to be stated, otherwise a missing key is indistinguishable from an oversight.
+    for entry in ATLAS:
+        if not entry.name_key:
+            assert entry.note, f"{entry.id} has no name key and no explanation"
+            assert entry.opened_by, f"{entry.id} is unnamed and has no way to open it"
+
+
+def test_shortcut_actions_exist_in_the_binding_database():
+    shortcuts = load_shortcuts()
+    if shortcuts is None:
+        pytest.skip("descr_shortcuts.txt not present on this machine")
+    for entry in ATLAS:
+        if not entry.shortcut_action:
+            continue
+        found = shortcuts.find(entry.shortcut_action)
+        assert found, f"{entry.id} names action {entry.shortcut_action!r} which is unbound"
+
+
+def test_the_panels_reachable_by_keyboard_are_recorded():
+    by_action = {e.shortcut_action for e in ATLAS if e.shortcut_action}
+    # The Ctrl+1..7 cluster is the campaign map's whole panel bar; missing one means
+    # a panel the agent cannot reach without hunting for its button.
+    for action in (
+        "faction_overview_button",
+        "senate_button",
+        "diplomacy_overview_button",
+        "finances_button",
+        "lists_button",
+        "retinue_button",
+        "agent_hub_button",
+    ):
+        assert action in by_action, f"no atlas entry opens via {action}"
+
+
+def test_resolved_names_are_the_games_own_words(tables):
+    assert BY_ID["building_browser"].name(tables) == "Building Browser"
+    assert "finances" in BY_ID["finance_window"].name(tables).lower()
+    assert "ESC" in BY_ID["advisor"].name(tables)
+    assert BY_ID["event_log"].name(tables) == "Event Log"
+
+
+def test_match_identifies_the_building_browser_from_measured_edges():
+    match = match_geometry(0.26, 0.74, 0.21)
+    assert match is not None
+    assert match.entry.id == "building_browser"
+    assert match.distance == pytest.approx(0.0, abs=1e-9)
+
+
+def test_match_tolerates_small_measurement_drift():
+    match = match_geometry(0.28, 0.72, 0.23)
+    assert match is not None
+    assert match.entry.id == "building_browser"
+
+
+def test_match_identifies_the_two_decision_panels():
+    diplomacy = match_geometry(0.20, 0.76, 0.13)
+    assert diplomacy is not None
+    assert diplomacy.entry.id == "diplomatic_negotiations"
+    battle = match_geometry(0.16, 0.83, 0.35)
+    assert battle is not None
+    assert battle.entry.id == "battle_deployment"
+
+
+def test_diplomacy_right_edge_varies_across_the_corpus():
+    # The nine frames measured 0.75 to 0.79 on the right edge; all nine must land on
+    # the same entry or the corpus is not actually resolved.
+    for right in (0.75, 0.76, 0.77, 0.79):
+        match = match_geometry(0.20, right, 0.13)
+        assert match is not None and match.entry.id == "diplomatic_negotiations"
+
+
+def test_diplomacy_is_not_confused_with_the_building_browser():
+    # They overlap heavily; the top edge (0.13 vs 0.21) is what separates them.
+    assert match_geometry(0.20, 0.76, 0.13).entry.id == "diplomatic_negotiations"
+    assert match_geometry(0.26, 0.74, 0.21).entry.id == "building_browser"
+
+
+def test_match_returns_none_for_an_unknown_panel():
+    # A tall narrow panel on the right belongs to no verified entry. Guessing here
+    # would hide the panels guided capture exists to find.
+    assert match_geometry(0.80, 0.99, 0.30) is None
+
+
+def test_match_prefers_the_closer_entry():
+    # The left-dock entries overlap; the measured edges decide between them.
+    event_log = match_geometry(0.00, 0.163, 0.066)
+    senate = match_geometry(0.00, 0.16, 0.07)
+    notice = match_geometry(0.03, 0.33, 0.07)
+    assert event_log is not None and event_log.entry.id == "event_log"
+    assert senate is not None and senate.entry.id == "senate_mission_card"
+    assert notice is not None and notice.entry.id == "left_dock_notice"
+
+
+def test_the_senate_mission_card_is_a_tab_of_the_event_log():
+    entry = BY_ID["senate_mission_card"]
+    assert entry.tab_of == "event_log"
+    assert BY_ID["event_log"].name_key == "SMT_EVENT_LOG"
+
+
+def test_geometry_spans_centre_is_exclusive_at_the_edges():
+    assert not PanelGeometry(left=0.5, right=0.9, top=0.1).spans_centre()
+    assert not PanelGeometry(left=0.1, right=0.5, top=0.1).spans_centre()
+    assert PanelGeometry(left=0.49, right=0.51, top=0.1).spans_centre()
+
+
+def test_status_and_class_vocabularies_are_closed():
+    assert {s.value for s in Status} == {"verified", "unseen", "external"}
+    assert {c.value for c in PanelClass} == {"decision", "notice", "obstructing"}

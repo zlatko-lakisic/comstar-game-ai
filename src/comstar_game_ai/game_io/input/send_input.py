@@ -43,6 +43,7 @@ if sys.platform == "win32":
 
     INPUT_KEYBOARD = 1
     INPUT_MOUSE = 0
+    KEYEVENTF_EXTENDEDKEY = 0x0001
     KEYEVENTF_KEYUP = 0x0002
     KEYEVENTF_UNICODE = 0x0004
     KEYEVENTF_SCANCODE = 0x0008
@@ -50,6 +51,14 @@ if sys.platform == "win32":
     MOUSEEVENTF_ABSOLUTE = 0x8000
     MOUSEEVENTF_LEFTDOWN = 0x0002
     MOUSEEVENTF_LEFTUP = 0x0004
+    #: Without this, absolute coordinates address the primary monitor only, so any
+    #: window on a monitor left of or above it is unreachable.
+    MOUSEEVENTF_VIRTUALDESK = 0x4000
+
+    SM_XVIRTUALSCREEN = 76
+    SM_YVIRTUALSCREEN = 77
+    SM_CXVIRTUALSCREEN = 78
+    SM_CYVIRTUALSCREEN = 79
 
     _VK_MAP: dict[str, int] = {
         "backtick": 0xC0,
@@ -70,7 +79,22 @@ if sys.platform == "win32":
         "right": win32con.VK_RIGHT,
         "up": win32con.VK_UP,
         "down": win32con.VK_DOWN,
+        # Camera bindings need these: descr_shortcuts.txt maps capital_zoom to Home
+        # and point_to_north to PageUp, and without them both resolve to no key.
+        "home": win32con.VK_HOME,
+        "end": win32con.VK_END,
+        "pageup": win32con.VK_PRIOR,
+        "pagedown": win32con.VK_NEXT,
+        "insert": win32con.VK_INSERT,
+        "delete": win32con.VK_DELETE,
+        "backspace": win32con.VK_BACK,
     }
+    #: Keys the keyboard reports with an 0xE0 prefix. Sending their scancode without
+    #: this flag delivers the numeric-keypad key of the same scancode instead.
+    _EXTENDED_KEYS = frozenset(
+        {"left", "right", "up", "down", "home", "end", "pageup", "pagedown",
+         "insert", "delete"}
+    )
     for i in range(10):
         _VK_MAP[str(i)] = 0x30 + i
     for offset, letter in enumerate("abcdefghijklmnopqrstuvwxyz"):
@@ -117,55 +141,79 @@ if sys.platform == "win32":
 
         def normalize_keyboard_state(self) -> None:
             for key in ("shift", "ctrl", "alt"):
-                vk = virtual_key_for(key)
-                if vk is not None:
-                    self._key_up(vk)
+                self._release_key(key)
 
-        def tap_key(self, key: str, *, dwell_ms: int = 30, hwnd: int | None = None) -> bool:
+        def scancode_for(self, key: str) -> tuple[int, bool] | None:
+            """(scancode, is_extended) for a key name, or None if unmapped."""
             vk = virtual_key_for(key)
             if vk is None:
+                return None
+            scan = win32api.MapVirtualKey(vk, 0)
+            if not scan:
+                return None
+            return scan, normalize_key_name(key) in _EXTENDED_KEYS
+
+        def tap_key(self, key: str, *, dwell_ms: int = 30, hwnd: int | None = None) -> bool:
+            """Press and release a key as a scancode.
+
+            Scancode rather than virtual key, because Rome reads the keyboard through
+            DirectInput, which is driven by scancodes and ignores a virtual-key event
+            that carries none. Such an event still succeeds at the API level and is
+            still delivered to ordinary windows, so the failure is invisible from
+            here: SendInput returns 1 and the game does nothing.
+            """
+            resolved = self.scancode_for(key)
+            if resolved is None:
                 return False
+            scan, extended = resolved
             if hwnd is not None:
                 self.focus_window(hwnd)
             self.normalize_keyboard_state()
-            if not self._key_down(vk):
+            if not self._send_scancode(scan, key_up=False, extended=extended):
                 return False
             time.sleep(max(dwell_ms, 1) / 1000.0)
-            return self._key_up(vk)
+            return self._send_scancode(scan, key_up=True, extended=extended)
 
-        def _send_scancode(self, scan: int, *, key_up: bool) -> bool:
+        def _release_key(self, key: str) -> bool:
+            resolved = self.scancode_for(key)
+            if resolved is None:
+                return False
+            scan, extended = resolved
+            return self._send_scancode(scan, key_up=True, extended=extended)
+
+        def _send_scancode(self, scan: int, *, key_up: bool, extended: bool = False) -> bool:
             flags = KEYEVENTF_SCANCODE
             if key_up:
                 flags |= KEYEVENTF_KEYUP
+            if extended:
+                flags |= KEYEVENTF_EXTENDEDKEY
             inp = INPUT()
             inp.type = INPUT_KEYBOARD
             inp.union.ki = KEYBDINPUT(0, scan & 0xFFFF, flags, 0, 0)
             return self._user32.SendInput(1, ctypes.byref(inp), ctypes.sizeof(INPUT)) == 1
 
         def chord_scancode(self, modifier: str, key: str, *, dwell_ms: int = 30, hwnd: int | None = None) -> bool:
-            mod_vk = virtual_key_for(modifier)
-            key_vk = virtual_key_for(key)
-            if mod_vk is None or key_vk is None:
+            mod = self.scancode_for(modifier)
+            target = self.scancode_for(key)
+            if mod is None or target is None:
                 return False
-            mod_scan = win32api.MapVirtualKey(mod_vk, 0)
-            key_scan = win32api.MapVirtualKey(key_vk, 0)
-            if not mod_scan or not key_scan:
-                return False
+            mod_scan, mod_ext = mod
+            key_scan, key_ext = target
             if hwnd is not None:
                 self.focus_window(hwnd)
             self.normalize_keyboard_state()
             delay = max(dwell_ms, 1) / 1000.0
-            if not self._send_scancode(mod_scan, key_up=False):
+            if not self._send_scancode(mod_scan, key_up=False, extended=mod_ext):
                 return False
             time.sleep(delay)
-            if not self._send_scancode(key_scan, key_up=False):
-                self._send_scancode(mod_scan, key_up=True)
+            if not self._send_scancode(key_scan, key_up=False, extended=key_ext):
+                self._send_scancode(mod_scan, key_up=True, extended=mod_ext)
                 return False
             time.sleep(delay)
-            if not self._send_scancode(key_scan, key_up=True):
-                self._send_scancode(mod_scan, key_up=True)
+            if not self._send_scancode(key_scan, key_up=True, extended=key_ext):
+                self._send_scancode(mod_scan, key_up=True, extended=mod_ext)
                 return False
-            return self._send_scancode(mod_scan, key_up=True)
+            return self._send_scancode(mod_scan, key_up=True, extended=mod_ext)
 
         def click_client_norm(self, hwnd: int, x_norm: float, y_norm: float, *, dwell_ms: int = 30) -> bool:
             try:
@@ -199,25 +247,47 @@ if sys.platform == "win32":
             return True
 
         def move_mouse(self, x: int, y: int) -> bool:
-            screen_w = self._user32.GetSystemMetrics(0)
-            screen_h = self._user32.GetSystemMetrics(1)
-            abs_x = int(x * 65535 / max(screen_w - 1, 1))
-            abs_y = int(y * 65535 / max(screen_h - 1, 1))
+            """Move to a virtual-desktop screen coordinate.
+
+            Normalised against the virtual desktop rather than the primary monitor:
+            the primary's origin is not the desktop origin on a multi-monitor setup,
+            so scaling by primary width silently mis-aims every click on any other
+            monitor -- and puts negative coordinates out of reach entirely.
+            """
+            origin_x = self._user32.GetSystemMetrics(SM_XVIRTUALSCREEN)
+            origin_y = self._user32.GetSystemMetrics(SM_YVIRTUALSCREEN)
+            desk_w = self._user32.GetSystemMetrics(SM_CXVIRTUALSCREEN)
+            desk_h = self._user32.GetSystemMetrics(SM_CYVIRTUALSCREEN)
+            abs_x = int((x - origin_x) * 65535 / max(desk_w - 1, 1))
+            abs_y = int((y - origin_y) * 65535 / max(desk_h - 1, 1))
             inp = INPUT()
             inp.type = INPUT_MOUSE
             inp.union.mi = MOUSEINPUT(
                 dx=abs_x,
                 dy=abs_y,
                 mouseData=0,
-                dwFlags=MOUSEEVENTF_MOVE | MOUSEEVENTF_ABSOLUTE,
+                dwFlags=MOUSEEVENTF_MOVE | MOUSEEVENTF_ABSOLUTE | MOUSEEVENTF_VIRTUALDESK,
                 time=0,
                 dwExtraInfo=0,
             )
             return self._user32.SendInput(1, ctypes.byref(inp), ctypes.sizeof(INPUT)) == 1
 
-        def click(self, x: int, y: int, *, dwell_ms: int = 30) -> bool:
+        def click(self, x: int, y: int, *, dwell_ms: int = 80, settle_ms: int = 120) -> bool:
+            """Click at a screen coordinate, letting the cursor arrive first.
+
+            Rome reads the cursor position on its own frame tick, so a button event
+            sent immediately after the move is attributed to wherever the cursor was
+            before it. The symptom is specific and misleading: hover tooltips appear
+            under the target, proving the aim is right, while the click does nothing.
+            The move is re-asserted because a single absolute move can be coalesced
+            with the button event in the same batch.
+            """
             if not self.move_mouse(x, y):
                 return False
+            time.sleep(max(settle_ms, 1) / 1000.0)
+            if not self.move_mouse(x, y):
+                return False
+            time.sleep(max(settle_ms, 1) / 1000.0)
             for flag in (MOUSEEVENTF_LEFTDOWN, MOUSEEVENTF_LEFTUP):
                 inp = INPUT()
                 inp.type = INPUT_MOUSE
@@ -279,5 +349,5 @@ else:
         def move_mouse(self, x: int, y: int) -> bool:
             return False
 
-        def click(self, x: int, y: int, *, dwell_ms: int = 30) -> bool:
+        def click(self, x: int, y: int, *, dwell_ms: int = 80, settle_ms: int = 120) -> bool:
             return False

@@ -1,0 +1,27 @@
+Measured action → outcome. Trust the outcome. Failures stay in the list.
+
+- BAD: Press Escape on a campaign map with no parchment open → Pause menu and Help Sheet opened. Do not use Escape to find out whether a panel is open.
+- MIXED: Click the already-selected Event Log tab → The dock collapsed. Clicking the selected tab is a valid close, alongside the gold X.
+- GOOD: Hover or click a collapsed left-edge Event Log disc → Parchment slid out to the right; the four discs rode to its right edge. The discs are the opener.
+- GOOD: Click the gold X at (0.160, 0.077) on the open Event Log → Dock collapsed. Prefer this X over Escape.
+- GOOD: Press Home from an arbitrary camera → Capital framed in one press. Home is the recovery primitive.
+- GOOD: Hover Segesta, Patavium, and Rome → Tooltips said (At war) / (Neutral) / (Ally). Colour picks what to hover; the tooltip decides owner and standing.
+- BAD: Read the three unlabelled figures on a settlement hover → Coin 184 next to Lists population 3500 / income 1710 for the same town. Population and income come from Lists, not from the hover figures.
+- BAD: Match a map label-pill colour to the overlay standing legend → The RGBs disagree. Pills are a prefilter.
+- MIXED: Click inside the Map Overlay view, hoping to jump the camera → Camera did not move. The overlay is a legend, not a navigator.
+- BAD: Alt+click an overlay layer button → Steam wiki overlay opened — same hazard as F1. Never Alt+click a layer.
+- BAD: Click unverified positions near End Turn → Five guessed candidates missed; one opened the building browser and wedged the run. Locate a control before clicking it.
+- BAD: Click the third footer button on the Lists settlement pane → Would permanently change the faction capital. First footer locates.
+- BAD: Click in the Family Tree sub-tab of Finance & Family → The tab's own tooltip offers setting the faction heir — a succession change. Read the tree.
+- BAD: Click the Filters funnel on the Event Log → Not clicked. The funnel is a setting, not a view.
+- GOOD: Read the mission on Faction Summary and again on Event Log → Missions → Both showed Take Settlement Segesta, 10 turns, richly rewarded. Either surface is enough.
+- GOOD: Hold left mouse on a diplomat, drag toward a road, then release back on him → A green path appeared while held. Drag-hold is the preview.
+- GOOD: Click the enabled left-HUD button on Sextus Antio → Character scroll titled DIPLOMAT opened (panel top 0.261). That button is the extra-info pane.
+- BAD: Open Agent Hub (Ctrl+7) with a Send Agent row highlighted → Gold Confirm sat on the briefing. Confirm sends the agent.
+- BAD: Inspect the selected-agent HUD boot without clicking it → Boot sits on the centre strip. The boot disbands the character.
+- GOOD: Click Spy on Patavium, then Confirm, then Assign → Row drew a green/red path to Patavium. Row stages, Confirm opens the briefing, Assign commits.
+- BAD: Pick the Gallic model standing on the road next to the spy and send to Eporedorix → Mission assigned to Eporedorix. Do not infer distance from who looks nearest on the 3D map.
+- GOOD: Compare SEND SPY character rows after the spy reached Patavium → Senaculus of Sabis sat above Eporedorix and showed the smaller turn count. Distance is the `[n]` glyph on the send row.
+- GOOD: Click the tree disc at (0.934, 0.968) with Arretium selected → Building Browser opened. That disc is the opener.
+- MIXED: Left-click Segesta's nameplate with Flavius selected → Selected Enemy SEGESTA Village. Wait for the sword cursor.
+- GOOD: Click Construction <6> with Flavius in the field → Watchtower and fort cards opened. A card click spends.

@@ -1,4 +1,4 @@
-"""Unit tests for Phase 7 learning stubs."""
+"""Unit tests for Phase 8 learning stubs."""
 
 from comstar_game_ai.agent.learning.consolidator import consolidate_offline
 from comstar_game_ai.agent.learning.doctrine import DoctrineDestination, triage_document, triage_summary
