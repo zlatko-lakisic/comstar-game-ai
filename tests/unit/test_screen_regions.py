@@ -90,11 +90,16 @@ def test_the_map_viewport_covers_the_middle_of_the_screen():
     assert BY_ID["map_viewport"].contains(0.5, 0.5)
 
 
-def test_only_end_turn_is_actuation_verified():
-    # Honest bookkeeping: everything else was read off a grid and never clicked.
+def test_only_clicked_hud_controls_are_actuation_verified():
     verified = [r.id for r in REGIONS if r.precision is Precision.VERIFIED]
-    assert verified == ["end_turn_button"]
-    assert len(screen_regions.unverified()) == len(REGIONS) - 1
+    assert verified == [
+        "map_overlay_button",
+        "event_dock_icons",
+        "faction_standard_button",
+        "end_turn_button",
+        "building_browser_button",
+        "agent_traits_button",
+    ]
 
 
 def test_the_four_hud_tabs_are_evenly_spaced():

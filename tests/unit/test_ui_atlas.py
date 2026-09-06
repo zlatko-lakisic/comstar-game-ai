@@ -78,9 +78,16 @@ def test_a_panel_carries_close_x_coordinates_exactly_when_it_is_closed_that_way(
 
 def test_the_strategic_overlay_is_toggled_rather_than_closed():
     entry = BY_ID["campaign_map_overlays"]
-    assert entry.dismiss == (Dismiss.LEAVE_OPEN,)
+    assert entry.dismiss == (Dismiss.LEAVE_OPEN, Dismiss.ESCAPE)
     assert not entry.expects_close_x
     assert entry.geometry.close_x is None
+
+
+def test_every_overview_tab_closes_with_the_x_or_escape():
+    for entry in ATLAS:
+        if entry.tab_of != "overview_window":
+            continue
+        assert entry.dismiss == (Dismiss.CLOSE_X, Dismiss.ESCAPE), entry.id
 
 
 def test_decision_panels_are_answered_not_dismissed():
@@ -120,6 +127,10 @@ def test_escape_is_only_trusted_where_the_game_documents_it():
         if Dismiss.ESCAPE not in entry.dismiss:
             continue
         if entry.id == "advisor":
+            continue
+        if entry.id == "campaign_map_overlays":
+            # Not a dialog, so there is no close X to try first. Escape and the
+            # eye toggle are the two ways out.
             continue
         if entry.status is ui_atlas.Status.EXTERNAL:
             # Not an in-game panel, so the close X is not a dismissal it can offer.
@@ -257,6 +268,7 @@ def test_resolved_names_are_the_games_own_words(tables):
     assert BY_ID["building_browser"].name(tables) == "Building Browser"
     assert "finances" in BY_ID["finance_window"].name(tables).lower()
     assert "ESC" in BY_ID["advisor"].name(tables)
+    assert BY_ID["event_log"].name(tables) == "Event Log"
 
 
 def test_match_identifies_the_building_browser_from_measured_edges():
@@ -302,11 +314,19 @@ def test_match_returns_none_for_an_unknown_panel():
 
 
 def test_match_prefers_the_closer_entry():
-    # The two left-dock entries overlap; the measured edges decide between them.
+    # The left-dock entries overlap; the measured edges decide between them.
+    event_log = match_geometry(0.00, 0.163, 0.066)
     senate = match_geometry(0.00, 0.16, 0.07)
     notice = match_geometry(0.03, 0.33, 0.07)
+    assert event_log is not None and event_log.entry.id == "event_log"
     assert senate is not None and senate.entry.id == "senate_mission_card"
     assert notice is not None and notice.entry.id == "left_dock_notice"
+
+
+def test_the_senate_mission_card_is_a_tab_of_the_event_log():
+    entry = BY_ID["senate_mission_card"]
+    assert entry.tab_of == "event_log"
+    assert BY_ID["event_log"].name_key == "SMT_EVENT_LOG"
 
 
 def test_geometry_spans_centre_is_exclusive_at_the_edges():

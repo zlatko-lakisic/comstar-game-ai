@@ -7,8 +7,9 @@ click the radar unless something tells it where the radar is.
 
 Every bound is normalised against the CLIENT rect on a 16:9 client area.
 
-**Read the `precision` field before clicking.** Only `end_turn_button` has been
-verified by a working actuation. The rest were read off a 0.01 coordinate grid laid
+**Read the `precision` field before clicking.** `end_turn_button`,
+`map_overlay_button` and `faction_standard_button` have been verified by a
+working actuation. The rest were read off a 0.01 coordinate grid laid
 over a single 1920x1080 frame, so they carry roughly +/-0.005 and, more importantly,
 have never been proven by a click that did the intended thing. They are good enough
 to *look near* and to reason with, and not good enough to trust blind — which is the
@@ -67,7 +68,10 @@ REGIONS: tuple[Region, ...] = (
         id="map_viewport",
         kind=RegionKind.VIEWPORT,
         bounds=(0.0, 0.055, 1.0, 0.94),
-        purpose="The campaign world. Left-click selects, right-click orders or moves.",
+        purpose=(
+            "The campaign world. Select a character, then left-click a target "
+            "once the cursor glyph changes (sword for an army attack)."
+        ),
         note=(
             "This is the base layer, not an exclusive area: the radar and other HUD "
             "furniture are drawn on top of it and swallow clicks that land on them. "
@@ -141,11 +145,17 @@ REGIONS: tuple[Region, ...] = (
         ),
     ),
     Region(
-        id="advisor_button",
+        id="map_overlay_button",
         kind=RegionKind.BUTTON,
         bounds=(0.968, 0.005, 1.0, 0.055),
-        purpose="Summons the advisor. The eye-and-scrolls disc in the top-right corner.",
-        action="reveal_advice",
+        purpose="Toggles the campaign map overlay. The eye-and-scroll disc at the top-right.",
+        precision=Precision.VERIFIED,
+        action="campaign_map_overlays_button",
+        note=(
+            "Tooltip reads 'Map Overlay <Tab>'. This is not the advisor — that was a "
+            "misread of the same disc. Escape or a second click leaves the overlay; "
+            "there is no dialog X because the overlay is not a dialog."
+        ),
     ),
     Region(
         id="faction_leader_button",
@@ -179,24 +189,37 @@ REGIONS: tuple[Region, ...] = (
     Region(
         id="event_dock_icons",
         kind=RegionKind.CHROME,
-        bounds=(0.0, 0.09, 0.024, 0.95),
+        bounds=(0.0, 0.10, 0.028, 0.36),
         purpose=(
-            "Vertical strip of round category icons (horn, scroll, coins, eagle) down "
-            "the left edge. Each carries a numeric badge counting pending items; "
-            "clicking one opens its cards in the left dock."
+            "Collapsed Event Log: four category discs (Alerts, News, Reports, Missions) "
+            "down the left edge. Click or hover pops the parchment out; the discs ride "
+            "to the panel's right edge and become tabs."
         ),
+        precision=Precision.VERIFIED,
+        action="toggle_news_panel",
         note=(
-            "These icons are gold and round, which is exactly what a panel close X "
-            "looks like — the close-X search must not be run over this strip."
+            "Centres in campaign/left_dock.py. When the dock is open the same discs "
+            "sit near x 0.17, so this collapsed strip is empty. The discs are gold "
+            "and round, which is exactly what a panel close X looks like — the "
+            "close-X search must not be run over this strip. A 9+ badge was on "
+            "Missions this turn. Clicking the already-selected tab collapses the dock."
         ),
     ),
     Region(
-        id="senate_button",
+        id="faction_standard_button",
         kind=RegionKind.BUTTON,
-        bounds=(0.0, 0.925, 0.028, 0.99),
-        purpose="Laurel-wreath disc at the bottom-left; opens the Senate screen.",
-        action="senate_button",
-        note="Roman factions only.",
+        bounds=(0.0, 0.925, 0.055, 0.998),
+        purpose=(
+            "Faction standard at the bottom-left. Opens Faction Summary; right-click "
+            "locates the capital."
+        ),
+        precision=Precision.VERIFIED,
+        action="faction_overview_button",
+        note=(
+            "Tooltip: 'Faction Summary. [Right Click Icon] to locate faction capital.' "
+            "Previously recorded as the Senate disc — Senate is the second tab of the "
+            "window this opens, not a separate HUD button on this layout."
+        ),
     ),
     Region(
         id="hud_tab_buildings",
@@ -216,7 +239,10 @@ REGIONS: tuple[Region, ...] = (
         id="hud_tab_agents",
         kind=RegionKind.BUTTON,
         bounds=(0.512, 0.945, 0.536, 0.99),
-        purpose="Hooded-figure disc; shows the agents tab.",
+        purpose=(
+            "Hooded-figure disc; shows the agents tab. Lights when a spy or "
+            "diplomat is selected."
+        ),
         action="agents_button",
     ),
     Region(
@@ -246,6 +272,62 @@ REGIONS: tuple[Region, ...] = (
         bounds=(0.0, 0.94, 1.0, 1.0),
         purpose="The bottom HUD band holding the tabs, selection cards and End Turn.",
         note="Not a continuous strip: it has gaps that show map through them.",
+    ),
+    Region(
+        id="settlement_recruit_button",
+        kind=RegionKind.BUTTON,
+        bounds=(0.866, 0.948, 0.890, 0.988),
+        purpose="Banner-plus disc. Tooltip: 'Recruitment <5>'. Opens the training dock.",
+        action="recruitment_button",
+        note="Needs a settlement selected. A card click inside the dock queues and spends.",
+    ),
+    Region(
+        id="settlement_construct_button",
+        kind=RegionKind.BUTTON,
+        bounds=(0.890, 0.948, 0.914, 0.988),
+        purpose="Building-plus disc. Tooltip: 'Construction <6>'. Opens the construction dock.",
+        action="construction_button",
+        note="Right-click opens the Building Browser. A card click inside the dock queues and spends.",
+    ),
+    Region(
+        id="building_browser_button",
+        kind=RegionKind.BUTTON,
+        bounds=(0.922, 0.948, 0.946, 0.988),
+        purpose="Tree disc. Tooltip: 'Building Browser'. Opens the unlock-line parchment.",
+        precision=Precision.VERIFIED,
+        note=(
+            "Clicked on Julii turn 1: town_browser.png panel=(492, 1427, 223). "
+            "No key binding. Close with the parchment X, not Escape."
+        ),
+    ),
+    Region(
+        id="agent_traits_button",
+        kind=RegionKind.BUTTON,
+        bounds=(0.078, 0.948, 0.102, 0.975),
+        purpose=(
+            "Left-HUD button on a selected character. Tooltip: 'Character's traits "
+            "and Followers'. Opens the character scroll."
+        ),
+        precision=Precision.VERIFIED,
+        note="Alt+click opens the Steam wiki. See campaign/agents.py.",
+    ),
+    Region(
+        id="agent_disband_button",
+        kind=RegionKind.BUTTON,
+        bounds=(0.702, 0.925, 0.728, 0.955),
+        purpose="Boot on the selected-agent centre strip. Disbands the character.",
+        action="disband",
+        note="Never clicked. Delete is bound to the same action. Do not press either.",
+    ),
+    Region(
+        id="agent_send_list",
+        kind=RegionKind.CHROME,
+        bounds=(0.84, 0.74, 0.97, 0.92),
+        purpose=(
+            "Right-hand send list on a selected agent: SEND EMISSARY or SEND SPY. "
+            "A row click stages the path; Assign commits."
+        ),
+        note="Confirm is on the footer, left of End Turn. The corner hourglass is End Turn.",
     ),
 )
 

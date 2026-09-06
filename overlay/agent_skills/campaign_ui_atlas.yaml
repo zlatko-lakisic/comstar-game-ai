@@ -21,16 +21,379 @@ inject:
   heading: '## Campaign screen atlas'
   max_chars: 6000
 how_to_use:
-- Treat every coordinate as somewhere to look, not somewhere to click blindly. Only end_turn_button has
-  been confirmed by an actuation.
+- Treat every coordinate as somewhere to look, not somewhere to click blindly. end_turn_button, map_overlay_button
+  and faction_standard_button have been confirmed by an actuation.
 - 'Prefer a key binding over a click when both exist: the bindings come from the game''s own database
   and need no localisation.'
 - Prefer a radar click over held panning to cross distance.
 - A blocking panel with no close X is a decision panel — read its footer instead of hunting for a dismiss
   button.
+- 'Overview dialogs (Faction Summary and its six sibling tabs) close with the red X at the dialog''s top-right,
+  or Escape. The map overlay is not a dialog: Escape or a second click on the eye-and-scroll disc leaves
+  it.'
 - If the camera is lost, press Home. It frames the capital from anywhere and is the reason any other camera
   move is safe to attempt.
+- The Event Log dock (Alerts / News / Reports / Missions) closes with its gold X, or by clicking the already-selected
+  tab. Do not press Escape to find out if it is open — Escape on a closed dock is the pause menu.
 - Never infer a settlement's owner from colour alone. Colour picks what to hover; the tooltip decides.
+- For what to *read* from each panel, use the information catalog — one authoritative surface per question.
+  For what happened last time we tried something, use the learnings list (action, measured outcome, valence).
+- 'A selected spy or diplomat paints a green movement range. Drag-hold previews the path; release on the
+  character to cancel. Sending from the HUD is three clicks: a SEND row stages the path, send-panel Confirm
+  opens the briefing, Assign commits. The corner hourglass is End Turn. The boot Disbands.'
+information:
+- id: settlement_owner
+  question: Who owns this settlement, and how do we stand with them?
+  surface: settlement_hover
+  how: Hover the settlement on the 3D map until the tooltip fires. Do not click.
+  reads: 'Name, owning faction, tier, and a standing suffix: (At war), (Neutral), (Ally). No suffix means
+    it is ours. Owned towns also offer ''x2 to get further information''.'
+  trap: Pills are a prefilter, not a verdict. Never infer owner from colour alone.
+- id: settlement_activity
+  question: Which of our towns still need orders?
+  surface: map_overlay.settlements
+  how: Open Map Overlay (eye, or Tab). Settlements is a checkbox — leave it ticked.
+  reads: 'Activity states the hover cannot give: recruiting or constructing, upgrade possible, settlement
+    idle. Idle is the cheapest ''needs orders'' read.'
+  trap: The overlay replaces the 3D map. A click inside the view does not move the camera.
+- id: settlement_economy
+  question: What is this owned settlement's population and income?
+  surface: lists_scroll
+  how: Ctrl+5, Settlements row. Read the detail pane. Close with the dialog X or Escape.
+  reads: Authoritative population and income for towns we own.
+  trap: Hover figures are not population or income. Coin 184 sat next to Lists 3500 / 1710.
+- id: treasury
+  question: How much money do we have this turn?
+  surface: treasury_readout
+  how: Read the top-right HUD. No panel.
+  reads: Current treasury and the signed per-turn change, e.g. 5000 (+442).
+  trap: Finance's 'Boundless' is a band, not a number.
+- id: finance_breakdown
+  question: Where is the money coming from and going?
+  surface: finance_window
+  how: Ctrl+4, Financial Overview. Expand a row's chevron. Do not touch Automanage.
+  reads: Labelled income and expenditure lines.
+  trap: Automanage radios change how the faction is run.
+- id: allies_and_enemies
+  question: Who are we allied with, and who are we at war with?
+  surface: diplomacy_window
+  how: Ctrl+3, Diplomatic Standing, select our crest.
+  reads: Reputation, treasury band, rows for Allies / Enemies / Trade Partners / Trade Embargo / Protectorates,
+    plus a territory minimap.
+  trap: This tab reports standing; it does not negotiate. Talks are `diplomatic_negotiations`, a decision
+    panel with no close X.
+- id: diplomacy_on_the_map
+  question: How does a foreign settlement stand relative to us, including indirect ties?
+  surface: map_overlay.diplomacy
+  how: Open Map Overlay. Diplomacy is a radio — it replaces Factions, it does not add a layer.
+  reads: 'Six standings the hover never says: Player, Ally, Ally of Ally, Neutral, Enemy, Ally of Enemy.'
+  trap: A hover says Ally / At war / Neutral only. SMT_ALLIES reads 'Allies' (legend), not 'Ally'.
+- id: senate_mission
+  question: What has the Senate asked us to do, and how long is left?
+  surface: event_log.missions
+  how: Left-edge eagle disc, or Faction Summary (Ctrl+1). Same card both places this turn. Close the dock
+    with its X, not Escape.
+  reads: Objective, target, turns remaining, reward line. Locate magnifier frames the target.
+  trap: This is not the Senate overview (Ctrl+2). The 9+ badge may outnumber the visible cards.
+- id: faction_summary
+  question: Who leads us, what are we trying to win, and what is the headline state?
+  surface: faction_summary
+  how: Bottom-left standard, or Ctrl+1. Close with the red X or Escape.
+  reads: Leader and three attribute rows, victory conditions, current Senate mission with locate, faction
+    stats, ranking rows, diplomacy crests.
+  trap: The seven top crests are other tabs.
+- id: senate_offices
+  question: How popular are we with the Senate and the People, and which offices are open?
+  surface: senate_window
+  how: Second crest on the overview strip, or Ctrl+2. Policy / Current Standing.
+  reads: Senate & People popularity and the offices list.
+  trap: The Policy grid is a selector.
+- id: region_owner_without_moving
+  question: Who owns a province we are not looking at?
+  surface: radar
+  how: Hover the radar. Do not click unless the camera should jump.
+  reads: Tooltip names the region and its owning faction. Camera stays put.
+  trap: A radar click is coarse.
+- id: find_capital
+  question: Where is our capital, and how do we recover a lost camera?
+  surface: capital_zoom
+  how: Press Home. One press from anywhere.
+  reads: Frames the capital. Also selects it, so the HUD switches to that governor.
+  trap: Home is recovery, not a free look. It changes selection.
+- id: find_owned_settlement
+  question: How do we frame a town we own that is not the capital?
+  surface: lists_scroll
+  how: Ctrl+5, Settlements, first footer. Close the dialog after.
+  reads: Camera jumps to that settlement.
+  trap: The third footer button sets the faction capital permanently. Do not click it.
+- id: pending_alerts
+  question: What urgent empire problems is the game flagging?
+  surface: event_log.alerts
+  how: 'Left-edge horn disc. Tooltip: ''Highlights the most important information about running your empire''.'
+  reads: Alert cards, or 'NO ALERTS' when the list is empty.
+  trap: Clicking the already-selected tab collapses the dock. Do not click Filters.
+- id: pending_news
+  question: What happened to us and to other factions?
+  surface: event_log.news
+  how: 'Left-edge sealed-scrolls disc. Tooltip: ''Brings information about all factions, including yours''.'
+  reads: News cards, or 'NO NEWS'.
+  trap: Same dismiss rules as Alerts. Empty on Julii turn 1.
+- id: pending_reports
+  question: What built, recruited, or arrived in the end-of-turn report?
+  surface: event_log.reports
+  how: 'Left-edge coins disc. Tooltip: ''On recruitment and construction, as well as the End Of Turn Report''.'
+  reads: Construction, recruitment, and end-of-turn report cards, or 'NO REPORTS'.
+  trap: Same dismiss rules as Alerts. Empty on Julii turn 1 before anything has built.
+- id: build_options
+  question: What can this settlement build, and what does a building do?
+  surface: construction_window
+  how: Select the town, press 6. Hover an icon.
+  reads: Name, cost, build time, and the effect list from the hover.
+  trap: A left-click queues the spend. Right-click opens details.
+- id: recruit_options
+  question: What can this settlement recruit?
+  surface: training_window
+  how: Select the town, press 5. Hover a card.
+  reads: Name, size, produce cost, down-arrow upkeep, time, and the recruit/retrain grids.
+  trap: A left-click queues the unit and spends money.
+- id: building_unlock_line
+  question: What unlocks a building, unit, or agent in this town?
+  surface: building_browser
+  how: Tree disc (0.934, 0.968) or right-click Construction.
+  reads: Tier columns with population thresholds, colour vs grey, and who each building trains. Diplomat
+    is the Villa; Spy is the Market; Assassin is the Forum.
+  trap: Green and red tree lines are not accept/reject.
+- id: agent_identity
+  question: Who is this spy or diplomat, and what can they do this turn?
+  surface: agent_selection_hud
+  how: Click the character on the map, or Lists → Agents → locate. Do not click Disband.
+  reads: 'Left card: name, type, location, age, Influence or Subterfuge. Green range on the map. Right
+    list titles SEND EMISSARY or SEND SPY with success % and turns-to-arrive.'
+  trap: The centre strip is agents at this place, not this character's followers. Followers are on the
+    character scroll. The corner hourglass is End Turn, not Confirm.
+- id: agent_traits
+  question: What traits and followers does this character have?
+  surface: character_scroll
+  how: Click the traits HUD button. Close with that parchment's X at (0.740, 0.275).
+  reads: Type title, STATS / TRAITS & FOLLOWERS tabs, trait text and follower slots.
+  trap: Alt+click opens the Steam wiki.
+- id: agent_roster
+  question: Which agents do we have, and where are they?
+  surface: lists_scroll
+  how: Ctrl+5, Agents sub-tab. Locate closes Lists and selects the agent. Or Ctrl+7.
+  reads: Type, name, location, skill. Agent Hub repeats the roster next to Send Agent to.
+  trap: A SEND-list row only stages the path. Assign commits. After that, Lists shows Cancel Mission —
+    that undoes the send. Do not click it while reading.
+- id: agent_target_distance
+  question: How far is a send target, and which one is nearest?
+  surface: agent_selection_hud
+  how: Select the agent. Read the turn glyph on each SEND EMISSARY / SEND SPY row. Do not click Assign
+    unless the send is intended.
+  reads: 'Turns-to-arrive: `[1]`, `[2]`, … . The smaller glyph is nearer. Among characters, the first
+    character row with the smallest glyph is the closest person.'
+  trap: A model standing next to the spy on the 3D map is not the distance read. Eyeballing picked Eporedorix;
+    Senaculus of Sabis was the first character row and the shorter glyph. Closest is a fact, not a policy.
+- id: army_roster
+  question: Which armies and fleets do we have?
+  surface: lists_scroll
+  how: Ctrl+5, Military Forces. Hover a row for upkeep. Locate or double-click to frame.
+  reads: Name, unit count, command/management/influence, stack upkeep on hover.
+  trap: The Settlements footer 3 sets the capital. Use Military Forces locate.
+- id: map_order
+  question: How do we send an army or agent to a map target?
+  surface: map_viewport
+  how: Select the character, hover until the cursor glyph changes, then left-click.
+  reads: Sword cursor is an army attack. Town attack is a siege; a field army is Battle Deployment.
+  trap: 2004 cursor strings say Right click. A nameplate click before the sword selects the town. Do not
+    click a Gallic stack.
+learnings:
+- id: escape_on_clear_map_pauses
+  action: Press Escape on a campaign map with no parchment open
+  outcome: Pause menu and Help Sheet opened. First item is Return to Game.
+  valence: bad
+  lesson: Do not use Escape to find out whether a panel is open. Prefer that panel's close X. If the pause
+    menu is up, click Return to Game — do not click Exit.
+  evidence: data/runtime/sweep/dock_clear.png after Escape on a clear map
+  durable: true
+- id: selected_event_log_tab_toggles_shut
+  action: Click the already-selected Event Log tab
+  outcome: The dock collapsed. Later clicks at the open-tab x landed on the map.
+  valence: mixed
+  lesson: Clicking the selected tab is a valid close, alongside the gold X. Do not click Alerts again
+    to 'make sure' it is open.
+  evidence: 'dock_walk: dock_tab_open_1.png measured panel=None after that click'
+  durable: true
+- id: event_log_hover_or_click_opens
+  action: Hover or click a collapsed left-edge Event Log disc
+  outcome: Parchment slid out to the right; the four discs rode to its right edge.
+  valence: good
+  lesson: The discs are the opener. toggle_news_panel is unbound in moderntw.
+  evidence: dock_switch_opened.png; hover on the horn also opened it
+  durable: true
+- id: event_log_close_x_works
+  action: Click the gold X at (0.160, 0.077) on the open Event Log
+  outcome: Dock collapsed. Mode stayed campaign_map.
+  valence: good
+  lesson: Prefer this X over Escape. Same corner as the old senate_mission_card.
+  evidence: dock_switch_after_close_x.png
+  durable: true
+- id: home_recovers_the_camera
+  action: Press Home from an arbitrary camera
+  outcome: Capital framed in one press. The capital was also selected.
+  valence: good
+  lesson: Home is the recovery primitive. It also changes selection.
+  evidence: navigation sweep; capital_zoom bound to Home in both keysets
+  durable: true
+- id: settlement_tooltip_is_authoritative
+  action: Hover Segesta, Patavium, and Rome
+  outcome: Tooltips said (At war) / (Neutral) / (Ally).
+  valence: good
+  lesson: Colour picks what to hover; the tooltip decides owner and standing.
+  evidence: settlements.py cross-check on Julii turn 1
+  durable: true
+- id: tooltip_figures_are_not_economy
+  action: Read the three unlabelled figures on a settlement hover
+  outcome: Coin 184 next to Lists population 3500 / income 1710 for the same town.
+  valence: bad
+  lesson: Population and income come from Lists, not from the hover figures.
+  evidence: guided settlement identification, Julii turn 1
+  durable: true
+- id: label_pill_rgb_is_not_the_legend
+  action: Match a map label-pill colour to the overlay standing legend
+  outcome: The RGBs disagree. A colour match would mis-tag standing.
+  valence: bad
+  lesson: Pills are a prefilter. Overlay legend and tooltip are the keys.
+  evidence: settlements.LABEL_PILL_COLOURS vs overlay legend samples
+  durable: true
+- id: overlay_is_not_a_clickable_map
+  action: Click inside the Map Overlay view, hoping to jump the camera
+  outcome: Camera did not move.
+  valence: mixed
+  lesson: The overlay is a legend, not a navigator. Use Home, Lists locate, or the radar.
+  evidence: map overlay guided sweep
+  durable: true
+- id: alt_click_overlay_opens_wiki
+  action: Alt+click an overlay layer button
+  outcome: Steam wiki overlay opened — same hazard as F1.
+  valence: bad
+  lesson: Never Alt+click a layer. Hold-Alt-to-expand-tooltip is a different control.
+  evidence: map_overlay.py note; F1 help_window is EXTERNAL for the same reason
+  durable: true
+- id: guessed_hud_clicks_open_the_browser
+  action: Click unverified positions near End Turn
+  outcome: Five guessed candidates missed; one opened the building browser and wedged the run.
+  valence: bad
+  lesson: Locate a control before clicking it. Never sweep candidate coordinates.
+  evidence: never_blind_click_the_hud in campaign_ui_facts.yaml
+  durable: true
+- id: lists_third_footer_sets_capital
+  action: Click the third footer button on the Lists settlement pane
+  outcome: Would permanently change the faction capital.
+  valence: bad
+  lesson: First footer locates. Second explores the battle map. Third sets capital. Use the first.
+  evidence: hover_lists_btn1..3.png; lists_scroll note
+  durable: true
+- id: family_tree_can_set_the_heir
+  action: Click in the Family Tree sub-tab of Finance & Family
+  outcome: The tab's own tooltip offers setting the faction heir — a succession change.
+  valence: bad
+  lesson: Read the tree. Do not click a character to 'inspect' them there.
+  evidence: Finance & Family hover; SMT family-tree tooltip
+  durable: true
+- id: event_log_filters_change_incoming_mail
+  action: Click the Filters funnel on the Event Log
+  outcome: 'Not clicked. Tooltip: ''Select which type of messages you receive.'''
+  valence: bad
+  lesson: The funnel is a setting, not a view. Do not click it while reading.
+  evidence: dock_chrome2_filter.png
+  durable: true
+- id: senate_mission_agrees_across_surfaces
+  action: Read the mission on Faction Summary and again on Event Log → Missions
+  outcome: Both showed Take Settlement Segesta, 10 turns, richly rewarded.
+  valence: good
+  lesson: Either surface is enough. The Event Log card is the same notice, not a second mission.
+  evidence: fs_tab_1 / dock_switch_4.png, Julii turn 1
+  durable: true
+- id: agent_drag_previews_path
+  action: Hold left mouse on a diplomat, drag toward a road, then release back on him
+  outcome: A green path appeared while held. On release he was still idle at Arretium.
+  valence: good
+  lesson: Drag-hold is the preview. Release on the character to cancel. A click on a destination is an
+    order — do not click the map just to look.
+  evidence: agent_path_preview.png / agent_path_released.png
+  durable: true
+- id: traits_button_opens_character_scroll
+  action: Click the enabled left-HUD button on Sextus Antio
+  outcome: 'Character scroll titled DIPLOMAT opened (panel top 0.261). Traits & Followers showed Diplomatic
+    +3 and Followers: None.'
+  valence: good
+  lesson: That button is the extra-info pane. Close with its own X, not the overview-tab X.
+  evidence: agent_left_info.png; close at (0.740, 0.275)
+  durable: true
+- id: agent_hub_confirm_dispatches
+  action: Open Agent Hub (Ctrl+7) with a Send Agent row highlighted
+  outcome: Gold Confirm sat on the briefing. Not clicked. The first row was Negotiate with Tarentum, 3
+    turns.
+  valence: bad
+  lesson: Confirm sends the agent. Close with the overview X. The map SEND list is a second dispatcher.
+  evidence: agent_hub_ctrl7.png
+  durable: true
+- id: disband_boot_is_live
+  action: Inspect the selected-agent HUD boot without clicking it
+  outcome: Boot sits on the centre strip. Delete is bound to the same action.
+  valence: bad
+  lesson: The boot disbands the character. Do not click it or press Delete.
+  evidence: agent_located_0.png / agent_located_1.png
+  durable: true
+- id: send_list_is_three_clicks
+  action: Click Spy on Patavium, then Confirm, then Assign
+  outcome: 'Row drew a green/red path to Patavium. Confirm opened ''Send Agent to: Patavium'' with Cancel
+    Mission. Assign committed: Lists shows Target: Patavium and Cancel Mission; location flipped from
+    Ariminum to Patavium. The same three clicks sent Sextus Antio to negotiate with Patavium.'
+  valence: good
+  lesson: Row stages, Confirm opens the briefing, Assign commits. The corner hourglass is End Turn — Confirm
+    sits left of it at about (0.90, 0.93).
+  evidence: spy_send_patavium.png / spy_assigned_patavium.png / crop_agent_lists_detail_0.png
+  durable: true
+- id: spy_on_nearest_gallic_character
+  action: Pick the Gallic model standing on the road next to the spy and send to Eporedorix
+  outcome: Mission assigned to Eporedorix. Senaculus of Sabis was the first character row on SEND SPY
+    and carried the shorter turn glyph.
+  valence: bad
+  lesson: Do not infer distance from who looks nearest on the 3D map. Read the SEND-list turn glyph. Closest
+    is a read; it is not automatically the right target.
+  evidence: spy_located_now.png SEND list vs spy_on_gallic.png map hover
+  durable: true
+- id: send_list_turn_glyph_is_distance
+  action: Compare SEND SPY character rows after the spy reached Patavium
+  outcome: Senaculus of Sabis sat above Eporedorix and showed the smaller turn count. The path line on
+    the map did not decide who was nearer.
+  valence: good
+  lesson: Distance is the `[n]` glyph on the send row. Compare glyphs within characters or within settlements,
+    not across types.
+  evidence: spy_located_now.png SEND SPY list; Senaculus first character row
+  durable: true
+- id: building_browser_tree_disc_opens
+  action: Click the tree disc at (0.934, 0.968) with Arretium selected
+  outcome: Building Browser opened. Escape does not close it.
+  valence: good
+  lesson: That disc is the opener. Close with the parchment X.
+  evidence: town_browser.png panel=(492, 1427, 223); tt_f934.png
+  durable: true
+- id: map_order_waits_for_the_cursor_glyph
+  action: Left-click Segesta's nameplate with Flavius selected
+  outcome: Selected Enemy SEGESTA Village.
+  valence: mixed
+  lesson: Wait for the sword cursor.
+  evidence: 'army_sword_on_segesta.png / army_attack_segesta2.png; operator: left-click after glyph'
+  durable: true
+- id: field_construction_opens_from_the_town_disc
+  action: Click Construction <6> with Flavius in the field
+  outcome: Watchtower and fort cards opened.
+  valence: good
+  lesson: A card click spends.
+  evidence: army_construct_click.png / crop_field_con_zoom.png
+  durable: true
 regions:
 - id: map_viewport
   kind: viewport
@@ -42,7 +405,8 @@ regions:
   centre:
   - 0.5
   - 0.4975
-  purpose: The campaign world. Left-click selects, right-click orders or moves.
+  purpose: The campaign world. Select a character, then left-click a target once the cursor glyph changes
+    (sword for an army attack).
   precision: measured
   note: 'This is the base layer, not an exclusive area: the radar and other HUD furniture are drawn on
     top of it and swallow clicks that land on them. Resolve a point with region_at rather than testing
@@ -137,7 +501,7 @@ regions:
   precision: measured
   note: 'Two turns per year, summer then winter. Useful as a sanity check on turn counting but NOT as
     the turn clock: the autosaves are the clock.'
-- id: advisor_button
+- id: map_overlay_button
   kind: button
   bounds:
   - 0.968
@@ -147,9 +511,11 @@ regions:
   centre:
   - 0.984
   - 0.03
-  purpose: Summons the advisor. The eye-and-scrolls disc in the top-right corner.
-  precision: measured
-  action: reveal_advice
+  purpose: Toggles the campaign map overlay. The eye-and-scroll disc at the top-right.
+  precision: verified
+  action: campaign_map_overlays_button
+  note: Tooltip reads 'Map Overlay <Tab>'. This is not the advisor — that was a misread of the same disc.
+    Escape or a second click leaves the overlay; there is no dialog X because the overlay is not a dialog.
 - id: faction_leader_button
   kind: button
   bounds:
@@ -206,31 +572,36 @@ regions:
   kind: chrome
   bounds:
   - 0.0
-  - 0.09
-  - 0.024
-  - 0.95
+  - 0.1
+  - 0.028
+  - 0.36
   centre:
-  - 0.012
-  - 0.52
-  purpose: Vertical strip of round category icons (horn, scroll, coins, eagle) down the left edge. Each
-    carries a numeric badge counting pending items; clicking one opens its cards in the left dock.
-  precision: measured
-  note: These icons are gold and round, which is exactly what a panel close X looks like — the close-X
-    search must not be run over this strip.
-- id: senate_button
+  - 0.014
+  - 0.23
+  purpose: 'Collapsed Event Log: four category discs (Alerts, News, Reports, Missions) down the left edge.
+    Click or hover pops the parchment out; the discs ride to the panel''s right edge and become tabs.'
+  precision: verified
+  action: toggle_news_panel
+  note: Centres in campaign/left_dock.py. When the dock is open the same discs sit near x 0.17, so this
+    collapsed strip is empty. The discs are gold and round, which is exactly what a panel close X looks
+    like — the close-X search must not be run over this strip. A 9+ badge was on Missions this turn. Clicking
+    the already-selected tab collapses the dock.
+- id: faction_standard_button
   kind: button
   bounds:
   - 0.0
   - 0.925
-  - 0.028
-  - 0.99
+  - 0.055
+  - 0.998
   centre:
-  - 0.014
-  - 0.9575
-  purpose: Laurel-wreath disc at the bottom-left; opens the Senate screen.
-  precision: measured
-  action: senate_button
-  note: Roman factions only.
+  - 0.0275
+  - 0.9615
+  purpose: Faction standard at the bottom-left. Opens Faction Summary; right-click locates the capital.
+  precision: verified
+  action: faction_overview_button
+  note: 'Tooltip: ''Faction Summary. [Right Click Icon] to locate faction capital.'' Previously recorded
+    as the Senate disc — Senate is the second tab of the window this opens, not a separate HUD button
+    on this layout.'
 - id: hud_tab_buildings
   kind: button
   bounds:
@@ -267,7 +638,7 @@ regions:
   centre:
   - 0.524
   - 0.9675
-  purpose: Hooded-figure disc; shows the agents tab.
+  purpose: Hooded-figure disc; shows the agents tab. Lights when a spy or diplomat is selected.
   precision: measured
   action: agents_button
 - id: hud_tab_fleets
@@ -312,6 +683,90 @@ regions:
   purpose: The bottom HUD band holding the tabs, selection cards and End Turn.
   precision: measured
   note: 'Not a continuous strip: it has gaps that show map through them.'
+- id: settlement_recruit_button
+  kind: button
+  bounds:
+  - 0.866
+  - 0.948
+  - 0.89
+  - 0.988
+  centre:
+  - 0.878
+  - 0.968
+  purpose: 'Banner-plus disc. Tooltip: ''Recruitment <5>''. Opens the training dock.'
+  precision: measured
+  action: recruitment_button
+  note: Needs a settlement selected. A card click inside the dock queues and spends.
+- id: settlement_construct_button
+  kind: button
+  bounds:
+  - 0.89
+  - 0.948
+  - 0.914
+  - 0.988
+  centre:
+  - 0.902
+  - 0.968
+  purpose: 'Building-plus disc. Tooltip: ''Construction <6>''. Opens the construction dock.'
+  precision: measured
+  action: construction_button
+  note: Right-click opens the Building Browser. A card click inside the dock queues and spends.
+- id: building_browser_button
+  kind: button
+  bounds:
+  - 0.922
+  - 0.948
+  - 0.946
+  - 0.988
+  centre:
+  - 0.934
+  - 0.968
+  purpose: 'Tree disc. Tooltip: ''Building Browser''. Opens the unlock-line parchment.'
+  precision: verified
+  note: 'Clicked on Julii turn 1: town_browser.png panel=(492, 1427, 223). No key binding. Close with
+    the parchment X, not Escape.'
+- id: agent_traits_button
+  kind: button
+  bounds:
+  - 0.078
+  - 0.948
+  - 0.102
+  - 0.975
+  centre:
+  - 0.09
+  - 0.9615
+  purpose: 'Left-HUD button on a selected character. Tooltip: ''Character''s traits and Followers''. Opens
+    the character scroll.'
+  precision: verified
+  note: Alt+click opens the Steam wiki. See campaign/agents.py.
+- id: agent_disband_button
+  kind: button
+  bounds:
+  - 0.702
+  - 0.925
+  - 0.728
+  - 0.955
+  centre:
+  - 0.715
+  - 0.94
+  purpose: Boot on the selected-agent centre strip. Disbands the character.
+  precision: measured
+  action: disband
+  note: Never clicked. Delete is bound to the same action. Do not press either.
+- id: agent_send_list
+  kind: chrome
+  bounds:
+  - 0.84
+  - 0.74
+  - 0.97
+  - 0.92
+  centre:
+  - 0.905
+  - 0.83
+  purpose: 'Right-hand send list on a selected agent: SEND EMISSARY or SEND SPY. A row click stages the
+    path; Assign commits.'
+  precision: measured
+  note: Confirm is on the footer, left of End Turn. The corner hourglass is End Turn.
 panels:
 - id: building_browser
   name: Building Browser
@@ -322,7 +777,8 @@ panels:
   dismiss:
   - close_x
   status: verified
-  opened_by: settlement scroll, or a stray click in the lower-right HUD
+  opened_by: tree disc at (0.934, 0.968) with a settlement selected, or right-click the Construction <6>
+    disc. No key binding.
   geometry:
     left: 0.26
     right: 0.74
@@ -331,12 +787,48 @@ panels:
     close_x:
     - 0.752
     - 0.196
-  note: Its construction tree is full of green and red connector lines that mimic decision glyphs, so
-    decision detection must not run inside it.
+  note: The unlock line. Columns are settlement tiers with population thresholds; colour is built, grey
+    is not. Green connectors are open paths. A red chain is a missing gate, not accept/reject — decision
+    detection must not run inside it. Hover an icon for cost, time, and who it trains. Right-click opens
+    the Building Information Scroll. Close with this parchment's X, not Escape.
   evidence:
   - 125 corpus frames; spans the centre and covers the End Turn control
   - ignored 40+ Escape presses, so CLOSE_X is the only dismissal
   - 'log line: ''Uknown settlement levelbuilding_browser_scroll scroll opened'''
+  - 'live Julii turn 1: data/runtime/sweep/town_browser.png panel=(492, 1427, 223) after clicking the
+    tree disc'
+- id: event_log
+  name: Event Log
+  name_key: SMT_EVENT_LOG
+  class: notice
+  blocking: false
+  expects_close_x: true
+  dismiss:
+  - leave_open
+  - close_x
+  status: verified
+  opened_by: four category discs on the left edge (Alerts, News, Reports, Missions); hover or click pops
+    the parchment to the right
+  shortcut_action: toggle_news_panel
+  geometry:
+    left: 0.0
+    right: 0.163
+    top: 0.066
+    spans_centre: false
+    close_x:
+    - 0.16
+    - 0.077
+  note: 'The container behind Alerts / News / Reports / Missions. String tables name it Event Log; the
+    tab tooltips use those four English words. `toggle_news_panel` exists in descr_shortcuts.txt but is
+    unbound in moderntw, so the discs are the opener. Clicking the selected tab toggles the dock shut
+    — do not click Alerts again to ''make sure'' it is open. Escape was not used: Escape on a closed dock
+    is the pause menu. See campaign/left_dock.py for the four centres. Filters (funnel, tooltip ''Select
+    which type of messages you receive'') changes incoming messages — do not click it.'
+  evidence:
+  - 'live Julii turn 1: data/runtime/sweep/dock_switch_opened.png, dock_tab_hover_1..4.png, dock_switch_2..4.png,
+    dock_chrome2_filter.png'
+  - 'close X at (0.160, 0.077) collapsed it: dock_switch_after_close_x.png'
+  - clicking the already-selected Alerts tab also collapsed it
 - id: senate_mission_card
   name: Open Senate information screen
   name_key: SMT_OPEN_SENATE_WINDOW
@@ -347,7 +839,7 @@ panels:
   - leave_open
   - close_x
   status: verified
-  opened_by: pushed by the Senate at the start of a Roman turn
+  opened_by: Missions tab of the Event Log, or pushed by the Senate at turn start
   geometry:
     left: 0.0
     right: 0.16
@@ -356,11 +848,12 @@ panels:
     close_x:
     - 0.16
     - 0.077
-  note: Not the Senate window. This is the card the Senate pushes into the left dock when it assigns a
-    mission; the window it refers to is `senate_window` and opens on Ctrl+2. Conflating them makes a harmless
-    notice look like a panel that needs closing.
+  note: 'Not the Senate window (that is `senate_window`, Ctrl+2). This is the Missions tab of the Event
+    Log: same parchment frame, different body. Conflating it with the Senate overview makes a harmless
+    notice look like a panel that needs closing.'
   evidence:
   - 73 corpus frames over a dim night map
+  - 'live Missions tab: data/runtime/sweep/dock_switch_4.png — Take Segesta, 10 turns'
   - no glyph pair, map stayed playable and the turn proceeded
 - id: senate_window
   name: Open Senate information screen
@@ -370,8 +863,9 @@ panels:
   expects_close_x: true
   dismiss:
   - close_x
+  - escape
   status: verified
-  opened_by: laurel-wreath button at the bottom-left of the HUD, or Ctrl+2
+  opened_by: second crest on the overview tab strip, or Ctrl+2
   shortcut_action: senate_button
   shortcut: ctrl+2
   geometry:
@@ -420,7 +914,8 @@ panels:
   dismiss:
   - decision_button
   status: verified
-  opened_by: right-click a diplomat onto a target, or an AI faction opens talks
+  opened_by: left-click a diplomat onto a target once the cursor glyph changes (2004 strings still say
+    right-click), or an AI faction opens talks
   geometry:
     left: 0.2
     right: 0.76
@@ -477,7 +972,7 @@ panels:
   dismiss:
   - close_x
   status: verified
-  opened_by: construction button on the settlement scroll, or 6 with a settlement selected
+  opened_by: construction disc on the settlement footer, or 6 with a settlement selected
   shortcut_action: construction_button
   shortcut: '6'
   geometry:
@@ -488,13 +983,20 @@ panels:
     close_x:
     - 0.857
     - 0.452
+  requires: a settlement selected on the map
   note: 'Not a window. It docks against the right edge as a grid of building icons with a Repair grid
     beneath, and leaves the map playable, so it is a notice by behaviour despite being a construction
-    control. Hovering an icon yields the building''s name, cost, build time and full effect list, which
-    is how to read the options without clicking: a click queues the build and spends money.'
+    control. Hovering an icon yields the building''s name, cost, build time and effect list (TMT_CONSTRUCTION_HELP:
+    left-click queues, right-click for information). A left-click queues the build and spends money. The
+    icon grid reflows after a queue — do not reuse old card coordinates. Buildings have no upkeep; income
+    changes when they complete. Live hovers this turn were 10% under EDB (Practice Range 1080 vs 1200).
+    Right-click opens building details. The Construction disc tooltip also offers right-click to open
+    the Building Browser. The same disc opens FIELD CONSTRUCTION when a named general is selected on own
+    land.'
   evidence:
   - 'guided sweep: data/runtime/sweep/settlement_panel.png, hover_constr_c1.png'
   - 6 pressed on a bare map does nothing; with Arretium selected it opens
+  - 'live footer tooltip: data/runtime/sweep/tt_f902.png ''Construction <6>'''
 - id: training_window
   name: Open unit training scroll for selected settlement
   name_key: SMT_OPEN_TRAINING_WINDOW
@@ -515,9 +1017,12 @@ panels:
     close_x:
     - 0.857
     - 0.452
+  requires: a settlement selected on the map
   note: 'The recruitment counterpart of construction_window and the same shape: a right-edge dock of unit
-    cards. The bottom bar gains a queue readout (''1/20'') while it is open. Unit cards match the extracted
-    install art under kb/cards/units, so a card can be identified rather than merely located.'
+    cards over a Retrain grid. Hover reads name, size, cost, time, and a down-arrow upkeep. A left-click
+    queues and spends; right-click opens unit details; Alt+right-click is the wiki. Arretium this turn
+    offered Peasants (100/100), Town Watch (150/100), Hastati (440/170), a port warship, and Diplomat
+    — no spy. Upkeep hits when the unit exists, not when it is queued.'
   evidence:
   - 'guided sweep: data/runtime/sweep/training_window.png'
   - right-edge dock titled 'Recruitment' with a 'Retrain' grid beneath
@@ -531,6 +1036,36 @@ panels:
   - close_x
   status: unseen
   opened_by: mercenary button while an army is selected
+  note: The Mercenaries grid also sits under FIELD CONSTRUCTION when a named general is selected on the
+    map. It was empty in Etruria this turn, so this parchment as its own window is still unseen.
+- id: field_construction
+  name: Select a fort or watchtower to build
+  name_key: SMT_SELECT_FORT_OR_WATCHTOWER
+  class: notice
+  blocking: false
+  expects_close_x: true
+  dismiss:
+  - close_x
+  status: verified
+  opened_by: Construction <6> disc with a named general selected on own land, not inside a town
+  shortcut_action: construction_button
+  shortcut: '6'
+  geometry:
+    left: 0.82
+    right: 1.0
+    top: 0.4
+    spans_centre: false
+    close_x:
+    - 0.83
+    - 0.419
+  requires: a named general on own land, not in a town or at sea
+  note: Right-edge dock titled FIELD CONSTRUCTION. Watchtower is the left card (200), fort the right (500).
+    A card click spends. Official reject strings are TMT_FIELD_CONSTRUCTION_TEST_*. The same disc opens
+    the town construction dock when a settlement is selected. Map orders are a left-click on the target
+    once the cursor glyph changes (sword for an army); the 2004 cursor strings still say Right click.
+  evidence:
+  - 'live Julii turn 1: data/runtime/sweep/army_construct_click.png, crop_field_con_zoom.png after Construction
+    <6> with Flavius in the field'
 - id: diplomacy_window
   name: Open diplomatic standing window
   name_key: SMT_OPEN_DIPLOMACY_WINDOW
@@ -539,8 +1074,9 @@ panels:
   expects_close_x: true
   dismiss:
   - close_x
+  - escape
   status: verified
-  opened_by: diplomacy button on the bottom-left HUD, or Ctrl+3
+  opened_by: third crest on the overview tab strip, or Ctrl+3
   shortcut_action: diplomacy_overview_button
   shortcut: ctrl+3
   geometry:
@@ -552,9 +1088,10 @@ panels:
     - 0.74
     - 0.139
   note: 'The game titles this tab ''Factions'', not diplomacy, and it conducts none: it reports standing.
-    Sub-tabs are Ranking and Diplomatic Standing, and the detail pane carries a reputation bar, a territory
-    minimap, and rows for allies, enemies, trade partners, embargoes and protectorates. Actual negotiation
-    happens in `diplomatic_negotiations`, a decision panel.'
+    Sub-tabs are Ranking and Diplomatic Standing — the latter''s own tooltip reads ''the state of relations
+    between all factions''. Selecting our crest there shows reputation (80% on turn 1), a treasury word
+    (''Boundless''), rows for Allies / Enemies / Trade Partners / Trade Embargo / Protectorates, and a
+    territory minimap. Actual negotiation happens in `diplomatic_negotiations`, a decision panel.'
   evidence:
   - 'guided sweep: data/runtime/sweep/diplomacy_window.png'
   - titles itself 'Factions'; tab 3 of the overview frame
@@ -566,8 +1103,9 @@ panels:
   expects_close_x: true
   dismiss:
   - close_x
+  - escape
   status: verified
-  opened_by: coin button on the bottom-left HUD, or Ctrl+4
+  opened_by: fourth crest on the overview tab strip, or Ctrl+4
   shortcut_action: finances_button
   shortcut: ctrl+4
   geometry:
@@ -581,7 +1119,8 @@ panels:
   note: Sub-tabs are Financial Overview and Family Tree. Income and expenditure rows carry a chevron that
     expands a breakdown. The footer holds an Automanage checkbox, Automanage Tax / Everything radios and
     an AI Spend Policy slider — all of which change how the faction is run, so they are read-only as far
-    as an unattended agent is concerned.
+    as an unattended agent is concerned. The Family Tree sub-tab's tooltip is 'Your faction's lineage
+    with an option to set the faction heir' — that option is a permanent succession change, not a view.
   evidence:
   - 'guided sweep: data/runtime/sweep/finance_window.png'
   - titles itself 'Finance & Family'; tab 4 of the overview frame
@@ -593,8 +1132,10 @@ panels:
   expects_close_x: true
   dismiss:
   - close_x
+  - escape
   status: verified
-  opened_by: faction button on the bottom-left HUD, or Ctrl+1; right-click instead locates the capital
+  opened_by: faction standard at the bottom-left of the HUD, or Ctrl+1; right-click the standard instead
+    locates the capital
   shortcut_action: faction_overview_button
   shortcut: ctrl+1
   geometry:
@@ -605,9 +1146,11 @@ panels:
     close_x:
     - 0.74
     - 0.139
-  note: The tab the whole frame is named after. Carries the faction leader with his three attribute rows,
-    the victory conditions, the current Senate mission with a locate button, faction stats, six ranking
-    rows, and diplomatic standing. The densest single source of faction state available without acting.
+  note: The tab the whole frame is named after, and the one the bottom-left standard opens onto. Carries
+    the faction leader with his three attribute rows, the victory conditions, the current Senate mission
+    with a locate button, faction stats, six ranking rows, and a Diplomacy block listing Allies, Enemies,
+    Trade Partners and Trade Embargoes as crests. The seven round icons along the top of the dialog are
+    the other overview tabs, not a second menu. Closed by the red X at the dialog's top-right, or Escape.
   evidence:
   - 'guided sweep: data/runtime/sweep/faction_summary.png'
   - titles itself 'Faction Summary'; tab 1 of the overview frame
@@ -619,8 +1162,9 @@ panels:
   expects_close_x: true
   dismiss:
   - close_x
+  - escape
   status: verified
-  opened_by: lists button on the bottom-left HUD, or Ctrl+5
+  opened_by: fifth crest on the overview tab strip, or Ctrl+5
   shortcut_action: lists_button
   shortcut: ctrl+5
   geometry:
@@ -631,11 +1175,14 @@ panels:
     close_x:
     - 0.74
     - 0.139
-  note: 'Sub-tabs are Settlements, Military Forces and Agents, over a sortable list with a filter dropdown.
-    The settlement detail pane holds the per-settlement controls: Automanage / Construction / Recruitment
-    checkboxes and a tax-rate stepper. Of its three footer buttons the game names the first two ''Locate
-    position of settlement'' and ''Explore settlement on Battle Map'', but the third is ''Make this settlement
-    the faction capital'' — a permanent change sitting one icon away from two harmless ones.'
+  note: Sub-tabs are Settlements, Military Forces and Agents, over a sortable list with a filter dropdown.
+    Military Forces lists generals and admirals; a row hover shows stack upkeep (Flavius 368 this turn).
+    Double-click or the locate disc frames the stack and closes Lists. Agents lists Diplomats, Merchants
+    and Assassins; the detail pane has a hooded Agent Hub disc and a locate magnifier. Locate closes Lists
+    and selects the agent on the map. The settlement detail pane holds Automanage / Construction / Recruitment
+    checkboxes and a tax-rate stepper. Of its three footer buttons the game names the first two 'Locate
+    position of settlement' and 'Explore settlement on Battle Map', but the third is 'Make this settlement
+    the faction capital' — a permanent change sitting one icon away from two harmless ones.
   evidence:
   - 'guided sweep: data/runtime/sweep/lists_scroll.png'
   - titles itself 'Lists'; tab 5 of the overview frame
@@ -664,6 +1211,10 @@ panels:
   opened_by: F1
   shortcut_action: show_help
   shortcut: f1
+  hazard: F1 does not open an in-game panel. It asks Steam to open the wiki in the overlay browser, which
+    covers the entire screen, is outside the game's UI so no panel detector can see it, and clears only
+    on Shift+Tab. On this install the browser then fails with 'BrowserView.Create initial URL not valid',
+    so the payoff is nil and the cost is a blind agent.
   note: Left in the atlas precisely so the hazard is recorded rather than rediscovered.
   evidence:
   - 'guided sweep: data/runtime/sweep/fixed_f1.png shows the Steam overlay'
@@ -675,8 +1226,9 @@ panels:
   expects_close_x: true
   dismiss:
   - close_x
+  - escape
   status: verified
-  opened_by: retinue button on the bottom-left HUD, or Ctrl+6
+  opened_by: sixth crest on the overview tab strip, or Ctrl+6
   shortcut_action: retinue_button
   shortcut: ctrl+6
   geometry:
@@ -687,10 +1239,11 @@ panels:
     close_x:
     - 0.74
     - 0.139
-  note: Rome calls retinue members ancillaries and this tab calls them followers. Two filtered lists —
-    faction characters and their followers — over a detail pane showing the selected character's traits.
+  note: 'Rome calls retinue members ancillaries and this tab calls them followers. Two filtered lists
+    — faction characters and their followers — over a detail pane showing the selected character''s traits.
     Character-scoped, not faction-scoped, and the only tab whose purpose is to move something rather than
-    read it.
+    read it. The centre strip on a selected agent''s map HUD is a different surface: it is labelled ''Your
+    Agents'' / ''Other Factions'' Agents'' and lists who is at that place, not this character''s followers.'
   evidence:
   - 'guided sweep: data/runtime/sweep/retinue_panel.png'
   - titles itself 'Move Followers'; tab 6 of the overview frame
@@ -703,8 +1256,10 @@ panels:
   expects_close_x: true
   dismiss:
   - close_x
+  - escape
   status: verified
-  opened_by: agent hub button on the bottom-left HUD, or Ctrl+7
+  opened_by: seventh crest on the overview tab strip, Ctrl+7, or the hooded disc on a selected agent's
+    send-list footer
   shortcut_action: agent_hub_button
   shortcut: ctrl+7
   geometry:
@@ -716,11 +1271,15 @@ panels:
     - 0.74
     - 0.139
   note: 'Bound to Ctrl+7 in both keysets but named by no shipped string: a Remastered addition the original
-    text tables predate, and capture is the only way to name it. Three filter dropdowns over an agent
-    list, with a ''Send Agent to'' list of missions carrying success percentages. The one tab with a commit
-    button — a gold Confirm at the footer that dispatches the agent for real.'
+    text tables predate, and capture is the only way to name it. Type / Location / Status filters over
+    the faction''s agents, a ''Send Agent to'' list of missions with success percentages and turn counts,
+    and a right-hand briefing (target, known buildings, missing intel as ''?''). The one tab with a commit
+    button — a gold Confirm at the footer that dispatches the agent for real. The map-selection SEND EMISSARY
+    / SEND SPY list is a different surface: it is not this dialog, though its hooded footer disc opens
+    it. The hourglass at the screen corner is End Turn.'
   evidence:
   - 'guided sweep: data/runtime/sweep/agent_hub.png'
+  - 'live: data/runtime/sweep/agent_hub_ctrl7.png'
   - titles itself 'Agent Hub'; tab 7 of the overview frame
 - id: campaign_map_overlays
   name: Toggle Colour Overlays
@@ -730,8 +1289,10 @@ panels:
   expects_close_x: false
   dismiss:
   - leave_open
+  - escape
   status: verified
-  opened_by: Tab in the moderntw keyset, Ctrl+Tab in default
+  opened_by: 'eye-and-scroll disc at the top-right of the HUD (tooltip: ''Map Overlay <Tab>''), or Tab
+    in the moderntw keyset, Ctrl+Tab in default'
   shortcut_action: campaign_map_overlays_button
   shortcut: tab
   geometry:
@@ -739,20 +1300,48 @@ panels:
     right: 0.123
     top: 0.368
     spans_centre: false
-  note: 'Replaces the map with a framed strategic view rather than opening a scroll, so nothing needs
-    dismissing — Tab again leaves it. Two legends dock at the edges and both are checkbox filters, not
-    keys: settlement tiers, alerts, and the states ''Recruiting or constructing'', ''Upgrade possible''
-    and ''Settlement idle'' on the left; per-faction colours on the right. Those three states are the
-    cheapest read available of which settlements still need orders. It recolours everything the perception
-    layer sees, so any pixel heuristic calibrated on the normal map is invalid while it is up. Read-only
-    despite looking exactly like a navigable map: a click inside it moved the camera not at all and selected
-    nothing. The legends are worth sampling rather than transcribing, since each swatch is drawn by the
-    code that tints the icons it explains — see campaign/settlements.py. Eleven further layer buttons
-    sit along the bottom edge, each independently checkable, and the two enabled by default are why exactly
-    two legends show.'
+  note: 'Not a parchment dialog, so there is no close X — Escape leaves it, and clicking the eye again
+    toggles it off. Twelve layer buttons sit along the bottom edge. Square indicators are checkboxes —
+    independent on/off for feature layers (Settlements, Armies, Agents, Fortifications, trade routes,
+    Trade Goods), and several can be drawn at once. Round indicators are radio buttons — exclusive views
+    (Factions, Diplomacy, Activity, and three siblings whose clicks selected Activity last). Diplomacy''s
+    legend is richer than a settlement hover: Player / Ally / Ally of Ally / Neutral / Enemy / Ally of
+    Enemy. Each legend collapses via a chevron on its own header. Alt+click on a layer button opens the
+    Steam wiki — do not. Read-only as a map: a click inside the view moved the camera not at all. See
+    campaign/map_overlay.py for the twelve centres.'
   evidence:
-  - 'guided sweep: data/runtime/sweep/recover_1.png'
-  - measured geometry is the left legend, the only panel-like region it adds
+  - 'HUD click: data/runtime/sweep/hud_eye_open.png'
+  - 'Escape closed it: data/runtime/sweep/ovl_after_escape.png'
+  - 'eye toggle closed it: data/runtime/sweep/ovl_after_eye_toggle.png'
+  - 'layer legends: data/runtime/sweep/crop_legend_*.png and crop_rleg_*.png'
+- id: character_scroll
+  name: Show this character's information scroll
+  name_key: SMT_SHOW_CHARACTER_INFO
+  class: obstructing
+  blocking: true
+  expects_close_x: true
+  dismiss:
+  - close_x
+  - escape
+  status: verified
+  opened_by: the enabled left-HUD button on a selected character; tooltip 'Character's traits and Followers'
+  geometry:
+    left: 0.256
+    right: 0.743
+    top: 0.261
+    spans_centre: true
+    close_x:
+    - 0.74
+    - 0.275
+  requires: a selected character
+  hazard: Alt+click on that HUD button opens the Steam wiki, same as F1.
+  note: 'Titles itself with the character''s type — ''DIPLOMAT'' on Sextus Antio. Same left/right as the
+    overview frame, but the top sits lower (0.261 vs 0.123), so it is not a Ctrl+N tab. Two interior tabs,
+    STATS and TRAITS & FOLLOWERS. The traits page showed the Diplomatic trait (+3 Influence) and Followers:
+    None. Close with the gold X on this parchment''s top-right, not the overview-tab X above it.'
+  evidence:
+  - 'live: data/runtime/sweep/agent_left_info.png'
+  - close X at (0.740, 0.275) returned campaign_map
 settlements:
   how_to_identify: 'Hover the settlement and read its tooltip. That is the only authoritative source:
     it names the owning faction in full and appends the standing in brackets after the tier. Our own settlements
@@ -905,6 +1494,545 @@ settlements:
     capital permanently — do not click it by accident'
   - 'strategic overlay: tier, standing and activity for everything at once'
   - 'Factions panel (Ctrl+3), Diplomatic Standing: explicit ally and enemy lists'
+left_dock:
+  name_key: SMT_EVENT_LOG
+  opened_by: four category discs on the left edge; hover or click pops the parchment out
+  closed_by:
+  - close_x
+  - click the already-selected tab
+  do_not:
+  - Escape — on a closed dock it opens the pause menu
+  - click Filters — it changes which messages arrive
+  panel:
+    left: 0.0
+    right: 0.163
+    top: 0.066
+    close_x:
+    - 0.16
+    - 0.077
+  filter_centre:
+  - 0.148
+  - 0.082
+  tabs:
+  - id: alerts
+    title: ALERTS
+    tooltip_title: Alerts
+    tooltip_body: Highlights the most important information about running your empire
+    closed_centre:
+    - 0.013
+    - 0.1315
+    open_centre:
+    - 0.172
+    - 0.1315
+    what_it_shows: 'Empty this turn: ''NO ALERTS''. Same chrome as News and Reports.'
+  - id: news
+    title: NEWS
+    tooltip_title: News
+    tooltip_body: Brings information about all factions, including yours
+    closed_centre:
+    - 0.013
+    - 0.2056
+    open_centre:
+    - 0.172
+    - 0.2056
+    what_it_shows: 'Empty this turn: ''NO NEWS''. Same chrome as Alerts and Reports.'
+  - id: reports
+    title: REPORTS
+    tooltip_title: Reports
+    tooltip_body: On recruitment and construction, as well as the End Of Turn Report
+    closed_centre:
+    - 0.013
+    - 0.2685
+    open_centre:
+    - 0.172
+    - 0.2685
+    what_it_shows: 'Empty this turn: ''NO REPORTS''. Same chrome as Alerts and News.'
+  - id: missions
+    title: SENATE MISSION ASSIGNED
+    tooltip_title: Missions
+    tooltip_body: Details your current Senate missions, if any
+    closed_centre:
+    - 0.013
+    - 0.3213
+    open_centre:
+    - 0.172
+    - 0.3213
+    what_it_shows: 'The Senate mission card: Take Settlement Segesta, 10 turns remaining, reward promised
+      on success. A locate magnifier sits on the card footer. The tab carried a 9+ badge while only this
+      one card was visible.'
+    note: This is the same frame the corpus recorded as senate_mission_card. It is a tab of the Event
+      Log, not a separate window, and not the Senate overview (Ctrl+2).
+agents:
+  opened_by: click the character, or Lists → Agents → locate
+  do_not:
+  - click Assign unless the send is intended — that commits
+  - click Cancel Mission on Lists after a send — that undoes it
+  - click Agent Hub Confirm unless the send is intended
+  - click the boot or press Delete — that disbands
+  - Alt+click the traits button — Steam wiki
+  - click the corner hourglass — that is End Turn, not Confirm
+  - left-click a map target before the cursor glyph changes
+  character_scroll:
+    left: 0.256
+    right: 0.743
+    top: 0.261
+    close_x:
+    - 0.74
+    - 0.275
+  send_list_bounds:
+  - 0.84
+  - 0.74
+  - 0.97
+  - 0.92
+  send_first_row:
+  - 0.9
+  - 0.8
+  distance_read: turn_glyph
+  lists_agents_tab:
+  - 0.65
+  - 0.259
+  kinds:
+  - id: diplomat
+    type_name: Diplomat
+    send_title: SEND EMISSARY
+    send_verb: Negotiate with
+    skill_name: Influence
+    mission_action: diplomacy_mission
+  - id: spy
+    type_name: Spy
+    send_title: SEND SPY
+    send_verb: Spy on
+    skill_name: Subterfuge
+    mission_action: spy_mission
+  - id: assassin
+    type_name: Assassin
+    send_title: null
+    send_verb: Assassinate
+    skill_name: null
+    mission_action: assassination_mission
+  controls:
+  - id: traits_followers
+    centre:
+    - 0.09
+    - 0.96
+    purpose: 'Left-panel button. Tooltip: ''Character''s traits and Followers''. Opens the character scroll
+      on TRAITS & FOLLOWERS.'
+    hazard: Alt+click opens the Steam wiki, same as F1.
+  - id: bodyguard
+    centre:
+    - 0.12
+    - 0.96
+    purpose: Left-panel button, gray this turn on both agents. Official disabled string is 'There is no
+      bodyguard unit to view for this character'.
+  - id: left_third
+    centre:
+    - 0.14
+    - 0.96
+    purpose: Left-panel button, gray this turn. Official names nearby are 'Show this character's information
+      scroll' and the family-tree tooltip; the hover did not land cleanly enough to pick one.
+    hazard: Do not click to find out. Family Tree can set the faction heir.
+  - id: locate
+    centre:
+    - 0.655
+    - 0.94
+    purpose: Magnifier on the centre strip. Frames the selected agent.
+  - id: disband
+    centre:
+    - 0.715
+    - 0.94
+    purpose: Boot on the bottom-right of the centre strip. Disbands the agent.
+    hazard: Permanent. Delete is bound to the same action. Do not press either.
+  - id: send_hub
+    centre:
+    - 0.855
+    - 0.96
+    purpose: Hooded disc on the send-list footer. Opens the overview Agent Hub, the same dialog as Ctrl+7.
+    hazard: The Hub's Confirm button dispatches. Close with the overview X.
+  - id: send_confirm
+    centre:
+    - 0.9
+    - 0.93
+    purpose: 'Gold Confirm on the send-list footer after a row is selected. Opens ''Send Agent to: <target>''
+      with Cancel Mission and Assign. Not the corner hourglass.'
+    hazard: Next step toward dispatch. End Turn is further right at (0.980, 0.971).
+  - id: assign_mission
+    centre:
+    - 0.83
+    - 0.94
+    purpose: Assign this mission to <name>. Commits the staged send. Both the spy and the diplomat were
+      assigned this way to Patavium.
+    hazard: This is the commit. Lists then shows Target and Cancel Mission.
+construction:
+  opened_by: select a settlement, then 6 / 5, or the footer discs left of End Turn
+  do_not:
+  - left-click a construction or recruitment card — that queues and spends
+  - Alt+click or Alt+right-click a card — Steam wiki
+  - press Escape to close the Building Browser
+  - treat green/red browser lines as accept/reject
+  browser_open:
+  - 0.934
+  - 0.968
+  construct_footer:
+  - 0.902
+  - 0.968
+  recruit_footer:
+  - 0.878
+  - 0.968
+  browser_close_x:
+  - 0.752
+  - 0.196
+  construction_help: Left click to add to queue, right click for information
+  population_thresholds:
+  - tier: Town
+    population: 400
+  - tier: Large town
+    population: 2000
+  - tier: Minor city
+    population: 6000
+  - tier: Large city
+    population: 12000
+  - tier: Huge city
+    population: 24000
+  julii_unlocks:
+  - building: Governor's Villa
+    chain: core_building
+    settlement_min: town
+    trains:
+    - Peasants
+    - Diplomat
+    source: edb governors_villa; browser hover on Arretium
+    live: Villa already built. Recruit dock offered Diplomat.
+  - building: Governor's Palace
+    chain: core_building
+    settlement_min: large_town
+    trains:
+    - Peasants
+    - Diplomat
+    source: edb governors_palace; browser hover
+    live: Grey with a red chain this turn. HUD shows 4000 / 6000 — the palace is the expand step, not
+      on the construction dock yet.
+  - building: Muster Field
+    chain: barracks
+    settlement_min: town
+    trains:
+    - Town Watch
+    source: edb muster_field recruit roman city militia
+    live: Town Watch on the recruit dock.
+  - building: Militia Barracks
+    chain: barracks
+    settlement_min: large_town
+    trains:
+    - Town Watch
+    - Hastati
+    source: edb militia_barracks; Hastati requires not marian_reforms
+    live: Hastati on the recruit dock.
+  - building: Stables
+    chain: equestrian
+    settlement_min: large_town
+    trains:
+    - Equites
+    - Wardogs
+    source: edb stables; hover on construction dock
+    live: 'Not built. Construction hover: 1080 gold, 3 turns.'
+  - building: Practice Range
+    chain: missiles
+    settlement_min: large_town
+    trains:
+    - Velites
+    source: edb practice_field; hover on construction dock
+    live: 'Not built. Construction hover: 1080 gold, 3 turns.'
+  - building: Trader
+    chain: market
+    settlement_min: town
+    trains: []
+    source: edb trader (income only)
+    live: Already built. No spy.
+  - building: Market
+    chain: market
+    settlement_min: large_town
+    trains:
+    - Spy
+    source: edb market agent spy
+    live: On the construction dock. Recruit dock had no spy.
+  - building: Forum
+    chain: market
+    settlement_min: city
+    trains:
+    - Spy
+    - Assassin
+    source: edb forum agent assassin
+  - building: Port
+    chain: port_buildings
+    settlement_min: large_town
+    trains:
+    - Biremes
+    source: edb port recruit naval biremes
+    live: A warship card sat on the recruit dock.
+  - building: Academy
+    chain: academic
+    settlement_min: city
+    trains: []
+    source: edb academy requires building_present_min_level market market
+  controls:
+  - id: recruit_footer
+    centre:
+    - 0.878
+    - 0.968
+    purpose: 'Banner-plus disc. Tooltip: ''Recruitment <5>''. Same as key 5.'
+    hazard: A click on a unit card inside the dock queues and spends.
+  - id: construct_footer
+    centre:
+    - 0.902
+    - 0.968
+    purpose: 'Building-plus disc. Tooltip: ''Construction <6>'' and ''right-click to open Building Browser''.
+      Same as key 6.'
+    hazard: A click on a building card inside the dock queues and spends.
+  - id: browser_footer
+    centre:
+    - 0.934
+    - 0.968
+    purpose: 'Tree disc. Tooltip: ''Building Browser''. No key binding.'
+army:
+  opened_by: click the stack, or Lists → Military Forces → locate
+  do_not:
+  - click a Family Tree character — that sets the heir
+  - click a watchtower or fort card unless the spend is intended
+  - left-click a town nameplate before the sword cursor shows — that selects the town
+  - click a Gallic stack — that declares war
+  - fight a battle the loop cannot drive — withdraw or auto-resolve
+  lists_military_tab:
+  - 0.5
+  - 0.259
+  lists_locate:
+  - 0.72
+  - 0.52
+  family_tree:
+  - 0.12
+  - 0.96
+  field_construction_open:
+  - 0.902
+  - 0.968
+  watchtower_card:
+  - 0.865
+  - 0.605
+  fort_card:
+  - 0.925
+  - 0.605
+  map_order_button: left
+  map_order_tell: cursor_glyph
+  attack_cursor: sword
+  controls:
+  - id: family_tree
+    centre:
+    - 0.12
+    - 0.96
+    purpose: 'Silhouette on the selected-general HUD. Tooltip: Family Tree — lineage with an option to
+      set the faction heir.'
+    hazard: Do not click a character in the tree. That sets the heir.
+  - id: field_construction
+    centre:
+    - 0.902
+    - 0.968
+    purpose: Construction <6> disc. With a named general on own land this opens FIELD CONSTRUCTION (watchtower
+      / fort), not the town building dock.
+    hazard: A click on a watchtower or fort card spends 200 or 500.
+  - id: watchtower
+    centre:
+    - 0.865
+    - 0.605
+    purpose: Left FIELD CONSTRUCTION card. descr cost 200. Extends LOS.
+    hazard: Spends immediately. Needs own land, named general, not sieging.
+  - id: fort
+    centre:
+    - 0.925
+    - 0.605
+    purpose: Right FIELD CONSTRUCTION card. descr cost 500. Empty forts vanish in 1 turn.
+    hazard: Spends immediately. Do not leave a new fort empty.
+production:
+  note: Buildings have no upkeep. Unit upkeep hits when the unit exists, not when queued. Live hovers
+    this turn were 10% under EDB.
+  units:
+  - name: Peasants
+    recruit: 100
+    upkeep: 100
+    turns: 1
+    source: edu stat_cost
+    live: 'Queued at Arretium: treasury 2840 → 2740. One tooltip said 120.'
+  - name: Town Watch
+    recruit: 150
+    upkeep: 100
+    turns: 1
+    source: edu stat_cost
+  - name: Hastati
+    recruit: 440
+    upkeep: 170
+    turns: 1
+    source: edu stat_cost
+    live: 'Queued at Arretium: treasury 2740 → 2300.'
+  - name: Velites
+    recruit: 270
+    upkeep: 170
+    turns: 1
+    source: edu stat_cost
+  - name: Equites
+    recruit: 420
+    upkeep: 110
+    turns: 1
+    source: edu stat_cost
+  - name: Biremes
+    recruit: 660
+    upkeep: 100
+    turns: 1
+    source: edu stat_cost
+    live: One hover said upkeep 40; EDU 100 is the table.
+  buildings:
+  - name: Practice Range
+    construct: 1200
+    turns: 3
+    upkeep: 0
+    live_construct: 1080
+    source: edb practice_field
+    live: 'Queued at Arretium: treasury 5000 → 3920. Per-turn HUD stayed +442.'
+  - name: Stables
+    construct: 1200
+    turns: 3
+    upkeep: 0
+    live_construct: 1080
+    source: edb stables
+    live: Hover only. Same 1080 / 3 turns as Practice Range.
+  - name: Trader
+    construct: 600
+    turns: 2
+    upkeep: 0
+    live_construct: 540
+    source: edb trader
+    live: Already built at Arretium. Hover 540.
+  - name: Market
+    construct: 1200
+    turns: 3
+    upkeep: 0
+    source: edb market
+    live: On the construction dock. Unlocks Spy. Not queued.
+  field_works:
+  - name: watchtower
+    construct: 200
+    source: descr_sm_forts_ports_watchtowers.txt
+    live: Left card on FIELD CONSTRUCTION. Not clicked.
+  - name: fort
+    construct: 500
+    source: descr_sm_forts_ports_watchtowers.txt
+    live: Right card on FIELD CONSTRUCTION. Not clicked. Empty forts vanish in 1 turn.
+map_overlay:
+  opened_by: eye-and-scroll disc at the top-right, or Tab
+  closed_by:
+  - escape
+  - click the eye again
+  has_close_x: false
+  control_model:
+    checkbox: Square indicator. Independent on/off for a feature layer. Several can be drawn at once.
+    radio: Round indicator. Exclusive view. Selecting one replaces the previous view; it does not add
+      a layer on top.
+  layers:
+  - id: settlements
+    kind: checkbox
+    centre:
+    - 0.271
+    - 0.952
+    legend_title: SETTLEMENTS Legend
+    what_it_shows: 'Settlement tiers, alerts, and the three activity states: recruiting or constructing,
+      upgrade possible, settlement idle'
+    note: Ticked by default. Idle is the cheapest read of which of our towns needs orders.
+  - id: armies
+    kind: checkbox
+    centre:
+    - 0.3075
+    - 0.952
+    legend_title: ARMIES Legend
+    what_it_shows: Movement remaining (four greens/white), army strength (five shield fills), in-settlement
+      vs in-field filters, plus ally/enemy/neutral colouring
+  - id: agents
+    kind: checkbox
+    centre:
+    - 0.344
+    - 0.952
+    legend_title: AGENTS Legend
+    what_it_shows: The same movement-remaining scale, then filters for diplomats, merchants, spies and
+      assassins, plus ally/enemy/neutral colouring
+  - id: fortifications
+    kind: checkbox
+    centre:
+    - 0.3805
+    - 0.952
+    legend_title: FORTIFICATIONS Legend
+    what_it_shows: Watchtowers, forts, choke points and alerts, plus ally/enemy/neutral colouring
+  - id: trade_routes
+    kind: checkbox
+    centre:
+    - 0.417
+    - 0.952
+    legend_title: null
+    what_it_shows: Trade-route / merchant layer (coins-and-banner icon)
+    note: Clicked during the walk but the left legend did not switch off Fortifications, so the title
+      is unconfirmed. The tooltip on the neighbouring goods button is not this one.
+  - id: trade_goods
+    kind: checkbox
+    centre:
+    - 0.4535
+    - 0.952
+    legend_title: TRADE GOODS Legend
+    what_it_shows: 'Resources grouped by tier, each tier independently tickable: pottery, textiles, wild
+      animals, hides, tin, lead; timber, iron, olive oil, wine, slaves, copper; grain and further goods
+      below a scrollbar'
+  - id: factions
+    kind: radio
+    centre:
+    - 0.49
+    - 0.952
+    legend_title: FACTIONS Legend
+    what_it_shows: One colour per met faction — the palette settlements.FACTION_LEGEND_COLOURS samples
+    note: 'On by default with Settlements. Tooltip: ''View Factions overlay''.'
+  - id: diplomacy
+    kind: radio
+    centre:
+    - 0.5265
+    - 0.952
+    legend_title: DIPLOMACY Legend
+    what_it_shows: 'Six standings, richer than a hover tooltip: Player, Ally, Ally of Ally, Neutral, Enemy,
+      Ally of Enemy'
+    note: The two extra states — ally-of-ally and ally-of-enemy — exist only here. A hover on a settlement
+      never says them.
+  - id: activity
+    kind: radio
+    centre:
+    - 0.563
+    - 0.952
+    legend_title: ACTIVITY Legend
+    what_it_shows: 'A Bad→Good colour scale over four independently-tickable topics: Farming, Culture,
+      Military, Trade'
+  - id: public_order
+    kind: radio
+    centre:
+    - 0.5995
+    - 0.952
+    legend_title: ACTIVITY Legend
+    what_it_shows: Same Activity legend in the captures; mask icon, suspected public-order colouring
+    note: Click landed on Activity. Title reserved until a distinct legend is captured.
+  - id: wealth
+    kind: radio
+    centre:
+    - 0.636
+    - 0.952
+    legend_title: ACTIVITY Legend
+    what_it_shows: Same Activity legend in the captures; pickaxe-and-wheat icon
+    note: Click landed on Activity. Title reserved until a distinct legend is captured.
+  - id: military
+    kind: radio
+    centre:
+    - 0.6725
+    - 0.952
+    legend_title: ACTIVITY Legend
+    what_it_shows: Same Activity legend in the captures; shield-and-sword icon
+    note: Click landed on Activity. Title reserved until a distinct legend is captured.
 navigation:
   recovery: Home (capital_zoom) frames the faction capital in one press from anywhere, with no calibration.
     Because it always works, any other camera move is safe to try — this is the undo.
@@ -1057,13 +2185,13 @@ controls:
     capital_zoom: home
     cam_speed: shift
 coverage:
-  panels_total: 19
-  panels_verified: 15
+  panels_total: 22
+  panels_verified: 18
   panels_unseen:
   - advisor
   - mercenary_recruitment
   - options_window
-  regions_total: 20
+  regions_total: 26
   regions_unverified:
   - map_viewport
   - radar
@@ -1072,15 +2200,16 @@ coverage:
   - radar_compass
   - treasury_readout
   - date_readout
-  - advisor_button
   - faction_leader_button
   - ledger_button
   - help_button
   - menu_button
-  - event_dock_icons
-  - senate_button
   - hud_tab_buildings
   - hud_tab_army
   - hud_tab_agents
   - hud_tab_fleets
   - bottom_hud_bar
+  - settlement_recruit_button
+  - settlement_construct_button
+  - agent_disband_button
+  - agent_send_list

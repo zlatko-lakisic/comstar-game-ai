@@ -1,9 +1,11 @@
 """Generate the campaign screen atlas overlay from the code that owns each fact.
 
-Three sources, none of which should be retyped by hand into a YAML file:
+Sources, none of which should be retyped by hand into a YAML file:
 
 * `screen_regions` — where the persistent furniture is
 * `ui_atlas`       — what each panel is and how to leave it
+* `info_sources`   — which surface answers each campaign question
+* `campaign_learnings` — measured action-to-outcome pairs
 * `rome_shortcuts` — the game's own key bindings, read from the install
 
 Hand-maintaining the overlay would guarantee drift the first time a coordinate is
@@ -11,10 +13,10 @@ re-measured, so it is generated instead:
 
     python scripts/build_campaign_atlas_overlay.py
 
-Written to overlay/agent_skills/campaign_ui_atlas.yaml. Every value is a plain
-str/int/float/bool/list/dict — the overlay is packed as JSON, and a bare ISO date
-would deserialise to datetime.date and break session registration, so dates here
-are quoted strings.
+Writes `campaign_ui_atlas.yaml`, `campaign_info_sources.yaml`, and
+`campaign_learnings.yaml`. Every value is a plain str/int/float/bool/list/dict —
+the overlay is packed as JSON, and a bare ISO date would deserialise to
+datetime.date and break session registration, so dates here are quoted strings.
 """
 
 from __future__ import annotations
@@ -23,8 +25,16 @@ from pathlib import Path
 
 import yaml
 
+from comstar_game_ai.agent.learning.campaign_learnings import LEARNINGS
 from comstar_game_ai.game_io.campaign import (
+    agents,
+    army,
+    construction,
+    info_sources,
+    left_dock,
+    map_overlay,
     navigation,
+    production,
     screen_regions,
     settlements,
     ui_atlas,
@@ -36,6 +46,8 @@ from comstar_game_ai.game_io.campaign.rome_shortcuts import (
 from comstar_game_ai.game_io.campaign.rome_strings import load_campaign_tables
 
 OUT = Path("overlay/agent_skills/campaign_ui_atlas.yaml")
+INFO_OUT = Path("overlay/agent_skills/campaign_info_sources.yaml")
+LEARN_OUT = Path("overlay/agent_skills/campaign_learnings.yaml")
 VERIFIED_ON = "2026-09-05"
 
 HEADER = """\
@@ -96,6 +108,10 @@ def _panels(tables, db) -> list[dict]:
             if entry.geometry.close_x is not None:
                 geometry["close_x"] = list(entry.geometry.close_x)
             panel["geometry"] = geometry
+        if entry.requires:
+            panel["requires"] = entry.requires
+        if entry.hazard:
+            panel["hazard"] = " ".join(entry.hazard.split())
         if entry.note:
             panel["note"] = " ".join(entry.note.split())
         if entry.evidence:
@@ -278,6 +294,75 @@ def _navigation(db) -> dict:
     }
 
 
+def _information() -> list[dict]:
+    return [
+        {
+            "id": source.id,
+            "question": source.question,
+            "surface": source.surface,
+            "how": source.how,
+            "reads": source.reads,
+            **({"trap": source.trap} if source.trap else {}),
+        }
+        for source in info_sources.SOURCES
+    ]
+
+
+def _learnings() -> list[dict]:
+    return [
+        {
+            "id": item.id,
+            "action": item.action,
+            "outcome": item.outcome,
+            "valence": item.valence.value,
+            "lesson": item.lesson,
+            "evidence": item.evidence,
+            "durable": item.durable,
+        }
+        for item in LEARNINGS
+    ]
+
+
+def _first_sentence(text: str) -> str:
+    head, _, _ = text.replace("\n", " ").partition(". ")
+    return head.rstrip(".")
+
+
+def _info_markdown() -> str:
+    lines = [
+        "One surface per question. Do not substitute a nearby number.",
+        "",
+    ]
+    for source in info_sources.SOURCES:
+        trap = f"; not {_first_sentence(source.trap)}" if source.trap else ""
+        lines.append(
+            f"- {source.question.rstrip('?')}: `{source.surface}` — "
+            f"{_first_sentence(source.how)}{trap}."
+        )
+    return "\n".join(lines) + "\n"
+
+
+def _learnings_markdown() -> str:
+    lines = [
+        "Measured action → outcome. Trust the outcome. Failures stay in the list.",
+        "",
+    ]
+    for item in LEARNINGS:
+        lines.append(
+            f"- {item.valence.value.upper()}: {_first_sentence(item.action)} → "
+            f"{_first_sentence(item.outcome)}. {_first_sentence(item.lesson)}."
+        )
+    return "\n".join(lines) + "\n"
+
+
+def _dump(path: Path, doc: dict) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", encoding="utf-8", newline="\n") as handle:
+        handle.write(HEADER)
+        yaml.safe_dump(doc, handle, sort_keys=False, allow_unicode=True, width=100)
+    print(f"wrote {path}")
+
+
 def main() -> int:
     tables = load_campaign_tables()
     db = load_shortcuts()
@@ -305,20 +390,249 @@ def main() -> int:
         "inject": {"heading": "## Campaign screen atlas", "max_chars": 6000},
         "how_to_use": [
             "Treat every coordinate as somewhere to look, not somewhere to click "
-            "blindly. Only end_turn_button has been confirmed by an actuation.",
+            "blindly. end_turn_button, map_overlay_button and faction_standard_button "
+            "have been confirmed by an actuation.",
             "Prefer a key binding over a click when both exist: the bindings come "
             "from the game's own database and need no localisation.",
             "Prefer a radar click over held panning to cross distance.",
             "A blocking panel with no close X is a decision panel — read its footer "
             "instead of hunting for a dismiss button.",
+            "Overview dialogs (Faction Summary and its six sibling tabs) close with "
+            "the red X at the dialog's top-right, or Escape. The map overlay is not "
+            "a dialog: Escape or a second click on the eye-and-scroll disc leaves it.",
             "If the camera is lost, press Home. It frames the capital from anywhere and "
             "is the reason any other camera move is safe to attempt.",
+            "The Event Log dock (Alerts / News / Reports / Missions) closes with its "
+            "gold X, or by clicking the already-selected tab. Do not press Escape to "
+            "find out if it is open — Escape on a closed dock is the pause menu.",
             "Never infer a settlement's owner from colour alone. Colour picks what to "
             "hover; the tooltip decides.",
+            "For what to *read* from each panel, use the information catalog — one "
+            "authoritative surface per question. For what happened last time we tried "
+            "something, use the learnings list (action, measured outcome, valence).",
+            "A selected spy or diplomat paints a green movement range. Drag-hold "
+            "previews the path; release on the character to cancel. Sending from "
+            "the HUD is three clicks: a SEND row stages the path, send-panel "
+            "Confirm opens the briefing, Assign commits. The corner hourglass is "
+            "End Turn. The boot Disbands.",
         ],
+        "information": _information(),
+        "learnings": _learnings(),
         "regions": _regions(),
         "panels": _panels(tables, db),
         "settlements": _settlements(tables),
+        "left_dock": {
+            "name_key": "SMT_EVENT_LOG",
+            "opened_by": (
+                "four category discs on the left edge; hover or click pops the parchment out"
+            ),
+            "closed_by": [
+                "close_x",
+                "click the already-selected tab",
+            ],
+            "do_not": [
+                "Escape — on a closed dock it opens the pause menu",
+                "click Filters — it changes which messages arrive",
+            ],
+            "panel": {
+                "left": left_dock.PANEL_LEFT,
+                "right": left_dock.PANEL_RIGHT,
+                "top": left_dock.PANEL_TOP,
+                "close_x": list(left_dock.CLOSE_X),
+            },
+            "filter_centre": list(left_dock.FILTER_CENTRE),
+            "tabs": [
+                {
+                    "id": tab.id,
+                    "title": tab.title,
+                    "tooltip_title": tab.tooltip_title,
+                    "tooltip_body": tab.tooltip_body,
+                    "closed_centre": list(tab.closed_centre),
+                    "open_centre": list(tab.open_centre),
+                    "what_it_shows": tab.what_it_shows,
+                    **({"note": tab.note} if tab.note else {}),
+                }
+                for tab in left_dock.TABS
+            ],
+        },
+        "agents": {
+            "opened_by": "click the character, or Lists → Agents → locate",
+            "do_not": [
+                "click Assign unless the send is intended — that commits",
+                "click Cancel Mission on Lists after a send — that undoes it",
+                "click Agent Hub Confirm unless the send is intended",
+                "click the boot or press Delete — that disbands",
+                "Alt+click the traits button — Steam wiki",
+                "click the corner hourglass — that is End Turn, not Confirm",
+                "left-click a map target before the cursor glyph changes",
+            ],
+            "character_scroll": {
+                "left": agents.CHARACTER_SCROLL_LEFT,
+                "right": agents.CHARACTER_SCROLL_RIGHT,
+                "top": agents.CHARACTER_SCROLL_TOP,
+                "close_x": list(agents.CHARACTER_SCROLL_CLOSE_X),
+            },
+            "send_list_bounds": list(agents.SEND_LIST_BOUNDS),
+            "send_first_row": list(agents.SEND_FIRST_ROW),
+            "distance_read": agents.SEND_DISTANCE_READ,
+            "lists_agents_tab": list(agents.LISTS_AGENTS_TAB),
+            "kinds": [
+                {
+                    "id": kind.id,
+                    "type_name": kind.type_name,
+                    "send_title": kind.send_title or None,
+                    "send_verb": kind.send_verb,
+                    "skill_name": kind.skill_name or None,
+                    "mission_action": kind.mission_action,
+                }
+                for kind in agents.KINDS
+            ],
+            "controls": [
+                {
+                    "id": control.id,
+                    "centre": list(control.centre),
+                    "purpose": control.purpose,
+                    **({"hazard": control.hazard} if control.hazard else {}),
+                }
+                for control in agents.CONTROLS
+            ],
+        },
+        "construction": {
+            "opened_by": (
+                "select a settlement, then 6 / 5, or the footer discs left of End Turn"
+            ),
+            "do_not": [
+                "left-click a construction or recruitment card — that queues and spends",
+                "Alt+click or Alt+right-click a card — Steam wiki",
+                "press Escape to close the Building Browser",
+                "treat green/red browser lines as accept/reject",
+            ],
+            "browser_open": list(construction.BROWSER_OPEN),
+            "construct_footer": list(construction.CONSTRUCT_FOOTER),
+            "recruit_footer": list(construction.RECRUIT_FOOTER),
+            "browser_close_x": list(construction.BROWSER_CLOSE_X),
+            "construction_help": construction.CONSTRUCTION_HELP,
+            "population_thresholds": [
+                {"tier": name, "population": pop}
+                for name, pop in construction.POPULATION_THRESHOLDS
+            ],
+            "julii_unlocks": [
+                {
+                    "building": item.building,
+                    "chain": item.chain,
+                    "settlement_min": item.settlement_min,
+                    "trains": list(item.trains),
+                    "source": item.source,
+                    **({"live": item.live} if item.live else {}),
+                }
+                for item in construction.JULII_UNLOCKS
+            ],
+            "controls": [
+                {
+                    "id": control.id,
+                    "centre": list(control.centre),
+                    "purpose": control.purpose,
+                    **({"hazard": control.hazard} if control.hazard else {}),
+                }
+                for control in construction.CONTROLS
+            ],
+        },
+        "army": {
+            "opened_by": "click the stack, or Lists → Military Forces → locate",
+            "do_not": [
+                "click a Family Tree character — that sets the heir",
+                "click a watchtower or fort card unless the spend is intended",
+                "left-click a town nameplate before the sword cursor shows — that selects the town",
+                "click a Gallic stack — that declares war",
+                "fight a battle the loop cannot drive — withdraw or auto-resolve",
+            ],
+            "lists_military_tab": list(army.LISTS_MILITARY_TAB),
+            "lists_locate": list(army.LISTS_LOCATE),
+            "family_tree": list(army.FAMILY_TREE),
+            "field_construction_open": list(army.FIELD_CONSTRUCTION_OPEN),
+            "watchtower_card": list(army.WATCHTOWER_CARD),
+            "fort_card": list(army.FORT_CARD),
+            "map_order_button": army.MAP_ORDER_BUTTON,
+            "map_order_tell": army.MAP_ORDER_TELL,
+            "attack_cursor": army.ATTACK_CURSOR,
+            "controls": [
+                {
+                    "id": control.id,
+                    "centre": list(control.centre),
+                    "purpose": control.purpose,
+                    **({"hazard": control.hazard} if control.hazard else {}),
+                }
+                for control in army.CONTROLS
+            ],
+        },
+        "production": {
+            "note": (
+                "Buildings have no upkeep. Unit upkeep hits when the unit exists, "
+                "not when queued. Live hovers this turn were 10% under EDB."
+            ),
+            "units": [
+                {
+                    "name": item.name,
+                    "recruit": item.recruit,
+                    "upkeep": item.upkeep,
+                    "turns": item.turns,
+                    "source": item.source,
+                    **({"live": item.live} if item.live else {}),
+                }
+                for item in production.UNITS
+            ],
+            "buildings": [
+                {
+                    "name": item.name,
+                    "construct": item.construct,
+                    "turns": item.turns,
+                    "upkeep": item.upkeep,
+                    **(
+                        {"live_construct": item.live_construct}
+                        if item.live_construct is not None
+                        else {}
+                    ),
+                    "source": item.source,
+                    **({"live": item.live} if item.live else {}),
+                }
+                for item in production.BUILDINGS
+            ],
+            "field_works": [
+                {
+                    "name": item.name,
+                    "construct": item.construct,
+                    "source": item.source,
+                    **({"live": item.live} if item.live else {}),
+                }
+                for item in production.FIELD_WORKS
+            ],
+        },
+        "map_overlay": {
+            "opened_by": "eye-and-scroll disc at the top-right, or Tab",
+            "closed_by": ["escape", "click the eye again"],
+            "has_close_x": False,
+            "control_model": {
+                "checkbox": (
+                    "Square indicator. Independent on/off for a feature layer. "
+                    "Several can be drawn at once."
+                ),
+                "radio": (
+                    "Round indicator. Exclusive view. Selecting one replaces the "
+                    "previous view; it does not add a layer on top."
+                ),
+            },
+            "layers": [
+                {
+                    "id": layer.id,
+                    "kind": layer.kind.value,
+                    "centre": list(layer.centre),
+                    "legend_title": layer.legend_title or None,
+                    "what_it_shows": layer.what_it_shows,
+                    **({"note": layer.note} if layer.note else {}),
+                }
+                for layer in map_overlay.LAYERS
+            ],
+        },
         "navigation": _navigation(db),
         "controls": _controls(db),
         "coverage": {
@@ -330,14 +644,56 @@ def main() -> int:
         },
     }
 
-    OUT.parent.mkdir(parents=True, exist_ok=True)
-    with OUT.open("w", encoding="utf-8", newline="\n") as handle:
-        handle.write(HEADER)
-        yaml.safe_dump(doc, handle, sort_keys=False, allow_unicode=True, width=100)
-
-    print(f"wrote {OUT}")
+    _dump(OUT, doc)
+    info_md = INFO_OUT.with_suffix(".md")
+    learn_md = LEARN_OUT.with_suffix(".md")
+    info_md.write_text(_info_markdown(), encoding="utf-8", newline="\n")
+    learn_md.write_text(_learnings_markdown(), encoding="utf-8", newline="\n")
+    print(f"wrote {info_md}")
+    print(f"wrote {learn_md}")
+    _dump(
+        INFO_OUT,
+        {
+            "id": "campaign_info_sources",
+            "description": (
+                "Per-game RAG: which campaign surface answers each question, "
+                "and what looks like the same fact but is not."
+            ),
+            "game": "Total War: ROME REMASTERED",
+            "schema_version": 1,
+            "generated_by": "scripts/build_campaign_atlas_overlay.py",
+            "verified": VERIFIED_ON,
+            "content": {"file": "campaign_info_sources.md"},
+            "inject": {
+                "heading": "## Where to read campaign information",
+                "max_chars": 4000,
+            },
+            "sources": doc["information"],
+        },
+    )
+    _dump(
+        LEARN_OUT,
+        {
+            "id": "campaign_learnings",
+            "description": (
+                "Long-term RAG: measured action-to-outcome pairs from live campaign "
+                "work. Valence marks good, bad, or mixed so failures retrieve too."
+            ),
+            "game": "Total War: ROME REMASTERED",
+            "schema_version": 1,
+            "generated_by": "scripts/build_campaign_atlas_overlay.py",
+            "verified": VERIFIED_ON,
+            "content": {"file": "campaign_learnings.md"},
+            "inject": {
+                "heading": "## Measured campaign learnings",
+                "max_chars": 3800,
+            },
+            "learnings": doc["learnings"],
+        },
+    )
     print(
         f"  {len(doc['regions'])} regions, {len(doc['panels'])} panels, "
+        f"{len(doc['information'])} info sources, {len(doc['learnings'])} learnings, "
         f"{len(doc['controls'].get('strat_map', {}))} strat bindings"
     )
     return 0

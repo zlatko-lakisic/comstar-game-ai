@@ -27,6 +27,15 @@ def test_overlay_packs_eight_agents():
     battle = next(a for a in pack.agents if a["id"] == "client.battle_director")
     assert battle.get("skills") == ["client.battle_doctrine"]
     assert "Battle doctrine" in str(battle.get("backstory") or "")
+    campaign = next(a for a in pack.agents if a["id"] == "client.campaign_director")
+    assert campaign.get("skills") == [
+        "client.campaign_ui_facts",
+        "client.campaign_info_sources",
+        "client.campaign_learnings",
+    ]
+    story = str(campaign.get("backstory") or "")
+    assert "Where to read campaign information" in story
+    assert "Measured campaign learnings" in story
 
 
 def test_observable_brief_json():

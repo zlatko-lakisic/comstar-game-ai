@@ -17,7 +17,7 @@ frame:
 
 inject:
   heading: "## Campaign UI facts"
-  max_chars: 2000
+  max_chars: 2600
 
 facts:
   - id: end_turn_control
@@ -108,7 +108,7 @@ facts:
       it from the building browser (0.21), which it otherwise heavily overlaps.
     evidence:
       - "9 frames; right edge measured 0.75-0.79 across them"
-      - "opened by right-clicking a diplomat onto a target (cursor tooltip diplomacy_mission)"
+      - "opened by left-clicking a diplomat onto a target once the cursor glyph changes (2004 tooltip diplomacy_mission still says Right click)"
 
   - id: battle_deployment_is_the_campaign_boundary
     kind: hazard
@@ -211,12 +211,26 @@ facts:
   - id: left_dock_geometry
     kind: layout
     durable: true
-    verified: "2026-09-04"
+    verified: "2026-09-05"
     statement: >
-      Alert, event and senate mission cards dock against the left edge, spanning
-      x 0.00 to roughly 0.16-0.33 with their top edge near y 0.07. A vertical strip
-      of round category icons (horn, scroll, coins, eagle) sits immediately to their
-      right, and those icons are gold — do not mistake them for the close X.
+      The Event Log is one parchment, not four windows. Collapsed, four discs sit on
+      the left edge (Alerts / News / Reports / Missions). Open, the parchment spans
+      x 0.00-0.163 with its top near y 0.066 and the same discs ride its right edge
+      as tabs. Close X is at (0.160, 0.077). Those discs are gold — do not mistake
+      them for the close X. Clicking the already-selected tab collapses the dock.
+      Escape on a closed dock is the pause menu.
+
+  - id: read_from_the_named_surface
+    kind: semantics
+    durable: true
+    verified: "2026-09-05"
+    statement: >
+      Each campaign question has one authoritative surface. Settlement owner is the
+      hover tooltip; population and income are Lists; treasury is the top-right HUD;
+      allies and enemies are Factions → Diplomatic Standing; the Senate mission is
+      Faction Summary or Event Log → Missions (same card). Nearby numbers that look
+      like the same fact — tooltip coin figures, label-pill RGB, Finance's
+      'Boundless' band — are not substitutes. The catalog is campaign/info_sources.py.
 
   - id: building_browser_geometry
     kind: layout
@@ -224,9 +238,11 @@ facts:
     verified: "2026-09-04"
     statement: >
       The settlement building browser spans x 0.26-0.74 with its top edge near
-      y 0.21, and covers the bottom-right HUD including the End Turn control. Its
-      construction tree is full of green and red connector lines that mimic
-      accept/reject glyphs, so decision detection must not run inside it.
+      y 0.21, and covers the bottom-right HUD including the End Turn control. Open
+      it from the tree disc at (0.934, 0.968) or by right-clicking Construction.
+      Close with its X — Escape does not dismiss it. Green and red connector
+      lines mimic accept/reject glyphs, so decision detection must not run
+      inside it.
 
   - id: camera_lighting_varies
     kind: perception
