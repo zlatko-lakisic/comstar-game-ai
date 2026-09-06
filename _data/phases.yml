@@ -33,7 +33,12 @@ phases:
     blocked_by: null
   - id: 4
     name: Campaign UI atlas
-    summary: Parse the game's own string tables and join them to measured on-screen geometry, so every panel has both a meaning and a locator. Catalogue every panel, dialog, control and cursor action on the campaign map: what it is, what it means, what it is for, how it opens, how it closes, and whether it blocks.
+    summary: >-
+      Parse the game's own string tables and join them to measured on-screen
+      geometry, so every panel has both a meaning and a locator. Catalogue
+      every panel, dialog, control and cursor action on the campaign map:
+      what it is, what it means, what it is for, how it opens, how it closes,
+      and whether it blocks.
     accepts: Zero unknowns across the captured frame corpus, each frame resolved to a named panel carrying a purpose and a close affordance. Every campaign cursor action in the game's own tooltips represented in the atlas, and a held-out frame set named correctly.
     evidence: "5 Sep 2026: Julii turn 1 atlas pass — Building Browser opener and unlock line; live Arretium spends (Practice Range 1080, Peasants 100, Hastati 440) with treasury 5000→2300; Lists Military Forces + Family Tree hazard; FIELD CONSTRUCTION (watchtower 200 / fort 500) from Construction <6> with a named general in the field; map orders are left-click once the cursor glyph changes (sword for an army). Phase 4 accept (zero unknowns, every cursor action in atlas, held-out frames) is not closed."
     status: in_progress
