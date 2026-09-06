@@ -24,6 +24,7 @@ from comstar_game_ai.game_io.window import find_game_window
 from comstar_game_ai.shared.config import load_config
 from comstar_game_ai.shared.ipc.events import EventKind
 from comstar_game_ai.shared.ipc.publisher import EventPublisher
+from comstar_game_ai.shared.runtime.directive_store import DirectiveStore
 
 
 def _overlay_listening(host: str, port: int, timeout: float = 0.4) -> bool:
@@ -134,6 +135,11 @@ def main() -> int:
     row = combat_cfg.get("army_lists_row_norm")
     targets = combat_cfg.get("attack_targets") or []
 
+    directive_cfg = (cfg.get("campaign", {}).get("directive") or {})
+    directive_store = (
+        DirectiveStore(directive_cfg.get("path")) if directive_cfg.get("enabled") else None
+    )
+
     driver = HardcodedCampaignDriver(
         player_faction=faction,
         use_vision=True,
@@ -144,11 +150,20 @@ def main() -> int:
         attack_enabled=bool(combat_cfg.get("attack_enabled", False)),
         army_lists_row_norm=(float(row[0]), float(row[1])) if row else None,
         attack_targets=tuple((float(t[0]), float(t[1])) for t in targets),
+        directive_store=directive_store,
+        directive_max_age_s=float(directive_cfg.get("max_age_s", 900)),
     )
     print(
         f"INFO combat: auto_resolve={driver.auto_resolve_battles} "
         f"attack={driver.attack_enabled} targets={len(driver.attack_targets)}"
     )
+    if directive_store is None:
+        print("INFO directives: off — the loop plans from its own policy")
+    else:
+        print(
+            f"INFO directives: reading {directive_store.path} "
+            f"(run `comstar-agent --deliberate-loop` to write them)"
+        )
     ingested = driver.bootstrap_from_logs()
     print(f"INFO bootstrap_from_logs: {ingested} records")
     print(

@@ -1,17 +1,39 @@
-"""Fair campaign orders: observe, optional move_character, never cheats."""
+"""Fair campaign orders: observe, optional move_character, never cheats.
+
+A directive from AO is *intent*, not a command channel. It can decide whether this
+turn advances and which observations are worth making, and nothing else: the orders
+themselves are still built here, from belief, and still go through the fair-play
+gate. A model that returns nonsense therefore costs a turn of standing still, which
+is the failure we can afford.
+"""
 
 from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
 
 from comstar_game_ai.agent.belief.store import BeliefStore
 from comstar_game_ai.shared.config import load_config
 
+if TYPE_CHECKING:
+    from comstar_game_ai.agent.directive import Directive
+
 _LOGGER = logging.getLogger(__name__)
 
 OrderKind = Literal["observe", "move_character", "end_turn"]
+
+#: Objectives that permit advancing a character this turn. "hold" — the neutral
+#: fallback, and what a silent or malformed AO answer becomes — is deliberately not
+#: here: when nobody is reasoning, the army stays where it is.
+ADVANCING_OBJECTIVES = frozenset(
+    {"expand", "advance", "attack", "take_settlement", "besiege", "pressure"}
+)
+
+#: The only console reads a directive may ask for. An unrecognised focus action is
+#: ignored rather than sent: `focus_actions` is a free-text field from a model, and
+#: the fair-play gate should never be the first thing standing between it and Rome.
+DIRECTIVE_OBSERVATIONS = frozenset({"list_characters", "list_units"})
 
 
 @dataclass(frozen=True)
@@ -28,19 +50,49 @@ class CampaignPlanner:
     player_faction: str = "julii"
     max_moves_per_turn: int = 1
 
-    def plan(self, belief: BeliefStore) -> list[CampaignOrder]:
+    def plan(self, belief: BeliefStore, directive: Directive | None = None) -> list[CampaignOrder]:
         orders: list[CampaignOrder] = [
             CampaignOrder("observe", f"halt_ai {self.player_faction}", "pause faction AI"),
             CampaignOrder("observe", "list_characters", "console roster query"),
         ]
-        for move in self._planned_moves(belief)[: self.max_moves_per_turn]:
+        seen = {order.command for order in orders}
+        for command in self._directive_observations(directive):
+            if command not in seen:
+                seen.add(command)
+                orders.append(CampaignOrder("observe", command, "directive focus"))
+        for move in self._planned_moves(belief, directive)[: self.max_moves_per_turn]:
             orders.append(move)
         orders.append(CampaignOrder("observe", "run_ai", "resume faction AI"))
         return orders
 
-    def _planned_moves(self, belief: BeliefStore) -> list[CampaignOrder]:
+    def _directive_observations(self, directive: Directive | None) -> list[str]:
+        if directive is None:
+            return []
+        return [
+            action
+            for action in directive.focus_actions
+            if action.strip().lower() in DIRECTIVE_OBSERVATIONS
+        ]
+
+    def _advance_allowed(self, directive: Directive | None) -> bool:
+        """Whether the directive lets a character move at all this turn.
+
+        Unknown objectives read as "hold". A model inventing a verb should not be
+        able to move an army by accident.
+        """
+        if directive is None:
+            return True
+        if any(a.strip().lower() == "move_character" for a in directive.avoid_actions):
+            return False
+        return directive.intent.objective.strip().lower() in ADVANCING_OBJECTIVES
+
+    def _planned_moves(
+        self, belief: BeliefStore, directive: Directive | None = None
+    ) -> list[CampaignOrder]:
         cfg = (load_config().get("campaign") or {}).get("policy") or {}
         if cfg.get("allow_moves") is False:
+            return []
+        if not self._advance_allowed(directive):
             return []
 
         characters = [

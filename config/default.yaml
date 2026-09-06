@@ -42,6 +42,16 @@ campaign:
   save_path: null
   policy:
     allow_moves: true
+  directive:
+    # Let AO have a say in the turn. Off by default: with nothing writing directives
+    # (Process B, `comstar-agent --deliberate-loop`), every turn would read as the
+    # neutral "hold" and the loop would stop advancing characters.
+    enabled: false
+    # Defaults to data/runtime/directive.json when null.
+    path: null
+    # A directive older than this is ignored outright, so one left on disk by an
+    # earlier session cannot steer a fresh run.
+    max_age_s: 900
   combat:
     # Battle Deployment reads as a plain parchment modal, so the modal handler would
     # happily click a decision button on it. Auto-resolve is the only safe answer

@@ -16,6 +16,7 @@ from comstar_game_ai.agent.reach.kb_ingest import ingest_after_action as kb_inge
 from comstar_game_ai.agent.reach.session import ReachSession
 from comstar_game_ai.agent.records.after_action import AfterActionRecord
 from comstar_game_ai.game_io.drivers.hardcoded_campaign import HardcodedCampaignDriver
+from comstar_game_ai.game_io.logs.turn_boundary import latest_turn_start
 from comstar_game_ai.shared.ipc.events import EventKind
 from comstar_game_ai.shared.ipc.publisher import EventPublisher
 from comstar_game_ai.shared.runtime.directive_store import DirectiveStore
@@ -89,7 +90,12 @@ class AgentRuntime:
 
     async def run_campaign(self, *, turns: int | None = None, use_ao: bool = True) -> dict[str, object]:
         n = turns if turns is not None else self.turns
-        driver = HardcodedCampaignDriver(player_faction=self.player_faction)
+        # Hand the driver the same store this runtime writes to, or the deliberation
+        # would run beside the turns without ever reaching them.
+        driver = HardcodedCampaignDriver(
+            player_faction=self.player_faction,
+            directive_store=self.directive_store if use_ao else None,
+        )
         if use_ao:
             await self.start()
         ao_calls = 0
@@ -105,6 +111,39 @@ class AgentRuntime:
         finally:
             if use_ao:
                 await self.stop()
+
+    async def run_deliberation_loop(
+        self,
+        *,
+        interval_s: float = 45.0,
+        max_calls: int | None = None,
+    ) -> dict[str, object]:
+        """Write directives on a cadence without driving the game.
+
+        The companion to a live Process A run: that process owns the game and reads
+        whatever directive is current, this one thinks about the next turn while it
+        plays. Keeping them apart is what stops a slow model from stalling a turn.
+
+        The turn stamped on each directive comes from Rome's own autosave marker, so
+        a directive is tied to the turn it was reasoned about rather than to a count
+        of how many times this loop has gone round.
+        """
+        await self.start()
+        calls = 0
+        try:
+            while max_calls is None or calls < max_calls:
+                turn = latest_turn_start() or (calls + 1)
+                await self.deliberate_campaign_turn(turn)
+                calls += 1
+                _LOGGER.info("directive written for turn %s (%s calls)", turn, calls)
+                if max_calls is not None and calls >= max_calls:
+                    break
+                await asyncio.sleep(max(1.0, interval_s))
+            return {"ok": True, "calls": calls}
+        except (KeyboardInterrupt, asyncio.CancelledError):
+            return {"ok": True, "calls": calls, "stopped": "interrupted"}
+        finally:
+            await self.stop()
 
     async def run_battle_deliberation(self, *, ticks: int = 3, battle_id: str = "sim") -> dict[str, object]:
         await self.start()
@@ -136,6 +175,17 @@ async def run_campaign_cli(*, turns: int, use_ao: bool) -> int:
         return 0 if result.get("ok") else 1
     except Exception as exc:  # noqa: BLE001
         _LOGGER.error("campaign runtime failed: %s", exc)
+        return 1
+
+
+async def run_deliberation_loop_cli(*, interval_s: float, max_calls: int | None) -> int:
+    runtime = AgentRuntime()
+    try:
+        result = await runtime.run_deliberation_loop(interval_s=interval_s, max_calls=max_calls)
+        print(result)
+        return 0 if result.get("ok") else 1
+    except Exception as exc:  # noqa: BLE001
+        _LOGGER.error("deliberation loop failed: %s", exc)
         return 1
 
 

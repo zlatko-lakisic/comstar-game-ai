@@ -10,6 +10,7 @@ from typing import Callable
 
 from comstar_game_ai.agent.belief.entities import Army, ExistenceStatus
 from comstar_game_ai.agent.belief.store import BeliefStore
+from comstar_game_ai.agent.directive import Directive, neutral_directive
 from comstar_game_ai.game_io.campaign.combat import CombatDirector
 from comstar_game_ai.game_io.campaign.modal import ensure_campaign_map, localize_colored_modal_buttons
 from comstar_game_ai.game_io.campaign.orders import CampaignPlanner
@@ -29,6 +30,7 @@ from comstar_game_ai.game_io.state_machine import GameState, GameStateDetector
 from comstar_game_ai.game_io.verification import VerificationPipeline, VerificationResult
 from comstar_game_ai.shared.ipc.events import EventKind
 from comstar_game_ai.shared.ipc.publisher import EventPublisher
+from comstar_game_ai.shared.runtime.directive_store import DirectiveStore
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -81,6 +83,15 @@ class HardcodedCampaignDriver:
     # Set to feed the operator overlay (Process C). None means nobody is watching,
     # which is the normal case: the campaign loop must never wait on a spectator.
     publisher: EventPublisher | None = None
+    # Where Process B leaves its directives. None keeps the loop on its own hardcoded
+    # policy; set it and AO gets a say, with "hold" whenever it has nothing fresh.
+    directive_store: DirectiveStore | None = None
+    # Wall-clock ceiling, so a directive left on disk by an earlier session is never
+    # adopted. Turn-count expiry alone would still honour a day-old file once.
+    directive_max_age_s: float = 900.0
+    last_directive: str = field(default="", init=False)
+    _directive_question_id: str = field(default="", init=False)
+    _directive_adopted_turn: int = field(default=0, init=False)
     battles_resolved: int = field(default=0, init=False)
     attacks_ordered: int = field(default=0, init=False)
     _publish_failures: int = field(default=0, init=False)
@@ -127,6 +138,44 @@ class HardcodedCampaignDriver:
             return shell.resolve_hwnd()
         except Exception:
             return None
+
+    def current_directive(self) -> Directive | None:
+        """The directive in force this turn, or None when AO is not in the loop.
+
+        Deliberation happens in Process B and lands in a file; this side never waits
+        for it. Everything that is not a fresh, parseable directive becomes the
+        neutral "hold", so an AO that is down, slow, or talking nonsense costs a turn
+        of standing still rather than a guessed move.
+        """
+        if self.directive_store is None:
+            return None
+
+        stored = self.directive_store.read()
+        if stored is None:
+            return self._neutral("no directive on disk")
+
+        age_s = max(0.0, time.time() - float(stored.ts or 0.0))
+        if age_s > self.directive_max_age_s:
+            return self._neutral(f"directive {age_s:.0f}s old")
+
+        directive = stored.to_directive()
+        turn_now = self._known_game_turn()
+        if stored.question_id != self._directive_question_id:
+            self._directive_question_id = stored.question_id
+            self._directive_adopted_turn = turn_now
+
+        plies = max(1, int(directive.valid_for_plies or 1))
+        elapsed = turn_now - self._directive_adopted_turn
+        if elapsed >= plies:
+            return self._neutral(f"directive expired after {plies} plies")
+
+        self.last_directive = directive.intent.objective
+        return directive
+
+    def _neutral(self, reason: str) -> Directive:
+        _LOGGER.info("campaign directive: neutral (%s)", reason)
+        self.last_directive = f"hold ({reason})"
+        return neutral_directive(reason)
 
     def combat_director(self) -> CombatDirector | None:
         """Combat helper bound to the live window, or None in a dry run."""
@@ -657,14 +706,33 @@ class HardcodedCampaignDriver:
             return False
 
         assert self.planner is not None
-        orders = self.planner.plan(self.belief)
+        directive = self.current_directive()
+        orders = self.planner.plan(self.belief, directive)
         self.last_orders = [o.command for o in orders]
         intent = {"objective": "campaign_turn", "turn": self.state.turn, "ui": self.last_ui_mode}
+        if directive is not None:
+            # Recorded on the intent so a run can be read back against what AO asked
+            # for, including the turns where it asked for nothing.
+            intent["directive"] = {
+                "objective": directive.intent.objective,
+                "question_id": self._directive_question_id,
+                "commentary": directive.commentary,
+            }
+            if on_progress:
+                on_progress(
+                    index=index,
+                    total=total,
+                    phase=f"directive: {self.last_directive}",
+                )
+            self._publish(
+                EventKind.AO_RESULT,
+                {"summary": f"directive {self.last_directive}", "question_id": self._directive_question_id},
+            )
         action = {"type": "campaign_plan", "commands": self.last_orders}
         expected = {"state": GameState.CAMPAIGN_MAP.value}
 
         record = self.intent_writer.declare(
-            question_id="hardcoded-turn",
+            question_id=self._directive_question_id or "hardcoded-turn",
             ply_or_tick=self.state.turn,
             state_hash=str(self.state.turn or 0),
             intent=intent,
