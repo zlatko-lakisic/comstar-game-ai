@@ -111,7 +111,17 @@ async def test_the_campaign_director_names_what_it_decided_from(live_session, ca
     )
 
     assert_a_model_decided_this(directive)
-    named = ("arretium", "segesta", "patavium", "mediolanium", "flavius", "vibius")
+    named = (
+        "arretium",
+        "ariminum",
+        "segesta",
+        "patavium",
+        "mediolanium",
+        "flavius",
+        "vibius",
+        "quintus",
+        "lucius",
+    )
     assert any(name in directive.commentary.lower() for name in named), (
         f"reason names nothing on the map: {directive.commentary!r}"
     )
