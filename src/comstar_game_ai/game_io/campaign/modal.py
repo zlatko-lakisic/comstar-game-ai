@@ -890,19 +890,23 @@ def build_modal_vision_prompt(
         "\n"
         "- Describe THIS image. Never copy the values or wording out of the examples below.\n"
         "\n"
-        "Answer with ONE line, no prose, no code fences, starting with MODAL_JSON: and then one "
-        "compact JSON object shaped exactly like this:\n"
-        'MODAL_JSON:{"modal_kind":"none|diplomacy_negotiation|'
+        # No MODAL_JSON: prefix, and no code fence: this call runs in the engine's
+        # JSON mode, where a grammar admits only the object itself. The prefix used
+        # to be the instruction here, and the parser still strips one if it arrives,
+        # so an older engine or a plain-text fallback still parses.
+        "Answer with ONE compact JSON object and nothing else — no prose, no code "
+        "fences, no prefix — shaped exactly like this:\n"
+        '{"modal_kind":"none|diplomacy_negotiation|'
         'left_alert_panel|senate_mission|advisor_event|pause_menu|pre_battle|other",'
         '"dialog_bounds_norm":[x0,y0,x1,y1],"candidates":[{"action":"accept|reject|close|continue",'
         '"x_norm":0.00,"y_norm":0.00,"confidence":0.00}],"reason":"few words"}\n'
         "\n"
         "Example for a clear campaign map:\n"
-        'MODAL_JSON:{"modal_kind":"none","dialog_bounds_norm":[0,0,0,0],"candidates":[],'
+        '{"modal_kind":"none","dialog_bounds_norm":[0,0,0,0],"candidates":[],'
         '"reason":"nothing over the map"}\n'
         "\n"
         "Example for a negotiation scroll whose check is left of its X:\n"
-        'MODAL_JSON:{"modal_kind":"diplomacy_negotiation",'
+        '{"modal_kind":"diplomacy_negotiation",'
         '"dialog_bounds_norm":[0.28,0.20,0.74,0.84],"candidates":['
         '{"action":"accept","x_norm":0.47,"y_norm":0.77,"confidence":0.80},'
         '{"action":"reject","x_norm":0.53,"y_norm":0.77,"confidence":0.85}],'
@@ -910,7 +914,7 @@ def build_modal_vision_prompt(
         "\n"
         "Example for a parchment panel whose only control is the round gold X on its "
         "top-right corner:\n"
-        'MODAL_JSON:{"modal_kind":"left_alert_panel",'
+        '{"modal_kind":"left_alert_panel",'
         '"dialog_bounds_norm":[0.26,0.21,0.74,1.00],"candidates":['
         '{"action":"close","x_norm":0.74,"y_norm":0.22,"confidence":0.75}],'
         '"reason":"gold X on panel corner"}'

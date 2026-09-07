@@ -234,6 +234,71 @@ async def call_campaign_director(
     )
 
 
+def modal_vision_schema() -> dict[str, Any]:
+    """What a panel looks like, shaped for constrained decoding.
+
+    `modal_kind` leads because it is the answer that matters most and the cheapest
+    to reach: on a clear map the object can be complete in a dozen tokens.
+
+    `candidates` has to be an array — a panel can show a check and an X — so it is
+    the one unbounded field here, and unbounded fields are where a grammar-guided
+    model runs away, having only ever been offered valid next tokens. `maxItems`
+    is the brake. Three is above anything this UI shows; a scroll footer offers
+    two.
+
+    Only `modal_kind` and `reason` are required. Under constrained decoding a
+    required field is generated rather than considered, so requiring `candidates`
+    would collect invented buttons on a clear map — which is the one failure that
+    costs a run, because the handler would click one.
+    """
+    return {
+        "type": "object",
+        "properties": {
+            "modal_kind": {
+                "type": "string",
+                "enum": [
+                    "none",
+                    "diplomacy_negotiation",
+                    "left_alert_panel",
+                    "senate_mission",
+                    "advisor_event",
+                    "pause_menu",
+                    "pre_battle",
+                    "other",
+                ],
+            },
+            "reason": {"type": "string"},
+            # Kept despite the token cost: `_inside_bounds` uses it to throw out a
+            # button located outside the panel it supposedly belongs to. Fixed at
+            # four, so it cannot run away the way an open array can.
+            "dialog_bounds_norm": {
+                "type": "array",
+                "minItems": 4,
+                "maxItems": 4,
+                "items": {"type": "number"},
+            },
+            "candidates": {
+                "type": "array",
+                "maxItems": 3,
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "action": {
+                            "type": "string",
+                            "enum": ["accept", "reject", "close", "continue"],
+                        },
+                        "x_norm": {"type": "number"},
+                        "y_norm": {"type": "number"},
+                        "confidence": {"type": "number"},
+                    },
+                    "required": ["action", "x_norm", "y_norm", "confidence"],
+                },
+            },
+        },
+        "required": ["modal_kind", "reason"],
+    }
+
+
 OPPONENT_READ_SCHEMA: dict[str, Any] = {
     "type": "object",
     "properties": {
@@ -478,7 +543,15 @@ async def call_modal_vision(
     on_status: Callable[[ReachRunStatus], None] | None = None,
     raise_errors: bool = False,
 ) -> str:
-    """Modal vision call; empty string on failure."""
+    """Modal vision call; empty string on failure.
+
+    Runs in JSON mode for the same reason the directors do: without it the engine
+    sanitizes the answer into something speakable, which on a JSON object means
+    keeping the last prose field and discarding the structure. A live run logged
+    twelve calls and zero usable results, the replies being `none` and `nothing
+    over the map` — the latter being verbatim the `reason` string out of the
+    prompt's own clear-map example. The model had answered correctly every time.
+    """
     from comstar_game_ai.shared.config import load_config
 
     cfg = load_config()
@@ -495,6 +568,8 @@ async def call_modal_vision(
             priority="high",
             timeout=timeout if timeout is not None else DEFAULT_TIMEOUTS[MODAL_VISION],
             images=images,
+            response_format=JSON_OBJECT_RESPONSE_FORMAT,
+            json_schema=modal_vision_schema(),
             on_status=on_status,
         )
         return _extract_text(result)
