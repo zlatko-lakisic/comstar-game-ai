@@ -24,7 +24,11 @@ from comstar_game_ai.game_io.console.actuator import ConsoleActuator
 from comstar_game_ai.game_io.intent_record import IntentRecordWriter
 from comstar_game_ai.game_io.logs.campaign_probe import latest_julii_autosave_turn, summarize_julii_turn_markers
 from comstar_game_ai.game_io.logs.message_log import MessageLogTailer, default_message_log_path
-from comstar_game_ai.game_io.logs.turn_boundary import latest_turn_end, latest_turn_start
+from comstar_game_ai.game_io.logs.turn_boundary import (
+    latest_turn_end,
+    latest_turn_start,
+    newest_turn_start_marker,
+)
 from comstar_game_ai.game_io.logs.scripting_log import ScriptingLogTailer
 from comstar_game_ai.game_io.state_machine import GameState, GameStateDetector
 from comstar_game_ai.game_io.verification import VerificationPipeline, VerificationResult
@@ -84,6 +88,10 @@ class HardcodedCampaignDriver:
     attack_enabled: bool = False
     army_lists_row_norm: tuple[float, float] | None = None
     attack_targets: tuple[tuple[float, float], ...] = ()
+    # Called on every pass of a wait, to tell the safety layer this loop is alive.
+    # Waiting for Rome's AI round takes minutes and the deadman allows ten seconds,
+    # so without this the watchdog kills the run partway through the first turn.
+    on_heartbeat: Callable[[], None] | None = None
     # Set to feed the operator overlay (Process C). None means nobody is watching,
     # which is the normal case: the campaign loop must never wait on a spectator.
     publisher: EventPublisher | None = None
@@ -136,6 +144,15 @@ class HardcodedCampaignDriver:
             self._save_belief()
         else:
             _LOGGER.warning("campaign setup gave no entities — the director will be blind")
+
+    def _heartbeat(self) -> None:
+        """Say the loop is still running. Never let the watchdog's own call kill it."""
+        if self.on_heartbeat is None:
+            return
+        try:
+            self.on_heartbeat()
+        except Exception as exc:  # noqa: BLE001
+            _LOGGER.warning("heartbeat failed: %s", exc)
 
     def _save_belief(self) -> None:
         """Put the snapshot where the agent process reads it.
@@ -267,6 +284,11 @@ class HardcodedCampaignDriver:
                 hwnd,
                 input_controller=shell.input_controller if shell else None,
                 turn=self.state.turn,
+                # A vision round can outlast the deadman on a busy GPU, and when it
+                # did, the watchdog killed input mid-turn while the answer was still
+                # in flight — the panel got dismissed correctly a moment after the
+                # run had already lost control of the game.
+                on_heartbeat=self.on_heartbeat,
             )
         else:
             classification = grab_and_classify(hwnd)
@@ -565,6 +587,7 @@ class HardcodedCampaignDriver:
         deadline = time.time() + max(0.5, float(timeout))
         last_report = 0.0
         while time.time() < deadline:
+            self._heartbeat()
             self.poll_observation()
             mode = self._sync_ui(handle_modal=True)
             buttons = self._blocking_ui_present()
@@ -604,6 +627,7 @@ class HardcodedCampaignDriver:
         index: int = 0,
         total: int = 0,
         turn_before: int | None = None,
+        since: float | None = None,
     ) -> bool:
         """Wait until Julii's turn returns after End Turn.
 
@@ -617,20 +641,39 @@ class HardcodedCampaignDriver:
         timeout = timeout_s if timeout_s is not None else self.turn_wait_timeout_s
         started_baseline = self.turn_started
         baseline = int(turn_before if turn_before is not None else self._known_game_turn())
+        # When Rome last handed a turn back, as a write time rather than a number.
+        # Numbers only tell us about progress if they keep climbing, and they stop
+        # doing that the moment a new campaign starts: run beside a finished one,
+        # this waited for turn 21 against a game sitting on turn 1 and timed out on
+        # every turn of the run. A save written after we pressed End Turn is proof
+        # whatever the number on it says.
+        #
+        # The caller should pass the time from *before* it pressed End Turn. Reading
+        # it here instead loses the fast turns: ending the turn already polls this
+        # folder for up to ten seconds, so a quick AI round lands `Turn N Start.sav`
+        # before this line runs, and the wait then sits out its full timeout waiting
+        # for the turn after the one it already had.
+        if since is None:
+            marker_baseline = newest_turn_start_marker()
+            since = marker_baseline[1] if marker_baseline else 0.0
         deadline = time.time() + timeout
         last_ui = -999.0
         while time.time() < deadline:
+            self._heartbeat()
             self.poll_observation()
             self._refresh_turn_from_message_log()
             current = self._known_game_turn()
             started = self.turn_started
-            if started > started_baseline or current > baseline:
+            marker = newest_turn_start_marker()
+            handed_back = marker is not None and marker[1] > since
+            if handed_back or started > started_baseline or current > baseline:
                 if on_progress:
-                    why = (
-                        f"player turn began {started_baseline} -> {started}"
-                        if started > started_baseline
-                        else f"game turn advanced {baseline} -> {current}"
-                    )
+                    if handed_back:
+                        why = f"Rome handed turn {marker[0]} back"
+                    elif started > started_baseline:
+                        why = f"player turn began {started_baseline} -> {started}"
+                    else:
+                        why = f"game turn advanced {baseline} -> {current}"
                     on_progress(index=index, total=total, phase=why)
                 return True
             now = time.time()
@@ -841,6 +884,10 @@ class HardcodedCampaignDriver:
                 ok = False
             else:
                 turn_before = self._known_game_turn()
+                # Read before pressing, because Rome may hand the turn back while
+                # `end_turn` is still confirming its own actuation.
+                before = newest_turn_start_marker()
+                handback_since = before[1] if before else 0.0
                 ended = self.actuator.end_turn()
                 if on_progress:
                     phase = (
@@ -864,6 +911,7 @@ class HardcodedCampaignDriver:
                             index=index,
                             total=total,
                             turn_before=turn_before,
+                            since=handback_since,
                         )
                         and ok
                     )

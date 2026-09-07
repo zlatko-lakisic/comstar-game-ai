@@ -6,6 +6,7 @@ import asyncio
 import json
 import logging
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 from uuid import uuid4
@@ -817,6 +818,17 @@ class ModalHandler:
     allow_coordinate_fallback: bool = False
     allow_visual_button_fallback: bool = True
     use_ada_vision: bool = True
+    # Called while a vision request is in flight. Without it the safety deadman gets
+    # no pet for the length of the call and kills the run mid-turn.
+    on_heartbeat: Callable[[], None] | None = None
+
+    def _heartbeat(self) -> None:
+        if self.on_heartbeat is None:
+            return
+        try:
+            self.on_heartbeat()
+        except Exception as exc:  # noqa: BLE001 - a spectator must not stop the loop
+            _LOGGER.warning("modal heartbeat failed: %s", exc)
 
     def handle(
         self,
@@ -1125,34 +1137,36 @@ class ModalHandler:
         ui_mode: str,
     ) -> ModalVisionResult | None:
         try:
-            try:
-                loop = asyncio.get_running_loop()
-            except RuntimeError:
-                loop = None
-            if loop is not None and loop.is_running():
-                import concurrent.futures
-                with concurrent.futures.ThreadPoolExecutor(max_workers=1) as ex:
-                    future = ex.submit(
-                        asyncio.run,
-                        _query_modal_vision_async(
-                            image,
-                            request_id=request_id,
-                            turn=turn,
-                            ui_mode=ui_mode,
-                            timeout_s=self.model_timeout_s,
-                        ),
-                    )
-                    return future.result(timeout=self.model_timeout_s + 5.0)
-            else:
-                return asyncio.run(
+            # Always off-thread, and always waited for in slices. Waiting for the
+            # whole timeout in one call is what killed a run: a shared GPU took
+            # longer than the safety controller's ten-second deadman allows, and
+            # nothing reported in while this blocked, so the watchdog fired, killed
+            # input, and left the loop clicking at a game it no longer controlled.
+            # The vision answer arrived afterwards and was correct, which is the
+            # part that made it look like a vision bug rather than a stalled pet.
+            import concurrent.futures
+
+            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as ex:
+                future = ex.submit(
+                    asyncio.run,
                     _query_modal_vision_async(
                         image,
                         request_id=request_id,
                         turn=turn,
                         ui_mode=ui_mode,
                         timeout_s=self.model_timeout_s,
-                    )
+                    ),
                 )
+                deadline = time.time() + self.model_timeout_s + 5.0
+                while True:
+                    self._heartbeat()
+                    remaining = deadline - time.time()
+                    if remaining <= 0:
+                        return future.result(timeout=0)
+                    try:
+                        return future.result(timeout=min(2.0, remaining))
+                    except concurrent.futures.TimeoutError:
+                        continue
         except Exception as exc:
             print(
                 f"MODAL Ada vision: FAILED request_id={request_id} error={type(exc).__name__}: {exc}",
@@ -1195,14 +1209,21 @@ def ensure_campaign_map(
     input_controller: SendInputController | None = None,
     max_rounds: int = 4,
     turn: int | None = None,
+    on_heartbeat: Callable[[], None] | None = None,
 ) -> UiClassification:
     """Classify and dismiss until map or give up. No hwnd → UNKNOWN (no clicks).
 
     Multiple rounds cover offer → closing scroll → map (each needs its own reject click).
+
+    `on_heartbeat` has to reach the handler: each round can spend the whole vision
+    timeout waiting on a shared GPU, and the safety deadman allows ten seconds.
     """
     if hwnd is None:
         return grab_and_classify(None)
-    handler = ModalHandler(input_controller=input_controller or SendInputController())
+    handler = ModalHandler(
+        input_controller=input_controller or SendInputController(),
+        on_heartbeat=on_heartbeat,
+    )
     last = grab_and_classify(hwnd)
     for _ in range(max_rounds):
         if last.mode == CampaignUiMode.UNKNOWN and last.detail in {"black_capture", "no_frame"}:

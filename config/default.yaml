@@ -67,7 +67,11 @@ campaign:
   modal:
     min_confidence: 0.72
     min_margin: 0.10
-    model_timeout_s: 180
+    # "Is a panel covering the map, and where is its decline button" — seconds of
+    # work, not minutes. It was 180, which is longer than a turn should take: one
+    # slow classification then cost more than the twenty turns around it, and the
+    # local heuristics that run when vision gives up are good enough at this.
+    model_timeout_s: 25
     save_unresolved_frames: true
     diplomacy_action: reject
     allow_visual_button_fallback: true

@@ -151,6 +151,34 @@ class GameIoRuntime:
         self.safety.handback()
         self._publish_control()
 
+    def _campaign_wiring(self) -> dict[str, object]:
+        """The campaign settings the config has always carried and nobody read.
+
+        `auto_end_turn` is the one that mattered. It defaults to False on the
+        driver, the loop never set it, and with it off `run_turn_stub` skips the
+        End Turn block entirely and falls through to waiting for an *external*
+        turn advance. So the run pressed nothing and waited three minutes a turn
+        for a human to play the game for it, twenty times over, then reported that
+        no turn had advanced.
+
+        `use_vision` is what lets the loop see a panel sitting over the map and
+        clear it before End Turn, rather than clicking into whatever is there.
+        """
+        cfg = load_config().get("campaign") or {}
+        modal = cfg.get("modal") or {}
+        combat = cfg.get("combat") or {}
+
+        wiring: dict[str, object] = {
+            "auto_end_turn": bool(cfg.get("auto_end_turn", False)),
+            "use_vision": bool(modal.get("use_ada_vision", False)),
+            "auto_resolve_battles": bool(combat.get("auto_resolve_battles", True)),
+            "attack_enabled": bool(combat.get("attack_enabled", False)),
+        }
+        ready_timeout = cfg.get("end_turn_ready_timeout_s")
+        if ready_timeout is not None:
+            wiring["end_turn_ready_timeout_s"] = float(ready_timeout)
+        return wiring
+
     def _directive_wiring(self) -> dict[str, object]:
         """Hand the campaign driver the directive store, when the config asks for it.
 
@@ -184,6 +212,13 @@ class GameIoRuntime:
 
         driver = HardcodedCampaignDriver(
             player_faction=self.player_faction,
+            # Petting the deadman once per turn was not enough. A turn spends
+            # minutes waiting for Rome's AI round and the watchdog allows ten
+            # seconds, so it fired partway through turn one of every run, killed
+            # input, and left the loop to wait out its full timeout against a game
+            # it could no longer touch. The wait now reports in on every pass.
+            on_heartbeat=self.safety.pet_deadman,
+            **self._campaign_wiring(),
             **self._directive_wiring(),
         )
         driver.bootstrap_from_logs()
