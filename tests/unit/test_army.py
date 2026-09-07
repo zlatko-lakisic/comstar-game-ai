@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import itertools
 
+from PIL import Image, ImageDraw
+
 from comstar_game_ai.game_io.campaign.army import (
     ATTACK_CURSOR,
     BY_CONTROL,
@@ -12,8 +14,12 @@ from comstar_game_ai.game_io.campaign.army import (
     FIELD_CONSTRUCTION_OPEN,
     LISTS_LOCATE,
     LISTS_MILITARY_TAB,
+    MIN_SAFE_ATTACK_UNITS,
     MAP_ORDER_BUTTON,
     MAP_ORDER_TELL,
+    attack_requires_full_stack,
+    attack_safe_stack_selected,
+    count_selected_unit_cards,
     mutating_controls,
 )
 from comstar_game_ai.game_io.campaign.construction import CONSTRUCT_FOOTER
@@ -44,6 +50,40 @@ def test_map_orders_wait_for_the_cursor_glyph():
     assert MAP_ORDER_BUTTON == "left"
     assert MAP_ORDER_TELL == "cursor_glyph"
     assert ATTACK_CURSOR == "sword"
+
+
+def _army_hud_image(card_count: int) -> Image.Image:
+    img = Image.new("RGB", (1920, 1080), (20, 40, 20))
+    draw = ImageDraw.Draw(img)
+    x0 = int(1920 * 0.25)
+    y0 = int(1080 * 0.84)
+    y1 = int(1080 * 0.96)
+    card_w = 76
+    gap = 10
+    for i in range(card_count):
+        left = x0 + i * (card_w + gap)
+        right = left + card_w
+        draw.rectangle((left, y0, right, y1), fill=(180, 140, 90))
+    return img
+
+
+def test_count_selected_unit_cards_detects_multiple_cards():
+    assert count_selected_unit_cards(_army_hud_image(5)) == 5
+
+
+def test_count_selected_unit_cards_detects_single_general_card():
+    assert count_selected_unit_cards(_army_hud_image(1)) == 1
+
+
+def test_attack_requires_full_stack_rejects_general_alone():
+    assert MIN_SAFE_ATTACK_UNITS == 2
+    assert not attack_requires_full_stack(1)
+    assert attack_requires_full_stack(2)
+
+
+def test_attack_safe_stack_selected_needs_more_than_one_card():
+    assert not attack_safe_stack_selected(_army_hud_image(1))
+    assert attack_safe_stack_selected(_army_hud_image(3))
 
 
 def test_lists_military_is_not_the_capital_button():

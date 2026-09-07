@@ -10,7 +10,11 @@ import sys
 
 from comstar_game_ai.agent.reach.client import check_ada_health
 from comstar_game_ai.agent.reach.session import ReachSession, overlay_root
-from comstar_game_ai.agent.runtime import run_campaign_cli, run_deliberate_once
+from comstar_game_ai.agent.runtime import (
+    run_campaign_cli,
+    run_deliberate_once,
+    run_deliberation_loop_cli,
+)
 from comstar_game_ai.shared.config import load_config
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
@@ -64,6 +68,23 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument("--run-campaign", action="store_true", help="Campaign loop with AO deliberation")
     parser.add_argument("--deliberate-once", action="store_true", help="Single AO directive call")
+    parser.add_argument(
+        "--deliberate-loop",
+        action="store_true",
+        help="Write campaign directives on a cadence for a live Process A run to pick up",
+    )
+    parser.add_argument(
+        "--interval",
+        type=float,
+        default=45.0,
+        help="Seconds between directives with --deliberate-loop (default 45)",
+    )
+    parser.add_argument(
+        "--max-calls",
+        type=int,
+        default=0,
+        help="Stop after N directives with --deliberate-loop (0 = until Ctrl+C)",
+    )
     parser.add_argument("--phase", choices=("campaign", "battle"), default="campaign")
     parser.add_argument("--turns", type=int, default=20)
     parser.add_argument("--no-ao", action="store_true", help="Skip AO calls in campaign loop")
@@ -79,9 +100,17 @@ def main(argv: list[str] | None = None) -> int:
         return asyncio.run(run_campaign_cli(turns=args.turns, use_ao=not args.no_ao))
     if args.deliberate_once:
         return asyncio.run(run_deliberate_once(phase=args.phase))
+    if args.deliberate_loop:
+        return asyncio.run(
+            run_deliberation_loop_cli(
+                interval_s=args.interval,
+                max_calls=args.max_calls or None,
+            )
+        )
 
     print(
-        "Process B — use --health, --register-overlay, --run-campaign, or --deliberate-once.",
+        "Process B — use --health, --register-overlay, --run-campaign, "
+        "--deliberate-once, or --deliberate-loop.",
         file=sys.stderr,
     )
     return 0

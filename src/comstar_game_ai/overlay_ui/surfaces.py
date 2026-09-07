@@ -6,7 +6,7 @@ import time
 from collections import deque
 
 from PySide6.QtCore import Qt, QTimer
-from PySide6.QtGui import QFont, QPainter, QPen, QColor
+from PySide6.QtGui import QBrush, QColor, QFont, QLinearGradient, QPainter, QPen
 from PySide6.QtWidgets import QLabel, QWidget
 
 from comstar_game_ai.overlay_ui.state import (
@@ -46,13 +46,23 @@ class SurfaceBase(QWidget):
 class EdgeGlowSurface(SurfaceBase):
     """Surface 1a — window-sized border glow whose colour encodes the state.
 
+    A hard line plus an inward falloff, not a line on its own: at a glance across a
+    1080p map a 6px stroke reads as a window chrome artefact, while a hue bleeding in
+    from the edges reads as the whole frame being in a state. The falloff reaches zero
+    alpha well before the middle of the screen, so the map is never tinted where the
+    operator is actually looking.
+
     Covers the whole client area, so it is the surface most likely to expose a
-    click-through regression; it paints a stroke and corner brackets only, never
-    a fill, except in test-pattern mode.
+    click-through regression; outside test-pattern mode it never fills the centre.
     """
 
     BORDER_WIDTH = 6
     BRACKET_LENGTH = 48
+
+    #: Depth of the inward hue, as a fraction of the shorter side.
+    GLOW_DEPTH_RATIO = 0.085
+    #: Alpha at the edge. Low enough to read terrain and unit banners through it.
+    GLOW_ALPHA = 64
 
     def __init__(self, *, test_pattern: bool = False) -> None:
         super().__init__()
@@ -83,7 +93,11 @@ class EdgeGlowSurface(SurfaceBase):
         red, green, blue = state_colour(self._state)
         inset = self.BORDER_WIDTH / 2
 
-        pen = QPen(QColor(red, green, blue, 90))
+        self._paint_inward_hue(painter, width, height, (red, green, blue))
+
+        # Brighter than the old line-only glow: it now has to stay crisp on top of
+        # the hue instead of being the only thing on screen.
+        pen = QPen(QColor(red, green, blue, 150))
         pen.setWidth(self.BORDER_WIDTH)
         painter.setPen(pen)
         painter.drawRect(int(inset), int(inset), int(width - inset * 2), int(height - inset * 2))
@@ -98,6 +112,33 @@ class EdgeGlowSurface(SurfaceBase):
             for y_edge, y_dir in ((inset, 1), (height - inset, -1)):
                 painter.drawLine(int(x_edge), int(y_edge), int(x_edge + span * x_dir), int(y_edge))
                 painter.drawLine(int(x_edge), int(y_edge), int(x_edge), int(y_edge + span * y_dir))
+
+    def _paint_inward_hue(
+        self, painter: QPainter, width: int, height: int, rgb: tuple[int, int, int]
+    ) -> None:
+        """Four gradient bands, one per edge, fading from the state colour to nothing.
+
+        Bands rather than one radial wash: a radial gradient centred on the screen
+        cannot reach zero at the middle without being invisible at the edges of a
+        16:9 frame, and the corners are where the eye catches the state anyway.
+        """
+        red, green, blue = rgb
+        depth = max(8, int(min(width, height) * self.GLOW_DEPTH_RATIO))
+        near = QColor(red, green, blue, self.GLOW_ALPHA)
+        far = QColor(red, green, blue, 0)
+
+        # (start, end) of the gradient axis, then the rectangle it fills.
+        bands = (
+            ((0, 0), (0, depth), (0, 0, width, depth)),
+            ((0, height), (0, height - depth), (0, height - depth, width, depth)),
+            ((0, 0), (depth, 0), (0, 0, depth, height)),
+            ((width, 0), (width - depth, 0), (width - depth, 0, depth, height)),
+        )
+        for (x0, y0), (x1, y1), rect in bands:
+            gradient = QLinearGradient(float(x0), float(y0), float(x1), float(y1))
+            gradient.setColorAt(0.0, near)
+            gradient.setColorAt(1.0, far)
+            painter.fillRect(*rect, QBrush(gradient))
 
 
 class StateChipSurface(SurfaceBase):

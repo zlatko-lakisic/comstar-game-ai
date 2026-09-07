@@ -32,9 +32,15 @@ def test_twenty_turn_hardcoded_dry():
     assert result["turns_ok"] + result["turns_failed"] == 20
 
 
-def test_run_reports_the_campaigns_own_turn_count():
+def test_run_counts_advances_as_they_are_proven():
+    """Not end-minus-start: the endpoints can come from two different campaigns.
+
+    A real run measured a leftover turn 25 at the start and its own turn 19 at the
+    end, and the difference reported an 18-turn run as zero turns driven.
+    """
     result = _dry_run()
-    assert result["turns_advanced"] == result["game_turn_end"] - result["game_turn_start"]
+    assert result["turns_advanced"] == 0
+    assert result["turn_baseline_resets"] == 0
 
 
 def test_cycles_without_a_campaign_do_not_pass_acceptance():
