@@ -40,8 +40,9 @@ def campaign_directive_question(turn: int, player_faction: str = "julii") -> str
         "settlement he does not own.\n\n"
         "Weigh the belief block: what you hold, which generals are free, and what "
         "stands near them. Advance when something is worth reaching and a general "
-        "can reach it; hold when the position needs consolidating instead. Name the "
-        "settlement or general you based the choice on, in one short sentence."
+        "can reach it; hold when the position needs consolidating instead.\n\n"
+        "In one short sentence, name what decided it — the settlement worth taking, "
+        "which is one under another owner, or why the position has to hold."
     )
 
 

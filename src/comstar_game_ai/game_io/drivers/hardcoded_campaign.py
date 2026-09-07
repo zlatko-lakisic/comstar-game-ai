@@ -68,6 +68,10 @@ class HardcodedCampaignDriver:
     # Deprecated alias kept for callers/tests; treated as ready-timeout when set.
     end_turn_delay_s: float = 0.0
     use_vision: bool = False
+    # Read the opening position out of Rome's own campaign files at startup. Without
+    # it the belief store begins empty and stays that way, because the only other
+    # writer is script telemetry that cannot carry entities.
+    seed_from_setup: bool = True
     planner: CampaignPlanner | None = None
     # Answer a Battle Deployment panel with auto-resolve before the modal handler
     # sees it. That panel reads as a plain modal, and the handler is willing to click
@@ -115,6 +119,36 @@ class HardcodedCampaignDriver:
         self.actuator.state = self.state
         if self.planner is None:
             self.planner = CampaignPlanner(player_faction=self.player_faction)
+        if self.seed_from_setup:
+            self._seed_belief_from_setup()
+
+    def _seed_belief_from_setup(self) -> None:
+        """Give the director a map to reason about before the first turn."""
+        from comstar_game_ai.game_io.campaign.start_position import seed_belief_from_setup
+
+        try:
+            seeded = seed_belief_from_setup(self.belief, player_faction=self.player_faction)
+        except Exception as exc:  # noqa: BLE001 - never let reading a file stop a run
+            _LOGGER.warning("could not read the campaign setup: %s", exc)
+            return
+        if seeded:
+            _LOGGER.info("seeded %s entities from the campaign setup files", seeded)
+            self._save_belief()
+        else:
+            _LOGGER.warning("campaign setup gave no entities — the director will be blind")
+
+    def _save_belief(self) -> None:
+        """Put the snapshot where the agent process reads it.
+
+        Process B does not share this object: it calls `BeliefStore.load()`, which
+        reads `data/belief_snapshot.json`. Nothing wrote that file, so every
+        observation this driver made stayed in its own memory and the director was
+        handed an empty map no matter how much we had seen.
+        """
+        try:
+            self.belief.save()
+        except OSError as exc:
+            _LOGGER.warning("could not write the belief snapshot: %s", exc)
 
     def _publish(self, kind: EventKind, payload: dict[str, object] | None = None) -> None:
         """Tell the overlay what just happened. Never let it cost the run.
@@ -345,6 +379,7 @@ class HardcodedCampaignDriver:
             self._ingest_script_record(record)
         if count:
             self.belief.decay()
+            self._save_belief()
         return count
 
     def _note_turn_started(self, started: int) -> None:

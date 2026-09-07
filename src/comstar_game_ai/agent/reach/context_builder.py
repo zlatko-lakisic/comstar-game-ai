@@ -60,8 +60,14 @@ def _settlement_line(settlement: Any) -> dict[str, Any]:
     out: dict[str, Any] = {
         "name": settlement.entity_id or settlement.region,
         "owner": settlement.owner,
-        "at": [round(settlement.x), round(settlement.y)],
     }
+    # Nothing in Rome stands at the origin, so (0, 0) means we never found out
+    # where this is. Saying so beats printing a coordinate the model would happily
+    # measure distances from.
+    if (settlement.x, settlement.y) != (0.0, 0.0):
+        out["at"] = [round(settlement.x), round(settlement.y)]
+    if settlement.region:
+        out["region"] = settlement.region
     if settlement.population is not None:
         out["population"] = settlement.population
     return out
