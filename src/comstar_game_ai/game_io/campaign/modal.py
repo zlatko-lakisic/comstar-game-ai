@@ -467,6 +467,93 @@ def localize_panel_close_x(image) -> ModalActionCandidate | None:
     )
 
 
+def localize_report_confirm_tick(image) -> ModalActionCandidate | None:
+    """Find the lone tick that acknowledges a full-width report scroll.
+
+    A battle report has no close X and no accept/reject pair — its only control is
+    a grey tick in a cream disc, centred on the panel's bottom rail. Escape does
+    not dismiss it, and Escape on the campaign map *opens* the pause menu, so a
+    loop that falls back to Escape here oscillates between the report and the menu
+    instead of clearing either. Clicking the tick ends it.
+
+    Deliberately narrow: it requires a panel at least 0.55 of the window wide, and
+    looks in a band a twentieth of the width around that panel's centre. The clear
+    map and floating event notices have no wide panel at all, so they never match.
+    The pause menu does match on width and has grey text along its bottom, so it is
+    excluded by name — clicking a "tick" there lands on nothing.
+    """
+    import numpy as np
+
+    if pause_menu_present(image):
+        return None
+
+    bounds = panel_bounds(image)
+    if bounds is None:
+        return None
+    left, right, _top = bounds
+
+    rgb = np.asarray(image.convert("RGB"))
+    height, width = rgb.shape[:2]
+    if (right - left) < width * 0.55:
+        return None
+
+    centre_x = (left + right) / 2
+    half = max(6, int(width * 0.025))
+    x0, x1 = max(0, int(centre_x - half)), min(width, int(centre_x + half))
+    y0, y1 = int(height * 0.89), int(height * 0.98)
+    roi = rgb[y0:y1, x0:x1].astype(np.int16)
+    if roi.size == 0:
+        return None
+
+    # The glyph is grey: darker than the parchment around it and free of the gold
+    # and red that every other control in this UI uses.
+    r, g, b = roi[:, :, 0], roi[:, :, 1], roi[:, :, 2]
+    grey = (
+        (r < 175)
+        & (g < 175)
+        & (b < 175)
+        & (np.abs(r - g) < 30)
+        & (np.abs(g - b) < 30)
+    )
+    if grey.sum() < 30:
+        return None
+    # The rail it sits on has to be parchment, or this is map showing through.
+    if _cream_mask(rgb[y0:y1, x0:x1]).mean() < 0.35:
+        return None
+
+    ys, xs = np.where(grey)
+    return ModalActionCandidate(
+        action="confirm",
+        x_norm=float((x0 + xs.mean()) / width),
+        y_norm=float((y0 + ys.mean()) / height),
+        confidence=0.75,
+    )
+
+
+def pause_menu_present(image) -> bool:
+    """True when the campaign pause menu is open.
+
+    Worth naming, because the loop opens this itself: Escape is the fallback for a
+    panel with no visible control, and Escape on a clear map opens the pause menu.
+    A run then alternates — Escape closes the menu, sees the panel behind it,
+    presses Escape, opens the menu again — and never advances.
+
+    The menu's banner is a broad deep-red field down the left third, which nothing
+    else in the campaign UI has; a clear map reads about 0.001 against 0.56 here.
+    """
+    import numpy as np
+
+    rgb = np.asarray(image.convert("RGB"))
+    height, width = rgb.shape[:2]
+    roi = rgb[int(height * 0.05) : int(height * 0.95), int(width * 0.05) : int(width * 0.35)]
+    roi = roi.astype(np.int16)
+    if roi.size == 0:
+        return False
+    r, g, b = roi[:, :, 0], roi[:, :, 1], roi[:, :, 2]
+    deep_red = (r > 90) & (r < 200) & (r > g * 2) & (r > b * 2)
+    return bool(deep_red.mean() >= 0.15)
+
+
 def localize_left_panel_decision_buttons(image) -> tuple[ModalActionCandidate, ...]:
     """Find Accept/Reject on left alert/event detail panes (adoption, betrothal, etc.).
 
@@ -994,6 +1081,17 @@ class ModalHandler:
             ):
                 return current
 
+        # The pause menu, which the loop opens itself whenever Escape lands on a
+        # clear map. The classifier calls it a panel over the centre, so without
+        # this it goes to Ada, comes back as an unknown panel, and gets Escape —
+        # which closes it, revealing whatever it was covering, which gets Escape,
+        # which opens it again. Name it and close it before any of that.
+        if pause_menu_present(image):
+            print("MODAL handler: pause menu open; Escape to return to the map", flush=True)
+            self.input_controller.tap_key("escape", dwell_ms=60, hwnd=hwnd)
+            time.sleep(self.settle_s)
+            return grab_and_classify(hwnd)
+
         # Ada vision decides what the panel is and where its buttons are.
         if self.use_ada_vision:
             self._save_unresolved_frame(image, f"{request_id}-raw")
@@ -1210,6 +1308,20 @@ class ModalHandler:
             )
             return grab_and_classify(hwnd)
 
+        tick = localize_report_confirm_tick(image)
+        if tick is not None:
+            print(
+                f"VISION panel: report scroll, clicking confirm tick "
+                f"({tick.x_norm:.3f},{tick.y_norm:.3f})",
+                flush=True,
+            )
+            self._click_norm(hwnd, tick.x_norm, tick.y_norm)
+            time.sleep(self.settle_s)
+            after_tick = grab_rgb_image(hwnd)
+            if after_tick is None or panel_bounds(after_tick) is None:
+                print("VISION panel: tick acknowledged the report", flush=True)
+            return grab_and_classify(hwnd)
+
         print(
             f"VISION panel: parchment_ratio={before_left:.3f}; no close X found, pressing Escape",
             flush=True,
@@ -1238,6 +1350,20 @@ class ModalHandler:
         the close X, and Escape have all found nothing to click. If a decision panel
         ever reaches here, that search is what needs fixing, not this.
         """
+        image = grab_rgb_image(hwnd)
+        tick = localize_report_confirm_tick(image) if image is not None else None
+        if tick is not None:
+            print(
+                f"VISION panel: report tick ({tick.x_norm:.3f},{tick.y_norm:.3f}); clicking",
+                flush=True,
+            )
+            self._click_norm(hwnd, tick.x_norm, tick.y_norm)
+            time.sleep(self.settle_s)
+            after_tick = grab_and_classify(hwnd)
+            if after_tick.mode != CampaignUiMode.MODAL:
+                print("VISION panel: tick acknowledged the report", flush=True)
+                return after_tick
+
         print("VISION panel: nothing clickable and Escape held; Enter to acknowledge", flush=True)
         self.input_controller.tap_key("enter", dwell_ms=60, hwnd=hwnd)
         time.sleep(self.settle_s)

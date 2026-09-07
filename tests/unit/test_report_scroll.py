@@ -73,8 +73,8 @@ def test_escape_is_tried_before_enter(controller, monkeypatch):
     """Escape is harmless; Enter commits the default. Order is the safety property.
 
     On a panel offering a choice the default may be the choice we do not want, so
-    Enter must only run once the accept/reject search, the close X and Escape have
-    all found nothing.
+    Enter must only run once the accept/reject search, the close X, the report tick
+    and Escape have all found nothing.
     """
     handler = ModalHandler(input_controller=controller, settle_s=0.0)
     seen: list[UiClassification] = [_modal(), _map()]
@@ -97,9 +97,55 @@ def test_escape_is_tried_before_enter(controller, monkeypatch):
     monkeypatch.setattr(
         "comstar_game_ai.game_io.campaign.modal.localize_panel_close_x", lambda _i: None
     )
+    monkeypatch.setattr(
+        "comstar_game_ai.game_io.campaign.modal.localize_report_confirm_tick", lambda _i: None
+    )
 
     handler._close_panel(1, object(), 0.30)
 
     assert controller.keys[0] == "escape", f"Enter came first: {controller.keys}"
     assert "enter" in controller.keys, f"never acknowledged the report: {controller.keys}"
     assert controller.keys.index("escape") < controller.keys.index("enter")
+
+
+def test_the_tick_is_clicked_before_any_key_is_pressed(controller, monkeypatch):
+    """When the report's own control is visible, use it and press nothing.
+
+    Escape earned its place as a fallback, but it is the wrong first move here: a
+    report ignores it, and if the panel has in fact just closed, Escape reaches the
+    map and *opens* the pause menu. That is the oscillation that cost a run all
+    twenty of its turns.
+    """
+    from pathlib import Path
+
+    from PIL import Image
+
+    frame_path = (
+        Path(__file__).resolve().parents[1]
+        / "fixtures"
+        / "frames"
+        / "report-scroll-average-victory.png"
+    )
+    if not frame_path.exists():
+        pytest.skip("missing report frame fixture")
+    report = Image.open(frame_path).convert("RGB")
+
+    handler = ModalHandler(input_controller=controller, settle_s=0.0)
+    clicks: list[tuple[float, float]] = []
+    monkeypatch.setattr(
+        ModalHandler, "_click_norm", lambda _s, _h, x, y: clicks.append((x, y)) or True
+    )
+    monkeypatch.setattr(
+        "comstar_game_ai.game_io.campaign.modal.grab_and_classify", lambda _h: _map()
+    )
+    monkeypatch.setattr(
+        "comstar_game_ai.game_io.campaign.modal.grab_rgb_image", lambda _h: report
+    )
+
+    handler._close_panel(1, report, 0.38)
+
+    assert controller.keys == [], f"pressed keys with the tick in plain sight: {controller.keys}"
+    assert len(clicks) == 1, f"expected one click on the tick, got {clicks}"
+    x, y = clicks[0]
+    assert x == pytest.approx(0.50, abs=0.02)
+    assert y == pytest.approx(0.93, abs=0.03)
