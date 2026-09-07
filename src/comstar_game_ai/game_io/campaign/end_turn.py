@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import time
+from collections.abc import Callable
 
 import win32gui
 
@@ -85,6 +86,7 @@ def _try_after_actuation(
     method: str,
     *,
     since: float | None = None,
+    on_heartbeat: Callable[[], None] | None = None,
     timeout_s: float = 8.0,
 ) -> tuple[bool, str]:
     """Did this actuation end the turn? Only Rome recording an ending says yes.
@@ -97,7 +99,9 @@ def _try_after_actuation(
     method fired in turn and the run ended several turns believing it had ended
     none.
     """
-    turn = wait_for_turn_end(baseline, since=since, timeout_s=timeout_s)
+    turn = wait_for_turn_end(
+        baseline, since=since, on_heartbeat=on_heartbeat, timeout_s=timeout_s
+    )
     if turn is None:
         return False, ""
     _LOGGER.info("turn ended via %s (autosaved turn %s)", method, turn)
@@ -110,6 +114,7 @@ def end_turn_campaign(
     input_controller: SendInputController,
     console_open: bool,
     dwell_ms: int = 40,
+    on_heartbeat: Callable[[], None] | None = None,
 ) -> tuple[bool, str]:
     """
     Try to end the player turn. Returns (success, method_used).
@@ -134,14 +139,14 @@ def end_turn_campaign(
     # 1) pydirectinput Shift+Enter (DirectInput path)
     if directinput_available():
         with_game_input(hwnd, hotkey_shift_enter)
-        ok, tag = _try_after_actuation(baseline, since=since, method="pydirect_shift_enter", timeout_s=10.0)
+        ok, tag = _try_after_actuation(baseline, since=since, on_heartbeat=on_heartbeat, method="pydirect_shift_enter", timeout_s=10.0)
         if ok:
             return True, tag
         _focus_game(hwnd, input_controller, attempts=3)
 
     # 2) SendInput scan codes (thread attached during chord)
     input_controller.chord_scancode("shift", "enter", dwell_ms=max(dwell_ms, 80), hwnd=hwnd)
-    ok, tag = _try_after_actuation(baseline, since=since, method="scancode_shift_enter", timeout_s=8.0)
+    ok, tag = _try_after_actuation(baseline, since=since, on_heartbeat=on_heartbeat, method="scancode_shift_enter", timeout_s=8.0)
     if ok:
         return True, tag
 
@@ -176,7 +181,7 @@ def end_turn_campaign(
             return input_controller.click(sx, sy, dwell_ms=max(dwell_ms, 50))
 
         with_game_input(hwnd, _click, activate_click=False)
-        ok, tag = _try_after_actuation(baseline, since=since, method=f"click_{x_norm}_{y_norm}", timeout_s=8.0)
+        ok, tag = _try_after_actuation(baseline, since=since, on_heartbeat=on_heartbeat, method=f"click_{x_norm}_{y_norm}", timeout_s=8.0)
         if ok:
             return True, tag
 

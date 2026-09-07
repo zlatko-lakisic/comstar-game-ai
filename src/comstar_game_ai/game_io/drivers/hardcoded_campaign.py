@@ -888,7 +888,7 @@ class HardcodedCampaignDriver:
                 # `end_turn` is still confirming its own actuation.
                 before = newest_turn_start_marker()
                 handback_since = before[1] if before else 0.0
-                ended = self.actuator.end_turn()
+                ended = self.actuator.end_turn(on_heartbeat=self.on_heartbeat)
                 if on_progress:
                     phase = (
                         f"ended turn (game_turn={turn_before})"

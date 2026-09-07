@@ -89,7 +89,13 @@ campaign:
       - [0.50, 0.78]
 
 safety:
-  deadman_seconds: 10
+  # Must exceed the slowest thing the loop legitimately does between pets, or it
+  # stops being a safety net and becomes the thing that ends runs. It was 10,
+  # which is less than one modal classification on a shared GPU: the watchdog
+  # fired mid-turn, released input, and left the loop clicking at a game it no
+  # longer controlled. The slow paths pet it now; this is the margin for the ones
+  # nobody has thought about yet. The kill hotkey remains the immediate stop.
+  deadman_seconds: 30
   kill_hotkey: "ctrl+shift+end"
   takeover_hotkey: "ctrl+shift+home"
   handback_hotkey: "ctrl+shift+pause"

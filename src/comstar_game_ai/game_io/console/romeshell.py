@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
 import time
 from dataclasses import dataclass
 
@@ -84,7 +85,7 @@ class RomeShell:
         submitted = self.input_controller.tap_key(CONSOLE_SUBMIT_KEY, dwell_ms=self.dwell_ms)
         return typed and submitted
 
-    def end_turn(self) -> bool:
+    def end_turn(self, *, on_heartbeat: Callable[[], None] | None = None) -> bool:
         hwnd = self.resolve_hwnd()
         if hwnd is None:
             _LOGGER.warning("RomeShell: end_turn — game window not found")
@@ -96,6 +97,10 @@ class RomeShell:
             input_controller=self.input_controller,
             console_open=self.console_open,
             dwell_ms=self.dwell_ms,
+            # Several confirmation waits run back to back here, one per actuation
+            # method, and together they outlast the deadman. Without this the
+            # watchdog took the run down while End Turn was still being attempted.
+            on_heartbeat=on_heartbeat,
         )
         if ok:
             self.console_open = False

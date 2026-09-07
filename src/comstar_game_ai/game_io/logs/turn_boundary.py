@@ -2,10 +2,14 @@
 
 from __future__ import annotations
 
+import logging
 import re
 import time
+from collections.abc import Callable
 
 from comstar_game_ai.game_io.logs.message_log import default_message_log_path, default_saves_dir
+
+_LOGGER = logging.getLogger(__name__)
 
 # Ending a turn makes Rome autosave `Turn 18 End.sav` and log a matching line, both
 # before the AI factions move, so that turn number is the proof a turn actually ended.
@@ -151,6 +155,7 @@ def wait_for_turn_end(
     baseline: int | None,
     *,
     since: float | None = None,
+    on_heartbeat: Callable[[], None] | None = None,
     timeout_s: float = 8.0,
     poll_s: float = 0.35,
 ) -> int | None:
@@ -170,6 +175,14 @@ def wait_for_turn_end(
     """
     deadline = time.time() + timeout_s
     while True:
+        if on_heartbeat is not None:
+            # Ending a turn chains several of these waits, one per actuation method,
+            # which together outlast any sane deadman. Silence here read as a wedged
+            # process and the watchdog released input mid-sequence.
+            try:
+                on_heartbeat()
+            except Exception:  # noqa: BLE001 - a watchdog must not break the turn
+                _LOGGER.warning("turn-boundary heartbeat failed", exc_info=True)
         if since is not None:
             marker = newest_turn_end_marker()
             if marker is not None and marker[1] > since:

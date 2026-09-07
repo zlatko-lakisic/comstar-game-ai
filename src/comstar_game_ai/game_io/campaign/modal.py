@@ -1146,7 +1146,14 @@ class ModalHandler:
             # part that made it look like a vision bug rather than a stalled pet.
             import concurrent.futures
 
-            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as ex:
+            # Not a `with` block, deliberately. Leaving one calls
+            # `shutdown(wait=True)`, so on the path that matters — the request that
+            # overran and has to be given up on — we would block on the very call
+            # we just stopped waiting for, outside the loop that does the petting.
+            # That is where the deadman fired: not during the wait, but on the way
+            # out of it. `wait=False` leaves the daemon thread to finish alone.
+            ex = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+            try:
                 future = ex.submit(
                     asyncio.run,
                     _query_modal_vision_async(
@@ -1162,11 +1169,14 @@ class ModalHandler:
                     self._heartbeat()
                     remaining = deadline - time.time()
                     if remaining <= 0:
-                        return future.result(timeout=0)
+                        future.cancel()
+                        return None
                     try:
                         return future.result(timeout=min(2.0, remaining))
                     except concurrent.futures.TimeoutError:
                         continue
+            finally:
+                ex.shutdown(wait=False)
         except Exception as exc:
             print(
                 f"MODAL Ada vision: FAILED request_id={request_id} error={type(exc).__name__}: {exc}",
@@ -1226,6 +1236,7 @@ def ensure_campaign_map(
     )
     last = grab_and_classify(hwnd)
     for _ in range(max_rounds):
+        handler._heartbeat()
         if last.mode == CampaignUiMode.UNKNOWN and last.detail in {"black_capture", "no_frame"}:
             return last
         last = handler.handle(hwnd, last, turn=turn)

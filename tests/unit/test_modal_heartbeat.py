@@ -35,6 +35,33 @@ def test_a_slow_vision_call_keeps_petting_the_deadman(monkeypatch):
     assert all(gap < 10.0 for gap in gaps), f"a gap outlasted the deadman: {gaps}"
 
 
+def test_giving_up_on_a_call_does_not_block_on_it(monkeypatch):
+    """Where the deadman actually fired: on the way out of the wait, not during it.
+
+    A `with ThreadPoolExecutor(...)` block calls `shutdown(wait=True)` when left, so
+    abandoning an overrunning request meant blocking on that same request outside
+    the loop doing the petting. The whole point of the timeout is to stop waiting.
+    """
+    handler = ModalHandler(model_timeout_s=0.5, on_heartbeat=lambda: None)
+
+    async def never(*_args, **_kwargs):
+        import asyncio
+
+        await asyncio.sleep(30.0)
+        return None
+
+    monkeypatch.setattr(
+        "comstar_game_ai.game_io.campaign.modal._query_modal_vision_async", never
+    )
+
+    began = time.time()
+    result = handler._query_modal_vision_sync(object(), request_id="t", turn=1, ui_mode="m")
+    took = time.time() - began
+
+    assert result is None
+    assert took < 15.0, f"blocked on the call it gave up on: {took:.1f}s"
+
+
 def test_no_heartbeat_configured_is_not_an_error(monkeypatch):
     """Dry tests and one-off scripts construct this without a safety controller."""
     handler = ModalHandler(model_timeout_s=1.0)

@@ -133,6 +133,24 @@ def test_a_turn_handed_back_while_end_turn_confirmed_still_counts(driver, saves,
     assert driver.wait_for_turn_event(timeout_s=2.0, since=pressed_at - 1.0) is True
 
 
+def test_the_end_turn_confirmation_reports_in_while_it_waits(saves):
+    """Ending a turn chains one of these waits per actuation method.
+
+    Together they outlast any sane deadman, and the last run died exactly there:
+    the watchdog read the silence as a wedged process and released input while End
+    Turn was still being attempted.
+    """
+    pets: list[float] = []
+    write_save(saves, "save_Autosave   The House of Julii   Turn 9 End.sav", mtime=time.time())
+    since = turn_boundary.newest_turn_end_marker()[1]
+
+    turn_boundary.wait_for_turn_end(
+        9, since=since, on_heartbeat=lambda: pets.append(time.time()), timeout_s=2.0
+    )
+
+    assert len(pets) >= 3, f"the watchdog heard nothing for 2s: {len(pets)} pets"
+
+
 def test_a_turn_that_never_comes_back_still_times_out(driver, saves, monkeypatch):
     """The wait must not become unfalsifiable in the course of being fixed."""
     write_save(
