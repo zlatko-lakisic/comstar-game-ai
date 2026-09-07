@@ -239,7 +239,9 @@ class HardcodedCampaignDriver:
         if hwnd is None or controller is None:
             return None
         if self._combat is None or self._combat.hwnd != hwnd:
-            self._combat = CombatDirector(hwnd=hwnd, controller=controller)
+            self._combat = CombatDirector(
+                hwnd=hwnd, controller=controller, on_heartbeat=self.on_heartbeat
+            )
         return self._combat
 
     def resolve_pending_battle(self) -> bool:
@@ -704,11 +706,16 @@ class HardcodedCampaignDriver:
                             stamp = int(now)
                             out = f"data/runtime/dialog-{index}-{stamp}.png"
                             if save_debug_capture(hwnd, out):
-                                on_progress(
-                                    index=index,
-                                    total=total,
-                                    phase=f"saved dialog frame: {out}",
-                                )
+                                # Saving the frame is the point; telling the overlay
+                                # about it is optional. Nobody guarded this one, so a
+                                # run with no overlay attached died here on the first
+                                # dialog it met — eighteen turns in, mid-battle.
+                                if on_progress:
+                                    on_progress(
+                                        index=index,
+                                        total=total,
+                                        phase=f"saved dialog frame: {out}",
+                                    )
                                 self._last_debug_capture_ts = now
                 last_ui = now
             time.sleep(0.25)

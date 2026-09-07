@@ -92,6 +92,34 @@ def test_a_failing_heartbeat_does_not_take_down_the_turn(monkeypatch):
     assert handler._query_modal_vision_sync(object(), request_id="t", turn=1, ui_mode="m") is None
 
 
+def test_resolving_a_battle_reports_in_while_it_watches(monkeypatch):
+    """The last unpetted loop, and it ended the 20-turn run on turn 29.
+
+    Auto-resolve clicks once and then watches the panel for up to two minutes,
+    sleeping in two-second steps. Nothing pet the deadman, so the watchdog released
+    input mid-battle — after which no click could clear anything, and the loop spent
+    the rest of its timeout watching a panel it could no longer touch, which is why
+    this surfaced as "battle panel did not clear" rather than as a watchdog problem.
+    """
+    from comstar_game_ai.game_io.campaign import combat
+
+    # A battle that is up and stays up, so the whole wait runs.
+    monkeypatch.setattr(combat, "battle_deployment_present", lambda _frame: True)
+    monkeypatch.setattr(combat.CombatDirector, "_click_norm", lambda *_a, **_k: True)
+
+    pets: list[int] = []
+    director = combat.CombatDirector(
+        hwnd=1,
+        capture=lambda: object(),
+        sleep=lambda _s: time.sleep(0.02),
+        battle_timeout_s=1.0,
+        on_heartbeat=lambda: pets.append(1),
+    )
+
+    assert director.resolve_battle() is False, "the panel never cleared, by construction"
+    assert len(pets) >= 5, f"the watchdog heard nothing for a full battle wait: {len(pets)}"
+
+
 def test_the_configured_timeout_is_not_longer_than_a_turn():
     """180 seconds bought nothing and cost more than the turns around it."""
     from comstar_game_ai.shared.config import load_config

@@ -146,7 +146,18 @@ class CombatDirector:
     hover_dwell_s: float = 1.6
     order_settle_s: float = 6.0
     battle_timeout_s: float = 120.0
+    # Resolving a battle can watch the panel for two minutes. Silence that long
+    # reads as a wedged process, and the watchdog ended a run on turn 29 for it.
+    on_heartbeat: Callable[[], None] | None = None
     last_reason: str = field(default="", init=False)
+
+    def _heartbeat(self) -> None:
+        if self.on_heartbeat is None:
+            return
+        try:
+            self.on_heartbeat()
+        except Exception:  # noqa: BLE001 - a watchdog must not lose us the battle
+            _LOGGER.warning("combat heartbeat failed", exc_info=True)
 
     def _grab(self) -> Image.Image | None:
         if self.capture is not None:
@@ -289,6 +300,7 @@ class CombatDirector:
 
         deadline = time.monotonic() + self.battle_timeout_s
         while time.monotonic() < deadline:
+            self._heartbeat()
             self.sleep(2.0)
             frame = self._grab()
             if frame is None:

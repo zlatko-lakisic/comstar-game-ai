@@ -70,3 +70,26 @@ def test_the_campaign_loop_hands_the_driver_its_watchdog(monkeypatch):
     )
 
     assert driver.on_heartbeat == runtime.safety.pet_deadman
+
+
+def test_a_dialog_does_not_crash_a_run_nobody_is_watching(driver, monkeypatch, tmp_path):
+    """`on_progress` is optional, so an unguarded call is a crash only when unobserved.
+
+    That is exactly how the unattended 20-turn run died: eighteen turns in, a battle
+    dialog came up, the loop saved a debug frame, and then reported the frame through
+    a callback that was None because no overlay was attached.
+    """
+    from comstar_game_ai.game_io.campaign.ui_mode import CampaignUiMode
+    from comstar_game_ai.game_io.drivers import hardcoded_campaign as mod
+
+    driver.use_vision = True
+    monkeypatch.setattr(driver, "poll_observation", lambda: 0)
+    monkeypatch.setattr(driver, "_refresh_turn_from_message_log", lambda: None)
+    monkeypatch.setattr(driver, "_known_game_turn", lambda: 5)
+    monkeypatch.setattr(driver, "_sync_ui", lambda **_k: CampaignUiMode.MODAL)
+    monkeypatch.setattr(driver, "_resolve_hwnd", lambda: 1)
+    monkeypatch.setattr(mod, "save_debug_capture", lambda *_a, **_k: True)
+    driver._last_debug_capture_ts = 0.0
+
+    # No on_progress, which is the normal case for a headless run.
+    assert driver.wait_for_turn_event(timeout_s=1.0) is False

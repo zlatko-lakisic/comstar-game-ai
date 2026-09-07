@@ -22,6 +22,12 @@ def saves(tmp_path, monkeypatch):
     folder = tmp_path / "saves"
     folder.mkdir()
     monkeypatch.setattr(turn_boundary, "default_saves_dir", lambda: folder)
+    # The log has to be isolated too. `latest_turn_end` takes the max of the saves
+    # and the message log, so pointing the log at the real Rome install lets the
+    # last campaign played on this machine decide what these tests see.
+    monkeypatch.setattr(
+        turn_boundary, "default_message_log_path", lambda: tmp_path / "no-message-log.txt"
+    )
     return folder
 
 
