@@ -15,6 +15,12 @@ frame:
   measured_client_size: [1920, 1080]
   aspect: "16:9"
 
+# The digest below is generated from `facts` by scripts/build_campaign_atlas_overlay.py.
+# Without it this skill has no body, and the engine rejects every request from an agent
+# that names it — which cost the campaign director all three of its skills.
+content:
+  file: campaign_ui_facts.md
+
 inject:
   heading: "## Campaign UI facts"
   max_chars: 2600

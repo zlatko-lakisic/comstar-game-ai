@@ -2,6 +2,9 @@ id: campaign_director
 type: ollama
 model: llama3.1:8b
 description: Strategic campaign directive at turn boundaries
+# role, goal and backstory are all mandatory: the engine refuses to build an agent
+# without them and rejects the request as invalid_request before any model runs.
+role: Campaign strategist for a Roman faction
 goal: Return one JSON directive for the campaign turn
 backstory: |
   You are the campaign director for Rome Remastered. Reasoning is allowed.

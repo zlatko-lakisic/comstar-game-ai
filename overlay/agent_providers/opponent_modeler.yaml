@@ -2,6 +2,7 @@ id: opponent_modeler
 type: ollama
 model: llama3.1:8b
 description: Periodic opponent faction analysis
+role: Opponent analyst
 goal: Return JSON opponent_read update for the target faction
 backstory: |
   You model enemy faction intent and style from observable evidence only.

@@ -38,6 +38,18 @@ class ReachSession:
     def is_active(self) -> bool:
         return self.bridge.is_active
 
+    @property
+    def available_mcp_ids(self) -> tuple[str, ...]:
+        """MCP providers this session actually registered with AO.
+
+        The bootstrap fails soft: if the local stdio server will not start, the
+        session comes up without it and only logs a warning. Asking AO for a
+        provider it was never given is not a degraded call, it is a rejected one —
+        the engine refuses the whole request with `unknown catalog id` before any
+        model runs — so callers have to check rather than assume.
+        """
+        return tuple(self.bridge.registered_mcp_ids or ())
+
     async def start(self, config: dict[str, Any] | None = None) -> None:
         reach_cfg = build_connection_config(config)
         await self.bridge.start(

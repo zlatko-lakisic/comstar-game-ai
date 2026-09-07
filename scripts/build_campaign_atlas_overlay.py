@@ -48,6 +48,8 @@ from comstar_game_ai.game_io.campaign.rome_strings import load_campaign_tables
 OUT = Path("overlay/agent_skills/campaign_ui_atlas.yaml")
 INFO_OUT = Path("overlay/agent_skills/campaign_info_sources.yaml")
 LEARN_OUT = Path("overlay/agent_skills/campaign_learnings.yaml")
+# Hand-maintained, unlike the three above: this script only renders its injectable body.
+FACTS_IN = Path("overlay/agent_skills/campaign_ui_facts.yaml")
 VERIFIED_ON = "2026-09-05"
 
 HEADER = """\
@@ -355,6 +357,29 @@ def _learnings_markdown() -> str:
     return "\n".join(lines) + "\n"
 
 
+def _facts_markdown() -> str:
+    """Digest the facts skill into a body an agent can actually be given.
+
+    A skill with no body is worse than useless: the engine validates every skill an
+    agent names and rejects the request outright, so the campaign director was losing
+    all of its skills to this one. The YAML stays the source of truth — full statements
+    and evidence for anything reading structured data — and this is the first-sentence
+    digest, the same shape as the other two campaign skills.
+    """
+    doc = yaml.safe_load(FACTS_IN.read_text(encoding="utf-8"))
+    lines = [
+        "Verified campaign UI facts. Position and log truth beat colour and guesswork.",
+        "",
+    ]
+    for fact in doc.get("facts") or []:
+        statement = " ".join(str(fact.get("statement") or "").split())
+        if not statement:
+            continue
+        kind = str(fact.get("kind") or "fact").upper()
+        lines.append(f"- {kind}: {_first_sentence(statement)}.")
+    return "\n".join(lines) + "\n"
+
+
 def _dump(path: Path, doc: dict) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8", newline="\n") as handle:
@@ -647,10 +672,13 @@ def main() -> int:
     _dump(OUT, doc)
     info_md = INFO_OUT.with_suffix(".md")
     learn_md = LEARN_OUT.with_suffix(".md")
+    facts_md = FACTS_IN.with_suffix(".md")
     info_md.write_text(_info_markdown(), encoding="utf-8", newline="\n")
     learn_md.write_text(_learnings_markdown(), encoding="utf-8", newline="\n")
+    facts_md.write_text(_facts_markdown(), encoding="utf-8", newline="\n")
     print(f"wrote {info_md}")
     print(f"wrote {learn_md}")
+    print(f"wrote {facts_md}")
     _dump(
         INFO_OUT,
         {
