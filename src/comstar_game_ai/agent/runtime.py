@@ -8,10 +8,15 @@ import time
 import uuid
 from dataclasses import dataclass, field
 
+from comstar_game_ai.agent.belief.store import BeliefStore
 from comstar_game_ai.agent.directive import neutral_directive
 from comstar_game_ai.agent.learning.consolidator import consolidate_offline
 from comstar_game_ai.agent.reach.context_builder import ObservableContext, build_observable_brief
 from comstar_game_ai.agent.reach.director import call_campaign_director, call_battle_director
+from comstar_game_ai.agent.reach.prompts import (
+    battle_directive_question,
+    campaign_directive_question,
+)
 from comstar_game_ai.agent.reach.kb_ingest import ingest_after_action as kb_ingest_after_action
 from comstar_game_ai.agent.reach.session import ReachSession
 from comstar_game_ai.agent.records.after_action import AfterActionRecord
@@ -44,21 +49,51 @@ class AgentRuntime:
             self.session = None
         self.publisher.close()
 
+    def _fresh_belief(self) -> BeliefStore:
+        """Re-read the snapshot rather than trusting the process-wide cache.
+
+        `default_belief_store()` memoises the first load for the life of the process.
+        In a deliberation loop that runs beside the game for an hour, that means every
+        turn after the first reasons about the opening position: the driver keeps
+        writing the snapshot and this process never looks again.
+        """
+        return BeliefStore.load()
+
+    def _hold_without_asking(self, turn: int, qid: str, reason: str) -> None:
+        directive = neutral_directive(reason)
+        self.directive_store.write(qid, directive)
+        _LOGGER.warning("turn %s: %s — holding without asking AO", turn, reason)
+        self.publisher.publish(
+            EventKind.AO_RESULT,
+            {"summary": f"hold ({reason})", "question_id": qid},
+        )
+
     async def deliberate_campaign_turn(self, turn: int, belief_summary: str = "") -> None:
         assert self.session is not None
         qid = f"campaign-{turn}-{uuid.uuid4().hex[:8]}"
+        belief = self._fresh_belief()
+        if not (belief.get_characters() or belief.get_armies() or belief.get_settlements()):
+            # An empty map is not a strategic question, and asking one anyway went
+            # badly in both directions: the prompt had to carry an instruction about
+            # what to do with nothing, and the model then reached for that sentence
+            # on a turn where the map was full — answering "hold, the map is empty"
+            # with two idle generals and three reachable towns in front of it.
+            # Deciding it here costs no GPU and cannot be misread.
+            self._hold_without_asking(turn, qid, "belief_empty")
+            return
         ctx = build_observable_brief(
             ObservableContext(
                 phase="campaign",
                 turn=turn,
                 player_faction=self.player_faction,
                 summary=belief_summary or f"turn {turn}",
-            )
+            ),
+            belief,
         )
         self.publisher.publish(EventKind.AO_REQUEST, {"summary": f"campaign turn {turn}", "question_id": qid})
         directive = await call_campaign_director(
             self.session,
-            text=f"Campaign turn {turn}. Propose directive JSON.",
+            text=campaign_directive_question(turn, self.player_faction),
             context=ctx,
             question_id=qid,
             on_status=lambda s: self.publisher.publish(
@@ -66,6 +101,12 @@ class AgentRuntime:
             ),
         )
         self.directive_store.write(qid, directive)
+        _LOGGER.info(
+            "turn %s directive: %s (%s)",
+            turn,
+            directive.intent.objective,
+            directive.commentary or "no commentary",
+        )
         self.publisher.publish(
             EventKind.AO_RESULT,
             {"summary": directive.intent.objective, "question_id": qid},
@@ -75,12 +116,19 @@ class AgentRuntime:
         assert self.session is not None
         qid = f"battle-{battle_id}-{tick}"
         ctx = build_observable_brief(
-            ObservableContext(phase="battle", tick=tick, battle_id=battle_id, summary=f"tick {tick}")
+            ObservableContext(
+                phase="battle",
+                tick=tick,
+                battle_id=battle_id,
+                player_faction=self.player_faction,
+                summary=f"tick {tick}",
+            ),
+            self._fresh_belief(),
         )
         self.publisher.publish(EventKind.AO_REQUEST, {"summary": f"battle tick {tick}", "question_id": qid})
         directive = await call_battle_director(
             self.session,
-            text=f"Battle tick {tick}. Return battle directive JSON.",
+            text=battle_directive_question(tick, battle_id),
             context=ctx,
             question_id=qid,
             stale_question_ids=[qid],

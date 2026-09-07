@@ -14,6 +14,10 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Literal
 
 from comstar_game_ai.agent.belief.store import BeliefStore
+
+# Re-exported: the vocabulary belongs to the directive contract, so the schema the
+# model decodes against and the gate that reads its answer cannot drift apart.
+from comstar_game_ai.agent.directive import ADVANCING_OBJECTIVES, DIRECTIVE_OBSERVATIONS
 from comstar_game_ai.shared.config import load_config
 
 if TYPE_CHECKING:
@@ -23,17 +27,13 @@ _LOGGER = logging.getLogger(__name__)
 
 OrderKind = Literal["observe", "move_character", "end_turn"]
 
-#: Objectives that permit advancing a character this turn. "hold" — the neutral
-#: fallback, and what a silent or malformed AO answer becomes — is deliberately not
-#: here: when nobody is reasoning, the army stays where it is.
-ADVANCING_OBJECTIVES = frozenset(
-    {"expand", "advance", "attack", "take_settlement", "besiege", "pressure"}
-)
-
-#: The only console reads a directive may ask for. An unrecognised focus action is
-#: ignored rather than sent: `focus_actions` is a free-text field from a model, and
-#: the fair-play gate should never be the first thing standing between it and Rome.
-DIRECTIVE_OBSERVATIONS = frozenset({"list_characters", "list_units"})
+__all__ = [
+    "ADVANCING_OBJECTIVES",
+    "DIRECTIVE_OBSERVATIONS",
+    "CampaignOrder",
+    "CampaignPlanner",
+    "OrderKind",
+]
 
 
 @dataclass(frozen=True)

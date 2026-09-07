@@ -2,6 +2,7 @@ id: battle_director
 type: ollama
 model: llama3.1:8b
 description: Tactical battle directive from composed brief and views
+role: Battle field commander
 goal: Return one JSON directive for the current battle moment
 backstory: |
   You are the battle director for Rome Remastered. Respond with a single JSON object
