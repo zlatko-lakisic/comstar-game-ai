@@ -364,13 +364,28 @@ def panel_covers_map_centre(image) -> bool:
     Settlement and building-browser scrolls straddle the centre and swallow input,
     so they have to be closed even though they ask for no decision. Side cards in
     the left dock leave the centre alone and can simply be left on screen.
+
+    Event scrolls — "Faction Destroyed" and its kind — are the same problem and
+    were invisible here, because `panel_bounds` returns None for them. That is how
+    a run reached "ready for End Turn" with one covering the map, pressed the key
+    into it, and read the silence as the game refusing to end the turn.
     """
-    bounds = panel_bounds(image)
-    if bounds is None:
-        return False
-    left, right, _top = bounds
     width = image.size[0]
-    return left < width * 0.55 and right > width * 0.45
+    bounds = panel_bounds(image)
+    if bounds is not None:
+        left, right, _top = bounds
+        if left < width * 0.55 and right > width * 0.45:
+            return True
+
+    floating = centre_panel_bounds(image)
+    if floating is None:
+        return False
+    left, right, _top, _bottom = floating
+    return (
+        left < width * 0.55
+        and right > width * 0.45
+        and centre_parchment_ratio(image) >= CENTRE_PARCHMENT_CLEAR
+    )
 
 
 def blocking_ui_present(image) -> bool:
@@ -966,11 +981,16 @@ class ModalHandler:
             return current
 
         # Clear campaign map: do not Escape/spam when nothing dismissible is present.
+        # The centre belongs in this test as much as the left dock. Without it a
+        # scroll floating over the map satisfied every clause, so this returned
+        # before the dismissal chain could look — the close X was found perfectly
+        # well by the detector, and nothing ever called it.
         if current.mode == CampaignUiMode.CAMPAIGN_MAP:
             if (
                 not localize_diplomacy_footer_buttons(image)
                 and not localize_left_panel_decision_buttons(image)
                 and left_overlay_parchment_ratio(image) < 0.10
+                and centre_parchment_ratio(image) < CENTRE_PARCHMENT_CLEAR
             ):
                 return current
 
