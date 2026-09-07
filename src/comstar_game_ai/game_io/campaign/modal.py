@@ -22,6 +22,10 @@ from comstar_game_ai.shared.config import load_config
 
 _LOGGER = logging.getLogger(__name__)
 
+# Above this, a scroll is sitting over the middle of the map. Measured 0.21 with a
+# "Faction Destroyed" notice up and 0.04 with the map clear, so the gap is wide.
+CENTRE_PARCHMENT_CLEAR = 0.12
+
 # Decline / close — never the Accept button (typically lower-right of the scroll).
 DEFAULT_DECLINE_NORMS: list[tuple[float, float]] = [
     # Diplomacy / negotiation reject button (red X) is usually near center-bottom.
@@ -212,6 +216,97 @@ def _cream_mask(rgb):
         & (b <= 205)
         & (r >= b + 12)
         & (g >= b + 4)
+    )
+
+
+def centre_parchment_ratio(image) -> float:
+    """Fraction of cream UI pixels in the middle of the screen.
+
+    The left-dock measure cannot see a scroll that opens over the map, and that
+    blind spot stalled a campaign: a "Faction Destroyed — Dacia" notice sat in the
+    centre of the screen, the loop measured an empty left dock, called the map
+    clear, and pressed End Turn into a panel that had the keyboard. Every attempt
+    reported `no_turn_boundary` and the run spent its remaining fourteen turns
+    doing that.
+
+    Measured 0.21 with that notice up against 0.04 on a clear map, so the two are
+    not close.
+    """
+    import numpy as np
+
+    rgb = np.asarray(image.convert("RGB"))
+    height, width = rgb.shape[:2]
+    roi = rgb[int(height * 0.15) : int(height * 0.80), int(width * 0.22) : int(width * 0.78)]
+    return float(_cream_mask(roi).mean()) if roi.size else 0.0
+
+
+def centre_panel_bounds(image) -> tuple[int, int, int, int] | None:
+    """(left, right, top, bottom) of a scroll floating over the map, or None.
+
+    `panel_bounds` is no help for these: it scores columns across a fixed upper
+    band and returned None for the notice above, which is why nothing downstream
+    could find its close button.
+
+    The top and bottom tenths are excluded because the permanent HUD strips live
+    there and would anchor every measurement to the full width of the screen.
+    """
+    import numpy as np
+
+    rgb = np.asarray(image.convert("RGB"))
+    height, width = rgb.shape[:2]
+    cream = _cream_mask(rgb)
+    interior = cream[int(height * 0.10) : int(height * 0.88), :]
+    if interior.size == 0:
+        return None
+    cols = np.where(interior.mean(0) > 0.30)[0]
+    rows = np.where(interior.mean(1) > 0.30)[0]
+    if cols.size == 0 or rows.size == 0:
+        return None
+    top_offset = int(height * 0.10)
+    return (
+        int(cols.min()),
+        int(cols.max()),
+        top_offset + int(rows.min()),
+        top_offset + int(rows.max()),
+    )
+
+
+def localize_centre_scroll_close_x(image) -> ModalActionCandidate | None:
+    """The small golden X at a floating scroll's top-right corner.
+
+    Gold rather than shape: the glyph is about twenty pixels of orange filigree on
+    cream, and the corner it sits in also holds a decorative roller end that a
+    round-blob search happily returns instead — clicking that does nothing, which
+    is how this looked like "the close button does not work".
+    """
+    import numpy as np
+
+    bounds = centre_panel_bounds(image)
+    if bounds is None:
+        return None
+    left, right, top, bottom = bounds
+
+    rgb = np.asarray(image.convert("RGB"))
+    height, width = rgb.shape[:2]
+    r = rgb[:, :, 0].astype(np.int16)
+    g = rgb[:, :, 1].astype(np.int16)
+    b = rgb[:, :, 2].astype(np.int16)
+    gold = (r > 120) & (r > b + 55) & (g > b + 20) & (g < r)
+
+    x0 = max(0, right - int((right - left) * 0.10))
+    x1 = min(width, right + 10)
+    y0 = max(0, top - 10)
+    y1 = min(height, top + int((bottom - top) * 0.12))
+    corner = gold[y0:y1, x0:x1]
+    ys, xs = np.where(corner)
+    if xs.size < 12:
+        return None
+
+    return ModalActionCandidate(
+        action="close",
+        x_norm=float((x0 + xs.mean()) / width),
+        y_norm=float((y0 + ys.mean()) / height),
+        confidence=0.7,
     )
 
 
@@ -1036,7 +1131,24 @@ class ModalHandler:
                     return closed
             return grab_and_classify(hwnd)
 
-        # 3) Any parchment panel with a close X: alerts dock, settlement, mission.
+        # 3) A scroll floating over the map, closed by the golden X in its corner.
+        # Before the generic panel path, which measures the left dock and so cannot
+        # see this at all.
+        centre_x = localize_centre_scroll_close_x(image)
+        if centre_x is not None:
+            print(
+                f"VISION scroll: floating notice, close X=({centre_x.x_norm:.3f},"
+                f"{centre_x.y_norm:.3f}); clicking",
+                flush=True,
+            )
+            self._click_norm(hwnd, centre_x.x_norm, centre_x.y_norm)
+            time.sleep(self.settle_s)
+            after = grab_rgb_image(hwnd)
+            if after is None or centre_parchment_ratio(after) < CENTRE_PARCHMENT_CLEAR:
+                print("VISION scroll: close X cleared the notice", flush=True)
+            return grab_and_classify(hwnd)
+
+        # 4) Any parchment panel with a close X: alerts dock, settlement, mission.
         before_left = left_overlay_parchment_ratio(image)
         if panel_bounds(image) is not None or before_left >= 0.10:
             closed = self._close_panel(hwnd, image, before_left)
@@ -1278,9 +1390,14 @@ def ensure_campaign_map(
             return last
         overlay = left_overlay_parchment_ratio(image)
         buttons = localize_colored_modal_buttons(image) or localize_left_panel_decision_buttons(image)
+        # The centre has to count too. Measuring only the left dock declared a map
+        # clear with a "Faction Destroyed" scroll sitting in the middle of it, and
+        # the loop then spent fourteen turns pressing End Turn into that scroll.
+        centre = centre_parchment_ratio(image)
         clear = (
             last.mode == CampaignUiMode.CAMPAIGN_MAP
             and overlay < 0.08
+            and centre < CENTRE_PARCHMENT_CLEAR
             and not buttons
         )
         if clear:
