@@ -43,10 +43,11 @@ campaign:
   policy:
     allow_moves: true
   directive:
-    # Let AO have a say in the turn. Off by default: with nothing writing directives
-    # (Process B, `comstar-agent --deliberate-loop`), every turn would read as the
-    # neutral "hold" and the loop would stop advancing characters.
-    enabled: false
+    # Let AO have a say in the turn. Needs Process B running
+    # (`comstar-agent --deliberate-loop`) to write them: with nothing writing
+    # directives every turn reads as the neutral "hold" and the loop stops
+    # advancing characters. Turn this off to play the hardcoded policy instead.
+    enabled: true
     # Defaults to data/runtime/directive.json when null.
     path: null
     # A directive older than this is ignored outright, so one left on disk by an

@@ -151,13 +151,41 @@ class GameIoRuntime:
         self.safety.handback()
         self._publish_control()
 
+    def _directive_wiring(self) -> dict[str, object]:
+        """Hand the campaign driver the directive store, when the config asks for it.
+
+        `campaign.directive.enabled` existed and was read nowhere: this loop always
+        built the driver without a store, so the driver's directive path could never
+        run and Process B's answers reached the turn through nothing. AO could
+        deliberate all it liked and the game would still play its hardcoded policy.
+
+        Off still means off. Without a Process B writing directives, every turn
+        would read as the neutral "hold" and the campaign would stop advancing.
+        """
+        cfg = (load_config().get("campaign") or {}).get("directive") or {}
+        if not cfg.get("enabled"):
+            return {}
+
+        path = cfg.get("path")
+        wiring: dict[str, object] = {
+            "directive_store": DirectiveStore(path) if path else self.directive_store,
+        }
+        max_age = cfg.get("max_age_s")
+        if max_age is not None:
+            wiring["directive_max_age_s"] = float(max_age)
+        _LOGGER.info("AO directives are in the loop (max age %ss)", max_age)
+        return wiring
+
     def run_campaign(self, *, turns: int | None = None) -> dict[str, object]:
         """Hardcoded campaign loop for Phase 1-2 acceptance."""
         n = turns if turns is not None else self.turns
         if not self.setup():
             return {"ok": False, "reason": "setup_failed"}
 
-        driver = HardcodedCampaignDriver(player_faction=self.player_faction)
+        driver = HardcodedCampaignDriver(
+            player_faction=self.player_faction,
+            **self._directive_wiring(),
+        )
         driver.bootstrap_from_logs()
         successes = 0
         desyncs = 0
