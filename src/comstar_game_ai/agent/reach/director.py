@@ -36,6 +36,26 @@ def _extract_text(result: dict[str, Any]) -> str:
     return str(result.get("text") or "").strip()
 
 
+def _default_mcp_ids(session: ReachSession) -> list[str]:
+    """Belief tools, but only the ones this session managed to register.
+
+    Requesting game_query unconditionally cost a whole 20-turn run: its stdio server
+    had failed to start, the engine rejected every director call with `unknown
+    catalog id 'client.game_query'`, and each rejection became a neutral directive.
+    Twenty-one turns of "hold" that looked like caution. A missing optional tool
+    should cost the tools, not the reasoning.
+    """
+    available = getattr(session, "available_mcp_ids", None)
+    if available is None:
+        return [GAME_QUERY_MCP]
+    if GAME_QUERY_MCP in available:
+        return [GAME_QUERY_MCP]
+    _LOGGER.warning(
+        "%s is not registered in this session — calling without belief tools", GAME_QUERY_MCP
+    )
+    return []
+
+
 async def call_directive_agent(
     session: ReachSession,
     *,
@@ -59,7 +79,7 @@ async def call_directive_agent(
                 _LOGGER.debug("cancel stale %s failed", stale_id, exc_info=True)
 
     effective_timeout = timeout if timeout is not None else DEFAULT_TIMEOUTS.get(agent_provider_id, 60.0)
-    mcps = mcp_provider_ids if mcp_provider_ids is not None else [GAME_QUERY_MCP]
+    mcps = mcp_provider_ids if mcp_provider_ids is not None else _default_mcp_ids(session)
 
     try:
         result = await session.bridge.direct_agent(
