@@ -923,6 +923,11 @@ class ModalHandler:
             self.input_controller.tap_key("escape", dwell_ms=40, hwnd=hwnd)
             time.sleep(self.settle_s)
             return grab_and_classify(hwnd)
+        if current.mode == CampaignUiMode.MODAL:
+            # Nothing was found to click, on a panel that is blocking the turn. A
+            # report scroll looks exactly like this and answers Enter; returning
+            # `current` here is what let one sit in front of the loop indefinitely.
+            return self._acknowledge_report(hwnd, current)
         return current
 
     def _act_on_vision_result(
@@ -1079,7 +1084,35 @@ class ModalHandler:
         )
         self.input_controller.tap_key("escape", dwell_ms=40, hwnd=hwnd)
         time.sleep(self.settle_s)
-        return grab_and_classify(hwnd)
+        after_escape = grab_and_classify(hwnd)
+        if after_escape.mode != CampaignUiMode.MODAL:
+            return after_escape
+        return self._acknowledge_report(hwnd, after_escape)
+
+    def _acknowledge_report(self, hwnd: int, current: UiClassification) -> UiClassification:
+        """Last resort for a scroll that only wants acknowledging: press Enter.
+
+        A battle report is the case that matters. It states what happened — "CLOSE
+        DEFEAT", Quintus Julius with 21 men left of 200 — and its only control is a
+        lone tick centred beneath it. Every localizer here hunts a coloured
+        accept/reject pair, so all of them returned nothing; there was no close X;
+        and the scroll does not answer Escape. An unattended run sat on one report
+        from turn 29 until it ran out of turns, reporting "no dismissible controls
+        found" about four hundred times.
+
+        Enter is the panel's default action, which on a report is the tick. It is
+        deliberately last: on a panel that offers a choice, the default may well be
+        the choice we do not want, so this only runs after the accept/reject search,
+        the close X, and Escape have all found nothing to click. If a decision panel
+        ever reaches here, that search is what needs fixing, not this.
+        """
+        print("VISION panel: nothing clickable and Escape held; Enter to acknowledge", flush=True)
+        self.input_controller.tap_key("enter", dwell_ms=60, hwnd=hwnd)
+        time.sleep(self.settle_s)
+        after = grab_and_classify(hwnd)
+        if after.mode != CampaignUiMode.MODAL:
+            print("VISION panel: Enter acknowledged the report", flush=True)
+        return after
 
     def _click_diplomacy_end_talks(self, hwnd: int) -> UiClassification:
         """After declining an offer, click the adjacent red X that ends negotiations."""
