@@ -413,9 +413,20 @@ def test_modal_vision_prompt_names_rome_panels():
 
 
 def test_handle_prefers_ada_over_pixel_localization(monkeypatch):
-    """Ada recognizes the panel; the pixel localizer is only a fallback."""
+    """Ada recognizes the panel; the pixel localizer is only a fallback.
+
+    `handle` re-reads config on every call and lets it override the constructor, so
+    the setting under test has to be the one in force. The shipped default is now
+    off — a hung llava run held the resource broker's only slot for nine minutes
+    and starved the director — but the preference itself still has to hold for
+    anyone who turns vision back on.
+    """
     from comstar_game_ai.game_io.campaign import modal as modal_mod
     from comstar_game_ai.game_io.campaign.ui_mode import CampaignUiMode, UiClassification
+
+    monkeypatch.setattr(
+        modal_mod, "load_config", lambda: {"campaign": {"modal": {"use_ada_vision": True}}}
+    )
 
     clicks: list[tuple[float, float]] = []
 

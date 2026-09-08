@@ -76,8 +76,21 @@ campaign:
     diplomacy_action: reject
     allow_visual_button_fallback: true
     allow_coordinate_fallback: false
-    # Ada/LLaVA recognizes the panel and its buttons; pixel localization only backs it up.
-    use_ada_vision: true
+    # Off, on the evidence of a full 20-turn run: twelve vision calls, zero usable
+    # results, 25 seconds each. The pixel localizers meanwhile handled every panel
+    # the run met — report tick, floating-notice close X, diplomacy accept/reject,
+    # battle deployment.
+    #
+    # Worse than useless, though. A llava:7b run hung and held the resource
+    # broker's only execution slot for nine minutes, and three requests starved
+    # behind it — including the llama3.1:8b the campaign director needs. So a modal
+    # frame sent to Ada can silently stop the director from thinking at all. Not a
+    # trade worth making for a job the pixels already do.
+    #
+    # The channel itself is correct and tested (see modal_vision_schema and its
+    # JSON mode); turn this back on with a vision model that can answer under a
+    # grammar without wedging.
+    use_ada_vision: false
     decline_click_norms:
       - [0.38, 0.74]
       - [0.42, 0.78]
