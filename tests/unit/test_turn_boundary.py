@@ -33,6 +33,21 @@ def _log(tmp_path, monkeypatch, text):
     return log
 
 
+@pytest.fixture(autouse=True)
+def _isolate_from_the_real_rome(tmp_path, monkeypatch):
+    """Nothing here may read the Rome install this machine happens to have.
+
+    `latest_turn_end` takes the max of the saves and the message log, so a test that
+    patched only the saves still saw the real log. These passed for months and then
+    failed the moment a campaign run on this machine reached turn 29. Tests that
+    want a log call `_log`, which overrides this.
+    """
+    monkeypatch.setattr(
+        turn_boundary, "default_message_log_path", lambda: tmp_path / "no-message-log.txt"
+    )
+    monkeypatch.setattr(turn_boundary, "default_saves_dir", lambda: tmp_path / "no-saves")
+
+
 def _saves(tmp_path, monkeypatch, turns_with_age):
     """Create `Turn N End.sav` files, `turns_with_age` mapping turn -> seconds old."""
     saves = tmp_path / "saves"

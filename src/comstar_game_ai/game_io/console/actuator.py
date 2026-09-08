@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
 from dataclasses import dataclass, field
 
 from comstar_game_ai.game_io.console.romeshell import RomeShell
@@ -50,12 +51,12 @@ class ConsoleActuator:
         assert self.shell is not None
         return self.shell.send_command(command)
 
-    def end_turn(self) -> bool:
+    def end_turn(self, *, on_heartbeat: Callable[[], None] | None = None) -> bool:
         if not self.state.allows_campaign_orders():
             _LOGGER.warning("end turn refused — state=%s", self.state.state.value)
             return False
         assert self.shell is not None
-        return self.shell.end_turn()
+        return self.shell.end_turn(on_heartbeat=on_heartbeat)
 
     @property
     def evaluation_tainted(self) -> bool:

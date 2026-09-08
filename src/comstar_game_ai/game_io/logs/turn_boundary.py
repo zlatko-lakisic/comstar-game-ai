@@ -2,10 +2,14 @@
 
 from __future__ import annotations
 
+import logging
 import re
 import time
+from collections.abc import Callable
 
 from comstar_game_ai.game_io.logs.message_log import default_message_log_path, default_saves_dir
+
+_LOGGER = logging.getLogger(__name__)
 
 # Ending a turn makes Rome autosave `Turn 18 End.sav` and log a matching line, both
 # before the AI factions move, so that turn number is the proof a turn actually ended.
@@ -55,8 +59,32 @@ def latest_turn_start() -> int | None:
     return _newest_turn_in_saves(_TURN_START_RE)
 
 
-def _newest_turn_in_saves(pattern: re.Pattern[str]) -> int | None:
-    """Turn number on the most recently written autosave matching ``pattern``.
+def newest_turn_end_marker() -> tuple[int, float] | None:
+    """The newest `Turn N End.sav` as (turn, mtime), or None if there is none.
+
+    Only the saves are consulted, because only a file has a write time. The log is
+    still read for the number, but the number is what goes stale.
+    """
+    return _newest_marker_in_saves(_TURN_END_RE)
+
+
+def newest_turn_start_marker() -> tuple[int, float] | None:
+    """The newest `Turn N Start.sav` as (turn, mtime), or None if there is none.
+
+    The mtime is the part that matters. Comparing turn *numbers* assumes they only
+    ever climb, which is false the moment a new campaign begins: a run started
+    beside a finished one read the leftover `Turn 20 Start.sav` as the baseline and
+    waited for turn 21 while the game sat on turn 1. Every turn then spent its full
+    timeout and the run reported nothing advanced.
+
+    When Rome writes a turn-start save is not ambiguous, so "newer than when we
+    pressed End Turn" survives the numbering starting over.
+    """
+    return _newest_marker_in_saves(_TURN_START_RE)
+
+
+def _newest_marker_in_saves(pattern: re.Pattern[str]) -> tuple[int, float] | None:
+    """Turn number and write time of the most recent autosave matching ``pattern``.
 
     Deliberately the newest file rather than the highest number: the folder keeps
     autosaves from earlier campaigns, and an abandoned campaign that reached turn 69
@@ -65,8 +93,7 @@ def _newest_turn_in_saves(pattern: re.Pattern[str]) -> int | None:
     saves = default_saves_dir()
     if not saves.is_dir():
         return None
-    newest_turn: int | None = None
-    newest_mtime = -1.0
+    newest: tuple[int, float] | None = None
     try:
         entries = list(saves.iterdir())
     except OSError:
@@ -81,10 +108,14 @@ def _newest_turn_in_saves(pattern: re.Pattern[str]) -> int | None:
             mtime = entry.stat().st_mtime
         except OSError:
             continue
-        if mtime > newest_mtime:
-            newest_mtime = mtime
-            newest_turn = int(match.group(1))
-    return newest_turn
+        if newest is None or mtime > newest[1]:
+            newest = (int(match.group(1)), mtime)
+    return newest
+
+
+def _newest_turn_in_saves(pattern: re.Pattern[str]) -> int | None:
+    marker = _newest_marker_in_saves(pattern)
+    return marker[0] if marker else None
 
 
 def _latest_turn_end_from_saves() -> int | None:
@@ -123,17 +154,39 @@ def _turn_numbers(raw: bytes) -> list[int]:
 def wait_for_turn_end(
     baseline: int | None,
     *,
+    since: float | None = None,
+    on_heartbeat: Callable[[], None] | None = None,
     timeout_s: float = 8.0,
     poll_s: float = 0.35,
 ) -> int | None:
-    """The new turn number once Rome autosaves a turn later than ``baseline``.
+    """The new turn number once Rome records a turn ending, or None if it does not.
 
-    Scoring log growth, or any boundary-looking line, instead of comparing turn numbers
-    double-counted turns: 20 End Turn attempts were reported as 19 successes while the
-    campaign advanced 10 turns.
+    Scoring log growth, or any boundary-looking line, instead of comparing turn
+    numbers double-counted turns: 20 End Turn attempts were reported as 19
+    successes while the campaign advanced 10 turns. So the number still counts.
+
+    But the number alone is not enough, because it only rises within one campaign.
+    Started next to a finished campaign whose newest record was `Turn 19 End.sav`,
+    this waited for turn 20 while the new game ended turn 1 — and since the caller
+    reads a miss as "that actuation did nothing", it pressed End Turn again, and
+    again, ending several turns while reporting none. `since` is the write time of
+    the last ending we knew about; anything written after it is a real boundary
+    whatever number it carries.
     """
     deadline = time.time() + timeout_s
     while True:
+        if on_heartbeat is not None:
+            # Ending a turn chains several of these waits, one per actuation method,
+            # which together outlast any sane deadman. Silence here read as a wedged
+            # process and the watchdog released input mid-sequence.
+            try:
+                on_heartbeat()
+            except Exception:  # noqa: BLE001 - a watchdog must not break the turn
+                _LOGGER.warning("turn-boundary heartbeat failed", exc_info=True)
+        if since is not None:
+            marker = newest_turn_end_marker()
+            if marker is not None and marker[1] > since:
+                return marker[0]
         latest = latest_turn_end()
         if latest is not None and (baseline is None or latest > baseline):
             return latest

@@ -42,7 +42,22 @@ NEUTRAL_CURSOR_PROBE = (0.50, 0.42)
 
 #: Battle Deployment footer. Auto-resolve is the left button; the centre withdraws
 #: and the right one drops into the battle map, so only this point is ever clicked.
-AUTO_RESOLVE_BUTTON = (0.43, 0.72)
+#: Battle Deployment footer, three evenly spaced discs at y 0.718: a white
+#: retreat flag at 0.426, crossed swords to fight at 0.499, and auto-resolve — a
+#: screen with circular arrows — at 0.572.
+#:
+#: This was 0.43, which is the retreat flag. Every "auto-resolve" for the life of
+#: the setting was a request to withdraw, and when the game refused one (you
+#: cannot retreat from a failed ambush) the panel simply stayed, the wait timed
+#: out at "battle panel did not clear after auto-resolve", and the loop went on
+#: clicking until something started the battle for real. A run then sat inside
+#: that battle on the pause menu until it ran out of turns.
+#:
+#: Verified against the live panel: clicking 0.572 resolved a battle in under two
+#: seconds, and won it — Vibius Julius, 281 men against 727 Gauls.
+AUTO_RESOLVE_BUTTON = (0.572, 0.718)
+BATTLE_RETREAT_BUTTON = (0.426, 0.718)
+BATTLE_FIGHT_BUTTON = (0.499, 0.718)
 
 #: Siege panel footer: lift (0.42), assault (0.50), maintain (0.58).
 SIEGE_ASSAULT_BUTTON = (0.50, 0.62)
@@ -146,7 +161,18 @@ class CombatDirector:
     hover_dwell_s: float = 1.6
     order_settle_s: float = 6.0
     battle_timeout_s: float = 120.0
+    # Resolving a battle can watch the panel for two minutes. Silence that long
+    # reads as a wedged process, and the watchdog ended a run on turn 29 for it.
+    on_heartbeat: Callable[[], None] | None = None
     last_reason: str = field(default="", init=False)
+
+    def _heartbeat(self) -> None:
+        if self.on_heartbeat is None:
+            return
+        try:
+            self.on_heartbeat()
+        except Exception:  # noqa: BLE001 - a watchdog must not lose us the battle
+            _LOGGER.warning("combat heartbeat failed", exc_info=True)
 
     def _grab(self) -> Image.Image | None:
         if self.capture is not None:
@@ -289,6 +315,7 @@ class CombatDirector:
 
         deadline = time.monotonic() + self.battle_timeout_s
         while time.monotonic() < deadline:
+            self._heartbeat()
             self.sleep(2.0)
             frame = self._grab()
             if frame is None:

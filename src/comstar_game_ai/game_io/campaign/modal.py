@@ -6,6 +6,7 @@ import asyncio
 import json
 import logging
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 from uuid import uuid4
@@ -20,6 +21,10 @@ from comstar_game_ai.game_io.input.send_input import SendInputController
 from comstar_game_ai.shared.config import load_config
 
 _LOGGER = logging.getLogger(__name__)
+
+# Above this, a scroll is sitting over the middle of the map. Measured 0.21 with a
+# "Faction Destroyed" notice up and 0.04 with the map clear, so the gap is wide.
+CENTRE_PARCHMENT_CLEAR = 0.12
 
 # Decline / close — never the Accept button (typically lower-right of the scroll).
 DEFAULT_DECLINE_NORMS: list[tuple[float, float]] = [
@@ -214,6 +219,97 @@ def _cream_mask(rgb):
     )
 
 
+def centre_parchment_ratio(image) -> float:
+    """Fraction of cream UI pixels in the middle of the screen.
+
+    The left-dock measure cannot see a scroll that opens over the map, and that
+    blind spot stalled a campaign: a "Faction Destroyed — Dacia" notice sat in the
+    centre of the screen, the loop measured an empty left dock, called the map
+    clear, and pressed End Turn into a panel that had the keyboard. Every attempt
+    reported `no_turn_boundary` and the run spent its remaining fourteen turns
+    doing that.
+
+    Measured 0.21 with that notice up against 0.04 on a clear map, so the two are
+    not close.
+    """
+    import numpy as np
+
+    rgb = np.asarray(image.convert("RGB"))
+    height, width = rgb.shape[:2]
+    roi = rgb[int(height * 0.15) : int(height * 0.80), int(width * 0.22) : int(width * 0.78)]
+    return float(_cream_mask(roi).mean()) if roi.size else 0.0
+
+
+def centre_panel_bounds(image) -> tuple[int, int, int, int] | None:
+    """(left, right, top, bottom) of a scroll floating over the map, or None.
+
+    `panel_bounds` is no help for these: it scores columns across a fixed upper
+    band and returned None for the notice above, which is why nothing downstream
+    could find its close button.
+
+    The top and bottom tenths are excluded because the permanent HUD strips live
+    there and would anchor every measurement to the full width of the screen.
+    """
+    import numpy as np
+
+    rgb = np.asarray(image.convert("RGB"))
+    height, width = rgb.shape[:2]
+    cream = _cream_mask(rgb)
+    interior = cream[int(height * 0.10) : int(height * 0.88), :]
+    if interior.size == 0:
+        return None
+    cols = np.where(interior.mean(0) > 0.30)[0]
+    rows = np.where(interior.mean(1) > 0.30)[0]
+    if cols.size == 0 or rows.size == 0:
+        return None
+    top_offset = int(height * 0.10)
+    return (
+        int(cols.min()),
+        int(cols.max()),
+        top_offset + int(rows.min()),
+        top_offset + int(rows.max()),
+    )
+
+
+def localize_centre_scroll_close_x(image) -> ModalActionCandidate | None:
+    """The small golden X at a floating scroll's top-right corner.
+
+    Gold rather than shape: the glyph is about twenty pixels of orange filigree on
+    cream, and the corner it sits in also holds a decorative roller end that a
+    round-blob search happily returns instead — clicking that does nothing, which
+    is how this looked like "the close button does not work".
+    """
+    import numpy as np
+
+    bounds = centre_panel_bounds(image)
+    if bounds is None:
+        return None
+    left, right, top, bottom = bounds
+
+    rgb = np.asarray(image.convert("RGB"))
+    height, width = rgb.shape[:2]
+    r = rgb[:, :, 0].astype(np.int16)
+    g = rgb[:, :, 1].astype(np.int16)
+    b = rgb[:, :, 2].astype(np.int16)
+    gold = (r > 120) & (r > b + 55) & (g > b + 20) & (g < r)
+
+    x0 = max(0, right - int((right - left) * 0.10))
+    x1 = min(width, right + 10)
+    y0 = max(0, top - 10)
+    y1 = min(height, top + int((bottom - top) * 0.12))
+    corner = gold[y0:y1, x0:x1]
+    ys, xs = np.where(corner)
+    if xs.size < 12:
+        return None
+
+    return ModalActionCandidate(
+        action="close",
+        x_norm=float((x0 + xs.mean()) / width),
+        y_norm=float((y0 + ys.mean()) / height),
+        confidence=0.7,
+    )
+
+
 def panel_bounds(image) -> tuple[int, int, int] | None:
     """(left, right, top) pixels of the largest solid cream panel, or None.
 
@@ -268,13 +364,28 @@ def panel_covers_map_centre(image) -> bool:
     Settlement and building-browser scrolls straddle the centre and swallow input,
     so they have to be closed even though they ask for no decision. Side cards in
     the left dock leave the centre alone and can simply be left on screen.
+
+    Event scrolls — "Faction Destroyed" and its kind — are the same problem and
+    were invisible here, because `panel_bounds` returns None for them. That is how
+    a run reached "ready for End Turn" with one covering the map, pressed the key
+    into it, and read the silence as the game refusing to end the turn.
     """
-    bounds = panel_bounds(image)
-    if bounds is None:
-        return False
-    left, right, _top = bounds
     width = image.size[0]
-    return left < width * 0.55 and right > width * 0.45
+    bounds = panel_bounds(image)
+    if bounds is not None:
+        left, right, _top = bounds
+        if left < width * 0.55 and right > width * 0.45:
+            return True
+
+    floating = centre_panel_bounds(image)
+    if floating is None:
+        return False
+    left, right, _top, _bottom = floating
+    return (
+        left < width * 0.55
+        and right > width * 0.45
+        and centre_parchment_ratio(image) >= CENTRE_PARCHMENT_CLEAR
+    )
 
 
 def blocking_ui_present(image) -> bool:
@@ -354,6 +465,93 @@ def localize_panel_close_x(image) -> ModalActionCandidate | None:
         y_norm=float(py / height),
         confidence=peak.confidence,
     )
+
+
+def localize_report_confirm_tick(image) -> ModalActionCandidate | None:
+    """Find the lone tick that acknowledges a full-width report scroll.
+
+    A battle report has no close X and no accept/reject pair — its only control is
+    a grey tick in a cream disc, centred on the panel's bottom rail. Escape does
+    not dismiss it, and Escape on the campaign map *opens* the pause menu, so a
+    loop that falls back to Escape here oscillates between the report and the menu
+    instead of clearing either. Clicking the tick ends it.
+
+    Deliberately narrow: it requires a panel at least 0.55 of the window wide, and
+    looks in a band a twentieth of the width around that panel's centre. The clear
+    map and floating event notices have no wide panel at all, so they never match.
+    The pause menu does match on width and has grey text along its bottom, so it is
+    excluded by name — clicking a "tick" there lands on nothing.
+    """
+    import numpy as np
+
+    if pause_menu_present(image):
+        return None
+
+    bounds = panel_bounds(image)
+    if bounds is None:
+        return None
+    left, right, _top = bounds
+
+    rgb = np.asarray(image.convert("RGB"))
+    height, width = rgb.shape[:2]
+    if (right - left) < width * 0.55:
+        return None
+
+    centre_x = (left + right) / 2
+    half = max(6, int(width * 0.025))
+    x0, x1 = max(0, int(centre_x - half)), min(width, int(centre_x + half))
+    y0, y1 = int(height * 0.89), int(height * 0.98)
+    roi = rgb[y0:y1, x0:x1].astype(np.int16)
+    if roi.size == 0:
+        return None
+
+    # The glyph is grey: darker than the parchment around it and free of the gold
+    # and red that every other control in this UI uses.
+    r, g, b = roi[:, :, 0], roi[:, :, 1], roi[:, :, 2]
+    grey = (
+        (r < 175)
+        & (g < 175)
+        & (b < 175)
+        & (np.abs(r - g) < 30)
+        & (np.abs(g - b) < 30)
+    )
+    if grey.sum() < 30:
+        return None
+    # The rail it sits on has to be parchment, or this is map showing through.
+    if _cream_mask(rgb[y0:y1, x0:x1]).mean() < 0.35:
+        return None
+
+    ys, xs = np.where(grey)
+    return ModalActionCandidate(
+        action="confirm",
+        x_norm=float((x0 + xs.mean()) / width),
+        y_norm=float((y0 + ys.mean()) / height),
+        confidence=0.75,
+    )
+
+
+def pause_menu_present(image) -> bool:
+    """True when the campaign pause menu is open.
+
+    Worth naming, because the loop opens this itself: Escape is the fallback for a
+    panel with no visible control, and Escape on a clear map opens the pause menu.
+    A run then alternates — Escape closes the menu, sees the panel behind it,
+    presses Escape, opens the menu again — and never advances.
+
+    The menu's banner is a broad deep-red field down the left third, which nothing
+    else in the campaign UI has; a clear map reads about 0.001 against 0.56 here.
+    """
+    import numpy as np
+
+    rgb = np.asarray(image.convert("RGB"))
+    height, width = rgb.shape[:2]
+    roi = rgb[int(height * 0.05) : int(height * 0.95), int(width * 0.05) : int(width * 0.35)]
+    roi = roi.astype(np.int16)
+    if roi.size == 0:
+        return False
+    r, g, b = roi[:, :, 0], roi[:, :, 1], roi[:, :, 2]
+    deep_red = (r > 90) & (r < 200) & (r > g * 2) & (r > b * 2)
+    return bool(deep_red.mean() >= 0.15)
 
 
 def localize_left_panel_decision_buttons(image) -> tuple[ModalActionCandidate, ...]:
@@ -692,19 +890,23 @@ def build_modal_vision_prompt(
         "\n"
         "- Describe THIS image. Never copy the values or wording out of the examples below.\n"
         "\n"
-        "Answer with ONE line, no prose, no code fences, starting with MODAL_JSON: and then one "
-        "compact JSON object shaped exactly like this:\n"
-        'MODAL_JSON:{"modal_kind":"none|diplomacy_negotiation|'
+        # No MODAL_JSON: prefix, and no code fence: this call runs in the engine's
+        # JSON mode, where a grammar admits only the object itself. The prefix used
+        # to be the instruction here, and the parser still strips one if it arrives,
+        # so an older engine or a plain-text fallback still parses.
+        "Answer with ONE compact JSON object and nothing else — no prose, no code "
+        "fences, no prefix — shaped exactly like this:\n"
+        '{"modal_kind":"none|diplomacy_negotiation|'
         'left_alert_panel|senate_mission|advisor_event|pause_menu|pre_battle|other",'
         '"dialog_bounds_norm":[x0,y0,x1,y1],"candidates":[{"action":"accept|reject|close|continue",'
         '"x_norm":0.00,"y_norm":0.00,"confidence":0.00}],"reason":"few words"}\n'
         "\n"
         "Example for a clear campaign map:\n"
-        'MODAL_JSON:{"modal_kind":"none","dialog_bounds_norm":[0,0,0,0],"candidates":[],'
+        '{"modal_kind":"none","dialog_bounds_norm":[0,0,0,0],"candidates":[],'
         '"reason":"nothing over the map"}\n'
         "\n"
         "Example for a negotiation scroll whose check is left of its X:\n"
-        'MODAL_JSON:{"modal_kind":"diplomacy_negotiation",'
+        '{"modal_kind":"diplomacy_negotiation",'
         '"dialog_bounds_norm":[0.28,0.20,0.74,0.84],"candidates":['
         '{"action":"accept","x_norm":0.47,"y_norm":0.77,"confidence":0.80},'
         '{"action":"reject","x_norm":0.53,"y_norm":0.77,"confidence":0.85}],'
@@ -712,7 +914,7 @@ def build_modal_vision_prompt(
         "\n"
         "Example for a parchment panel whose only control is the round gold X on its "
         "top-right corner:\n"
-        'MODAL_JSON:{"modal_kind":"left_alert_panel",'
+        '{"modal_kind":"left_alert_panel",'
         '"dialog_bounds_norm":[0.26,0.21,0.74,1.00],"candidates":['
         '{"action":"close","x_norm":0.74,"y_norm":0.22,"confidence":0.75}],'
         '"reason":"gold X on panel corner"}'
@@ -817,6 +1019,17 @@ class ModalHandler:
     allow_coordinate_fallback: bool = False
     allow_visual_button_fallback: bool = True
     use_ada_vision: bool = True
+    # Called while a vision request is in flight. Without it the safety deadman gets
+    # no pet for the length of the call and kills the run mid-turn.
+    on_heartbeat: Callable[[], None] | None = None
+
+    def _heartbeat(self) -> None:
+        if self.on_heartbeat is None:
+            return
+        try:
+            self.on_heartbeat()
+        except Exception as exc:  # noqa: BLE001 - a spectator must not stop the loop
+            _LOGGER.warning("modal heartbeat failed: %s", exc)
 
     def handle(
         self,
@@ -859,13 +1072,29 @@ class ModalHandler:
             return current
 
         # Clear campaign map: do not Escape/spam when nothing dismissible is present.
+        # The centre belongs in this test as much as the left dock. Without it a
+        # scroll floating over the map satisfied every clause, so this returned
+        # before the dismissal chain could look — the close X was found perfectly
+        # well by the detector, and nothing ever called it.
         if current.mode == CampaignUiMode.CAMPAIGN_MAP:
             if (
                 not localize_diplomacy_footer_buttons(image)
                 and not localize_left_panel_decision_buttons(image)
                 and left_overlay_parchment_ratio(image) < 0.10
+                and centre_parchment_ratio(image) < CENTRE_PARCHMENT_CLEAR
             ):
                 return current
+
+        # The pause menu, which the loop opens itself whenever Escape lands on a
+        # clear map. The classifier calls it a panel over the centre, so without
+        # this it goes to Ada, comes back as an unknown panel, and gets Escape —
+        # which closes it, revealing whatever it was covering, which gets Escape,
+        # which opens it again. Name it and close it before any of that.
+        if pause_menu_present(image):
+            print("MODAL handler: pause menu open; Escape to return to the map", flush=True)
+            self.input_controller.tap_key("escape", dwell_ms=60, hwnd=hwnd)
+            time.sleep(self.settle_s)
+            return grab_and_classify(hwnd)
 
         # Ada vision decides what the panel is and where its buttons are.
         if self.use_ada_vision:
@@ -911,6 +1140,11 @@ class ModalHandler:
             self.input_controller.tap_key("escape", dwell_ms=40, hwnd=hwnd)
             time.sleep(self.settle_s)
             return grab_and_classify(hwnd)
+        if current.mode == CampaignUiMode.MODAL:
+            # Nothing was found to click, on a panel that is blocking the turn. A
+            # report scroll looks exactly like this and answers Enter; returning
+            # `current` here is what let one sit in front of the loop indefinitely.
+            return self._acknowledge_report(hwnd, current)
         return current
 
     def _act_on_vision_result(
@@ -1019,7 +1253,24 @@ class ModalHandler:
                     return closed
             return grab_and_classify(hwnd)
 
-        # 3) Any parchment panel with a close X: alerts dock, settlement, mission.
+        # 3) A scroll floating over the map, closed by the golden X in its corner.
+        # Before the generic panel path, which measures the left dock and so cannot
+        # see this at all.
+        centre_x = localize_centre_scroll_close_x(image)
+        if centre_x is not None:
+            print(
+                f"VISION scroll: floating notice, close X=({centre_x.x_norm:.3f},"
+                f"{centre_x.y_norm:.3f}); clicking",
+                flush=True,
+            )
+            self._click_norm(hwnd, centre_x.x_norm, centre_x.y_norm)
+            time.sleep(self.settle_s)
+            after = grab_rgb_image(hwnd)
+            if after is None or centre_parchment_ratio(after) < CENTRE_PARCHMENT_CLEAR:
+                print("VISION scroll: close X cleared the notice", flush=True)
+            return grab_and_classify(hwnd)
+
+        # 4) Any parchment panel with a close X: alerts dock, settlement, mission.
         before_left = left_overlay_parchment_ratio(image)
         if panel_bounds(image) is not None or before_left >= 0.10:
             closed = self._close_panel(hwnd, image, before_left)
@@ -1061,13 +1312,69 @@ class ModalHandler:
             )
             return grab_and_classify(hwnd)
 
+        tick = localize_report_confirm_tick(image)
+        if tick is not None:
+            print(
+                f"VISION panel: report scroll, clicking confirm tick "
+                f"({tick.x_norm:.3f},{tick.y_norm:.3f})",
+                flush=True,
+            )
+            self._click_norm(hwnd, tick.x_norm, tick.y_norm)
+            time.sleep(self.settle_s)
+            after_tick = grab_rgb_image(hwnd)
+            if after_tick is None or panel_bounds(after_tick) is None:
+                print("VISION panel: tick acknowledged the report", flush=True)
+            return grab_and_classify(hwnd)
+
         print(
             f"VISION panel: parchment_ratio={before_left:.3f}; no close X found, pressing Escape",
             flush=True,
         )
         self.input_controller.tap_key("escape", dwell_ms=40, hwnd=hwnd)
         time.sleep(self.settle_s)
-        return grab_and_classify(hwnd)
+        after_escape = grab_and_classify(hwnd)
+        if after_escape.mode != CampaignUiMode.MODAL:
+            return after_escape
+        return self._acknowledge_report(hwnd, after_escape)
+
+    def _acknowledge_report(self, hwnd: int, current: UiClassification) -> UiClassification:
+        """Last resort for a scroll that only wants acknowledging: press Enter.
+
+        A battle report is the case that matters. It states what happened — "CLOSE
+        DEFEAT", Quintus Julius with 21 men left of 200 — and its only control is a
+        lone tick centred beneath it. Every localizer here hunts a coloured
+        accept/reject pair, so all of them returned nothing; there was no close X;
+        and the scroll does not answer Escape. An unattended run sat on one report
+        from turn 29 until it ran out of turns, reporting "no dismissible controls
+        found" about four hundred times.
+
+        Enter is the panel's default action, which on a report is the tick. It is
+        deliberately last: on a panel that offers a choice, the default may well be
+        the choice we do not want, so this only runs after the accept/reject search,
+        the close X, and Escape have all found nothing to click. If a decision panel
+        ever reaches here, that search is what needs fixing, not this.
+        """
+        image = grab_rgb_image(hwnd)
+        tick = localize_report_confirm_tick(image) if image is not None else None
+        if tick is not None:
+            print(
+                f"VISION panel: report tick ({tick.x_norm:.3f},{tick.y_norm:.3f}); clicking",
+                flush=True,
+            )
+            self._click_norm(hwnd, tick.x_norm, tick.y_norm)
+            time.sleep(self.settle_s)
+            after_tick = grab_and_classify(hwnd)
+            if after_tick.mode != CampaignUiMode.MODAL:
+                print("VISION panel: tick acknowledged the report", flush=True)
+                return after_tick
+
+        print("VISION panel: nothing clickable and Escape held; Enter to acknowledge", flush=True)
+        self.input_controller.tap_key("enter", dwell_ms=60, hwnd=hwnd)
+        time.sleep(self.settle_s)
+        after = grab_and_classify(hwnd)
+        if after.mode != CampaignUiMode.MODAL:
+            print("VISION panel: Enter acknowledged the report", flush=True)
+        return after
 
     def _click_diplomacy_end_talks(self, hwnd: int) -> UiClassification:
         """After declining an offer, click the adjacent red X that ends negotiations."""
@@ -1125,34 +1432,46 @@ class ModalHandler:
         ui_mode: str,
     ) -> ModalVisionResult | None:
         try:
+            # Always off-thread, and always waited for in slices. Waiting for the
+            # whole timeout in one call is what killed a run: a shared GPU took
+            # longer than the safety controller's ten-second deadman allows, and
+            # nothing reported in while this blocked, so the watchdog fired, killed
+            # input, and left the loop clicking at a game it no longer controlled.
+            # The vision answer arrived afterwards and was correct, which is the
+            # part that made it look like a vision bug rather than a stalled pet.
+            import concurrent.futures
+
+            # Not a `with` block, deliberately. Leaving one calls
+            # `shutdown(wait=True)`, so on the path that matters — the request that
+            # overran and has to be given up on — we would block on the very call
+            # we just stopped waiting for, outside the loop that does the petting.
+            # That is where the deadman fired: not during the wait, but on the way
+            # out of it. `wait=False` leaves the daemon thread to finish alone.
+            ex = concurrent.futures.ThreadPoolExecutor(max_workers=1)
             try:
-                loop = asyncio.get_running_loop()
-            except RuntimeError:
-                loop = None
-            if loop is not None and loop.is_running():
-                import concurrent.futures
-                with concurrent.futures.ThreadPoolExecutor(max_workers=1) as ex:
-                    future = ex.submit(
-                        asyncio.run,
-                        _query_modal_vision_async(
-                            image,
-                            request_id=request_id,
-                            turn=turn,
-                            ui_mode=ui_mode,
-                            timeout_s=self.model_timeout_s,
-                        ),
-                    )
-                    return future.result(timeout=self.model_timeout_s + 5.0)
-            else:
-                return asyncio.run(
+                future = ex.submit(
+                    asyncio.run,
                     _query_modal_vision_async(
                         image,
                         request_id=request_id,
                         turn=turn,
                         ui_mode=ui_mode,
                         timeout_s=self.model_timeout_s,
-                    )
+                    ),
                 )
+                deadline = time.time() + self.model_timeout_s + 5.0
+                while True:
+                    self._heartbeat()
+                    remaining = deadline - time.time()
+                    if remaining <= 0:
+                        future.cancel()
+                        return None
+                    try:
+                        return future.result(timeout=min(2.0, remaining))
+                    except concurrent.futures.TimeoutError:
+                        continue
+            finally:
+                ex.shutdown(wait=False)
         except Exception as exc:
             print(
                 f"MODAL Ada vision: FAILED request_id={request_id} error={type(exc).__name__}: {exc}",
@@ -1195,16 +1514,24 @@ def ensure_campaign_map(
     input_controller: SendInputController | None = None,
     max_rounds: int = 4,
     turn: int | None = None,
+    on_heartbeat: Callable[[], None] | None = None,
 ) -> UiClassification:
     """Classify and dismiss until map or give up. No hwnd → UNKNOWN (no clicks).
 
     Multiple rounds cover offer → closing scroll → map (each needs its own reject click).
+
+    `on_heartbeat` has to reach the handler: each round can spend the whole vision
+    timeout waiting on a shared GPU, and the safety deadman allows ten seconds.
     """
     if hwnd is None:
         return grab_and_classify(None)
-    handler = ModalHandler(input_controller=input_controller or SendInputController())
+    handler = ModalHandler(
+        input_controller=input_controller or SendInputController(),
+        on_heartbeat=on_heartbeat,
+    )
     last = grab_and_classify(hwnd)
     for _ in range(max_rounds):
+        handler._heartbeat()
         if last.mode == CampaignUiMode.UNKNOWN and last.detail in {"black_capture", "no_frame"}:
             return last
         last = handler.handle(hwnd, last, turn=turn)
@@ -1213,9 +1540,14 @@ def ensure_campaign_map(
             return last
         overlay = left_overlay_parchment_ratio(image)
         buttons = localize_colored_modal_buttons(image) or localize_left_panel_decision_buttons(image)
+        # The centre has to count too. Measuring only the left dock declared a map
+        # clear with a "Faction Destroyed" scroll sitting in the middle of it, and
+        # the loop then spent fourteen turns pressing End Turn into that scroll.
+        centre = centre_parchment_ratio(image)
         clear = (
             last.mode == CampaignUiMode.CAMPAIGN_MAP
             and overlay < 0.08
+            and centre < CENTRE_PARCHMENT_CLEAR
             and not buttons
         )
         if clear:

@@ -387,17 +387,24 @@ def test_modal_vision_prompt_names_rome_panels():
         ui_mode="left_overlay_panel",
         crop_bounds=LEFT_CROP_BOUNDS,
     )
-    assert "MODAL_JSON:" in prompt
+    # No prefix asked for: the call runs in the engine's JSON mode, where a grammar
+    # admits the object and nothing either side of it. The parser still strips a
+    # prefix if one arrives, so a plain-text fallback keeps working.
+    assert "MODAL_JSON:" not in prompt
     assert "LEFT side" in prompt
     assert "left_alert_panel" in prompt
     assert "diplomacy_negotiation" in prompt
     # llava echoed a request id back as its whole answer when one was in the skeleton.
     assert "request_id" not in prompt
-    # Every example must itself parse, or the model is being shown bad JSON.
-    # The last three occurrences are the worked examples; earlier ones are the prose
-    # instruction and the placeholder skeleton.
-    examples = [chunk.splitlines()[0] for chunk in prompt.split("MODAL_JSON:")[-3:]]
-    parsed = [_parse_modal_vision_result(f"MODAL_JSON:{e}", request_id="fallback") for e in examples]
+    # Every example must itself parse, or the model is being shown bad JSON. The
+    # worked examples are the lines that open with the modal_kind field.
+    examples = [
+        line
+        for line in prompt.splitlines()
+        if line.startswith('{"modal_kind":') and "|" not in line
+    ]
+    assert len(examples) == 3, f"expected three worked examples, found {len(examples)}"
+    parsed = [_parse_modal_vision_result(e, request_id="fallback") for e in examples]
     assert all(p is not None for p in parsed)
     assert [p.modal_kind for p in parsed] == ["none", "diplomacy_negotiation", "left_alert_panel"]
     # llava parrots the final example when it cannot read the frame, so that example
@@ -406,9 +413,20 @@ def test_modal_vision_prompt_names_rome_panels():
 
 
 def test_handle_prefers_ada_over_pixel_localization(monkeypatch):
-    """Ada recognizes the panel; the pixel localizer is only a fallback."""
+    """Ada recognizes the panel; the pixel localizer is only a fallback.
+
+    `handle` re-reads config on every call and lets it override the constructor, so
+    the setting under test has to be the one in force. The shipped default is now
+    off — a hung llava run held the resource broker's only slot for nine minutes
+    and starved the director — but the preference itself still has to hold for
+    anyone who turns vision back on.
+    """
     from comstar_game_ai.game_io.campaign import modal as modal_mod
     from comstar_game_ai.game_io.campaign.ui_mode import CampaignUiMode, UiClassification
+
+    monkeypatch.setattr(
+        modal_mod, "load_config", lambda: {"campaign": {"modal": {"use_ada_vision": True}}}
+    )
 
     clicks: list[tuple[float, float]] = []
 

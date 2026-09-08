@@ -36,6 +36,10 @@ if sys.platform == "win32":
 
 _LOGGER = logging.getLogger(__name__)
 
+#: ERROR_CLASS_ALREADY_EXISTS — a window class is registered per process, so a
+#: second manager in the same process hits this rather than getting its own.
+_CLASS_ALREADY_EXISTS = 1410
+
 
 def parse_hotkey(spec: str) -> tuple[int, int]:
     """Parse 'ctrl+shift+end' into (modifiers, vk)."""
@@ -105,10 +109,25 @@ if sys.platform == "win32":
             self.unregister_all()
 
         def _ensure_window(self) -> None:
+            # Both `register()` and the message loop call this, so the second one
+            # was registering a window class that already existed and dying with
+            # "Class already exists" — taking the hotkey thread, and with it the
+            # kill switch, down before a run had ended its first turn.
+            if self._hwnd is not None:
+                return
+
             wc = win32gui.WNDCLASS()
             wc.lpszClassName = "ComstarHotkeyWindow"
             wc.lpfnWndProc = self._wnd_proc
-            class_atom = win32gui.RegisterClass(wc)
+            try:
+                class_atom: int | str = win32gui.RegisterClass(wc)
+            except win32gui.error as exc:
+                if exc.winerror != _CLASS_ALREADY_EXISTS:
+                    raise
+                # Registered by an earlier manager in this process. The name
+                # identifies it just as well as the atom.
+                class_atom = wc.lpszClassName
+
             self._hwnd = win32gui.CreateWindow(
                 class_atom,
                 "ComstarHotkeys",
