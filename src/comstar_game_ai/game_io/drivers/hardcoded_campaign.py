@@ -131,23 +131,22 @@ class HardcodedCampaignDriver:
             self._seed_belief_from_setup()
 
     def _seed_belief_from_setup(self) -> None:
-        """Give the director a map to reason about before the first turn.
+        """Give the director a map when belief has nothing better.
 
-        Only before the first turn. `descr_strat.txt` describes 270 BC summer — the
-        campaign's opening position, and nothing else. Seeding it into a campaign
-        already underway hands the director a map 55 turns out of date: settlements
-        listed under the faction that held them at the start, characters standing on
-        their opening tiles, conquests and losses alike missing. Live telemetry
-        corrects what it observes, so the damage is quiet and selective, which is
-        worse than being blind.
+        `descr_strat.txt` describes 270 BC summer. That is exactly right at the
+        opening, and a useful prior when the store is empty. It must not overwrite
+        entities we already know — those may include moves we recorded ourselves.
+
+        Turn markers must not decide this. The message log and autosaves survive
+        across campaigns, so a fresh Julii opening at 270 BC still shows "Turn 75"
+        from the previous run. Gating on that number left the director blind on a
+        brand-new map. An empty store is always worse than the opening position.
         """
         from comstar_game_ai.game_io.campaign.start_position import seed_belief_from_setup
 
-        turn = self._observed_turn()
-        if turn > 1:
+        if self.belief.get_characters() or self.belief.get_settlements() or self.belief.get_armies():
             _LOGGER.info(
-                "campaign is on turn %s, past its 270 BC opening; not seeding setup facts",
-                turn,
+                "belief already has entities; not overwriting with the 270 BC opening"
             )
             return
 
@@ -161,27 +160,6 @@ class HardcodedCampaignDriver:
             self._save_belief()
         else:
             _LOGGER.warning("campaign setup gave no entities — the director will be blind")
-
-    @staticmethod
-    def _observed_turn() -> int:
-        """The turn Rome last recorded, or 0 when it has recorded nothing.
-
-        Used only to decide whether the opening position is still true. Turn
-        progression deliberately does not rely on this number — the message log
-        carries across campaigns, so an absolute turn read here can belong to an
-        earlier game. Nothing worse than a skipped seed comes of getting it wrong.
-        """
-        from comstar_game_ai.game_io.logs.turn_boundary import newest_turn_start_marker
-
-        try:
-            marker = newest_turn_start_marker()
-        except Exception as exc:  # noqa: BLE001 - reading a log must not stop a run
-            _LOGGER.warning("could not read the newest turn marker: %s", exc)
-            return 0
-        if marker is None:
-            return 0
-        turn, _mtime = marker
-        return int(turn or 0)
 
     def _heartbeat(self) -> None:
         """Say the loop is still running. Never let the watchdog's own call kill it."""
@@ -905,11 +883,22 @@ class HardcodedCampaignDriver:
 
         start = time.perf_counter()
         ok = True
+        belief_changed = False
         for order in orders:
             sent = self.actuator.send(order.command, require_campaign=True)
             if not sent:
                 _LOGGER.warning("order failed: %s (%s)", order.command, order.reason)
             ok = sent and ok
+            # Belief is the campaign KB. An order we successfully issued is a fact
+            # we know without looking: write it in, so the next brief is still true
+            # and the director never has to infer from screenshots.
+            if sent and order.kind == "move_character":
+                from comstar_game_ai.agent.belief.orders import record_own_move
+
+                if record_own_move(self.belief, order.command, turn=self.state.turn):
+                    belief_changed = True
+        if belief_changed:
+            self._save_belief()
 
         self._run_combat_step(on_progress=on_progress, index=index, total=total)
 
