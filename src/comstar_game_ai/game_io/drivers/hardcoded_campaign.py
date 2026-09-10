@@ -12,6 +12,7 @@ from comstar_game_ai.agent.belief.entities import Army, ExistenceStatus
 from comstar_game_ai.agent.belief.store import BeliefStore
 from comstar_game_ai.agent.directive import Directive, neutral_directive
 from comstar_game_ai.game_io.campaign.combat import CombatDirector
+from comstar_game_ai.game_io.campaign.march import DEFAULT_LISTS_ROWS, MarchDirector
 from comstar_game_ai.game_io.campaign.modal import ensure_campaign_map, localize_colored_modal_buttons
 from comstar_game_ai.game_io.campaign.orders import CampaignPlanner
 from comstar_game_ai.game_io.campaign.ui_mode import (
@@ -106,8 +107,10 @@ class HardcodedCampaignDriver:
     _directive_adopted_turn: int = field(default=0, init=False)
     battles_resolved: int = field(default=0, init=False)
     attacks_ordered: int = field(default=0, init=False)
+    marches_ordered: int = field(default=0, init=False)
     _publish_failures: int = field(default=0, init=False)
     _combat: CombatDirector | None = field(default=None, init=False)
+    _march: MarchDirector | None = field(default=None, init=False)
     _turn_advances: int = field(default=0, init=False)
     _last_started_seen: int = field(default=0, init=False)
     _turn_baseline_resets: int = field(default=0, init=False)
@@ -259,6 +262,59 @@ class HardcodedCampaignDriver:
                 hwnd=hwnd, controller=controller, on_heartbeat=self.on_heartbeat
             )
         return self._combat
+
+    def march_director(self) -> MarchDirector | None:
+        """Mouse march helper bound to the live window, or None in a dry run."""
+        hwnd = self._resolve_hwnd()
+        shell = self.actuator.shell
+        controller = shell.input_controller if shell else None
+        if hwnd is None or controller is None:
+            return None
+        if self._march is None or self._march.hwnd != hwnd:
+            rows = DEFAULT_LISTS_ROWS
+            if self.army_lists_row_norm is not None:
+                rows = (self.army_lists_row_norm, *DEFAULT_LISTS_ROWS)
+            self._march = MarchDirector(
+                hwnd=hwnd,
+                controller=controller,
+                on_heartbeat=self.on_heartbeat,
+                lists_rows=rows,
+            )
+        return self._march
+
+    def _execute_march(self, order) -> bool:
+        """Select the stack and click a destination. Never uses move_character."""
+        director = self.march_director()
+        if director is None or order.from_xy is None or order.to_xy is None:
+            _LOGGER.warning("march skipped — no director or coords (%s)", order.command)
+            return False
+        # Console must be closed: leftover backtick focus eats map clicks.
+        shell = self.actuator.shell
+        if shell is not None and getattr(shell, "console_open", False):
+            shell.close_console()
+            time.sleep(0.3)
+
+        outcome = director.march(
+            from_x=order.from_xy[0],
+            from_y=order.from_xy[1],
+            to_x=order.to_xy[0],
+            to_y=order.to_xy[1],
+            lists_row=self.army_lists_row_norm,
+            character_name=order.character_name,
+        )
+        if not outcome.ordered:
+            _LOGGER.warning("march failed: %s (%s)", order.command, outcome.reason)
+            return False
+
+        self.marches_ordered += 1
+        if outcome.step_to is not None and order.character_name:
+            from comstar_game_ai.agent.belief.orders import record_own_move
+
+            nx, ny = outcome.step_to
+            cmd = f"move_character {order.character_name} {nx:.0f},{ny:.0f}"
+            if record_own_move(self.belief, cmd, turn=self.state.turn):
+                self._save_belief()
+        return True
 
     def resolve_pending_battle(self) -> bool:
         """Auto-resolve a pending battle. True only when one was there and cleared."""
@@ -889,22 +945,18 @@ class HardcodedCampaignDriver:
 
         start = time.perf_counter()
         ok = True
-        belief_changed = False
         for order in orders:
+            if order.kind == "march":
+                sent = self._execute_march(order)
+                if not sent:
+                    ok = False
+                continue
             sent = self.actuator.send(order.command, require_campaign=True)
             if not sent:
                 _LOGGER.warning("order failed: %s (%s)", order.command, order.reason)
             ok = sent and ok
-            # Belief is the campaign KB. An order we successfully issued is a fact
-            # we know without looking: write it in, so the next brief is still true
-            # and the director never has to infer from screenshots.
-            if sent and order.kind == "move_character":
-                from comstar_game_ai.agent.belief.orders import record_own_move
-
-                if record_own_move(self.belief, order.command, turn=self.state.turn):
-                    belief_changed = True
-        if belief_changed:
-            self._save_belief()
+            # Console move_character is no longer issued by the planner. Do not
+            # invent belief updates from keystroke success on any leftover path.
 
         self._run_combat_step(on_progress=on_progress, index=index, total=total)
 

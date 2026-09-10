@@ -66,7 +66,8 @@ campaign:
     # select (normalised, measured per campaign) and map points to try as targets.
     # It refuses unless the HUD shows a full stack and the cursor turns to a sword.
     attack_enabled: false
-    army_lists_row_norm: null
+    # Preferred Military Forces row for mouse marches / attacks. Null = try defaults.
+    army_lists_row_norm: [0.30, 0.415]
     attack_targets: []
   modal:
     min_confidence: 0.72

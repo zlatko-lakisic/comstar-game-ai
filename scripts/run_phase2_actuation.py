@@ -252,7 +252,8 @@ def main() -> int:
     )
     print(
         f"INFO combat: auto_resolve={driver.auto_resolve_battles} "
-        f"attack={driver.attack_enabled} targets={len(driver.attack_targets)}"
+        f"attack={driver.attack_enabled} targets={len(driver.attack_targets)} "
+        f"lists_row={driver.army_lists_row_norm}"
     )
     if directive_store is None:
         print("INFO directives: off — the loop plans from its own policy")

@@ -1,13 +1,8 @@
-"""Fair campaign orders: observe, optional move_character, never cheats.
+"""Fair campaign orders: observe, mouse march, never cheats.
 
 A directive from AO is *intent*, not a command channel. It can decide whether this
-turn advances and which observations are worth making, and nothing else: the orders
-themselves are still built here, from belief, and still go through the fair-play
-gate. A model that returns nonsense therefore costs a turn of standing still, which
-is the failure we can afford.
-
-Actor and target arrive as ids (`gen_*`, `set_*`). Names are resolved here from the
-id map so the console still receives a character name.
+turn advances and which observations are worth making. Army marches are issued by
+mouse (Lists → locate → map click), not ``move_character`` in the console.
 """
 
 from __future__ import annotations
@@ -27,7 +22,7 @@ if TYPE_CHECKING:
 
 _LOGGER = logging.getLogger(__name__)
 
-OrderKind = Literal["observe", "move_character", "end_turn"]
+OrderKind = Literal["observe", "move_character", "march", "end_turn"]
 
 __all__ = [
     "ADVANCING_OBJECTIVES",
@@ -43,6 +38,10 @@ class CampaignOrder:
     kind: OrderKind
     command: str
     reason: str = ""
+    #: Map coords for a mouse march (from → to). Ignored for console orders.
+    from_xy: tuple[float, float] | None = None
+    to_xy: tuple[float, float] | None = None
+    character_name: str = ""
 
 
 @dataclass
@@ -182,12 +181,11 @@ class CampaignPlanner:
                 return []
             target = min(targets, key=lambda s: (s.x - char.x) ** 2 + (s.y - char.y) ** 2)
 
-        # Nudge one tile toward the target — never teleport to guessed coords.
+        # Nudge one tile toward the target on the map — issued by mouse, not console.
         dx = 0 if abs(target.x - char.x) < 0.5 else (1 if target.x > char.x else -1)
         dy = 0 if abs(target.y - char.y) < 0.5 else (1 if target.y > char.y else -1)
         if dx == 0 and dy == 0:
             return []
-        nx, ny = char.x + dx, char.y + dy
         name = (char.name or char.entity_id).strip()
         if not name:
             return []
@@ -196,8 +194,11 @@ class CampaignPlanner:
             reason = f"{objective}: {reason}"
         return [
             CampaignOrder(
-                "move_character",
-                f"move_character {name} {nx:.0f},{ny:.0f}",
+                "march",
+                f"march {name} toward {target.entity_id or target.region}",
                 reason,
+                from_xy=(float(char.x), float(char.y)),
+                to_xy=(float(target.x), float(target.y)),
+                character_name=name,
             )
         ]
