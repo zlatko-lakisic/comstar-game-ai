@@ -2,21 +2,14 @@
 
 Temperature 0. Target: `besiege` with `target: set_segesta`.
 
-## Partial local run (this workstation)
+## §6 shipping choice
 
-Only models present on local Ollama. The 20GB-card candidates in the handoff were **not** pulled here; `.cursor/secrets` is absent so ada SSH was not available.
+**`phi4:14b`** (user decision 2026-09-10). Hold floor: **reask**.
 
 | Model | Correct / N | Notes |
 |---|---|---|
-| `qwen2.5:7b` | 0 / 3 | hold / hold / hold |
-| `llama3.1:8b` | 0 / 3 | not installed locally (HTTP 404) |
+| `phi4:14b` | 0 / 10 | hold/; hold/; hold/; hold/; hold/ |
+| `qwen2.5:7b` (local earlier) | 0 / 3 | hold |
+| `llama3.1:8b` (fixture run) | 0 / 6 | always hold in deliberate log |
 
-## Full matrix (run on ada)
-
-```bash
-python scripts/replay_director_models.py --samples 10
-```
-
-Candidates from the handoff: `qwen3.6:27b`, `gemma4:26b`, `qwen3.5:27b`, `phi4:14b`, plus small fallbacks `qwen3.5:9b`, `ministral-3:8b`, and incumbent `llama3.1:8b`.
-
-Shipping choice is **section 6** — do not pin the overlay from this table alone.
+AO `direct_ollama` now forwards `temperature`/`num_ctx`. Engine restarted on ada; model pulled.
