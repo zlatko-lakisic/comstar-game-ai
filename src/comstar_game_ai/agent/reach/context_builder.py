@@ -149,7 +149,10 @@ def build_observable_brief(
     # Compact, not pretty. Indentation is whitespace the model has to read: on a
     # shared GPU this brief's prompt was taking ~50s to evaluate before the model
     # produced a single token, and the newlines and padding were a real share of it.
-    return json.dumps(header, separators=(",", ":"))
+    # Dates must be ISO strings before this leaves the composer (C0).
+    from comstar_game_ai.agent.json_safe import dumps_json_safe
+
+    return dumps_json_safe(header, separators=(",", ":"))
 
 
 def update_belief_from_observation(

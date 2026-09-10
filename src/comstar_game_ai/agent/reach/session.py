@@ -51,6 +51,10 @@ class ReachSession:
         return tuple(self.bridge.registered_mcp_ids or ())
 
     async def start(self, config: dict[str, Any] | None = None) -> None:
+        from comstar_game_ai.agent.answer_cache import assert_answer_cache_disabled
+        from comstar_game_ai.shared.config import load_config
+
+        assert_answer_cache_disabled(config if config is not None else load_config())
         reach_cfg = build_connection_config(config)
         await self.bridge.start(
             config=reach_cfg,

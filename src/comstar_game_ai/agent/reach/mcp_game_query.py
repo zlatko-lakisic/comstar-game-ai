@@ -76,12 +76,21 @@ def _load_store() -> BeliefStore:
 
 
 def _tool_result(payload: Any) -> dict[str, Any]:
-    text = json.dumps(payload, indent=2) if payload is not None else "null"
+    from comstar_game_ai.agent.json_safe import dumps_json_safe
+
+    text = dumps_json_safe(payload, indent=2) if payload is not None else "null"
     return {"content": [{"type": "text", "text": text}]}
 
 
 def _dispatch_tool(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
+    from comstar_game_ai.agent.tool_usage import default_tool_usage_log
+
     store = _load_store()
+    asked = json.dumps({"tool": name, "arguments": arguments}, sort_keys=True)
+    # JSON-mode directors never reach here; prose/tool path logs every call (C10).
+    default_tool_usage_log().record(
+        turn=None, tool=name, asked=asked, changed_directive=False
+    )
     if name == "get_army":
         return _tool_result(store.get_army(str(arguments.get("army_id") or "")))
     if name == "get_settlement":

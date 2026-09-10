@@ -46,14 +46,16 @@ def test_malformed_returns_neutral():
 
 
 def test_parse_fenced_json():
-    d = parse_directive('```json\n{"intent":{"objective":"expand"},"valid_for_plies":2}\n```')
-    assert d.intent.objective == "expand"
+    d = parse_directive('```json\n{"intent":{"objective":"besiege"},"valid_for_plies":2}\n```')
+    assert d.intent.objective == "besiege"
     assert d.valid_for_plies == 2
 
 
 def test_parse_inline_json_wrapped_in_prose():
-    d = parse_directive('Use this: {"intent":{"objective":"take_settlement"},"commentary":"wrapped"}')
-    assert d.intent.objective == "take_settlement"
+    d = parse_directive(
+        'Use this: {"intent":{"objective":"reinforce"},"commentary":"wrapped"}'
+    )
+    assert d.intent.objective == "reinforce"
     assert d.commentary == "wrapped"
 
 
@@ -95,15 +97,14 @@ def test_the_campaign_schema_offers_no_battle_verbs():
     )
 
 
-@pytest.mark.parametrize("schema", [campaign_directive_schema(), battle_directive_schema()])
-def test_the_only_unbounded_field_is_the_reason(schema: dict):
-    """A grammar only offers valid next tokens, so an unbounded field invites a loop.
+def test_the_campaign_schema_has_no_removed_labels():
+    offered = set(campaign_directive_schema()["properties"]["objective"]["enum"])
+    assert not offered & {"expand", "attack", "take_settlement", "fortify"}
 
-    This is not hypothetical tidiness: the earlier schema had three arrays, and one
-    live call repeated itself to 11,400 tokens and was still going when the client
-    gave up. Enums cannot run away; `reason` is the single place left that could, and
-    it earns the risk by making a decision reviewable.
-    """
+
+@pytest.mark.parametrize("schema", [battle_directive_schema()])
+def test_battle_only_unbounded_field_is_the_reason(schema: dict):
+    """A grammar only offers valid next tokens, so an unbounded field invites a loop."""
     free_text = [
         name
         for name, prop in schema["properties"].items()
@@ -113,18 +114,10 @@ def test_the_only_unbounded_field_is_the_reason(schema: dict):
     assert not [p for p in schema["properties"].values() if p.get("type") == "array"]
 
 
-def test_only_the_decision_and_its_reason_are_required():
-    """A required field is generated, not considered — so requiring a threshold
-    would collect an invented number instead of a defaulted one."""
+def test_campaign_schema_required_fields():
     schema = campaign_directive_schema()
-
-    assert set(schema["required"]) == {"objective", "reason"}
-    assert set(schema["properties"]) == {"objective", "reason", "horizon", "risk_posture"}
-
-
-def test_the_objective_is_decided_before_the_reason_is_written():
-    """Nothing is usable until the closing brace, so the decision goes first."""
-    assert list(campaign_directive_schema()["properties"])[:2] == ["objective", "reason"]
+    assert set(schema["required"]) == {"objective", "because"}
+    assert "commit_until_turn" not in schema["properties"]
 
 
 def test_the_schema_stays_inside_what_ollama_can_constrain():
@@ -134,7 +127,6 @@ def test_the_schema_stays_inside_what_ollama_can_constrain():
 
     def walk(node: dict) -> None:
         assert set(node) <= allowed, set(node) - allowed
-        # `properties` is keyed by field name, so only its values are schemas.
         for sub in (node.get("properties") or {}).values():
             walk(sub)
         if isinstance(node.get("items"), dict):
@@ -144,22 +136,24 @@ def test_the_schema_stays_inside_what_ollama_can_constrain():
     walk(battle_directive_schema())
 
 
-def test_a_schema_shaped_answer_parses_into_a_directive():
-    """What the engine returns in JSON mode, through the parser, end to end."""
+def test_a_schema_shaped_campaign_answer_parses():
     answer = json.dumps(
         {
-            "objective": "take_settlement",
-            "reason": "Segesta is undefended and Flavius is adjacent.",
-            "horizon": "short",
-            "risk_posture": 0.2,
+            "question_id": "q-1",
+            "objective": "besiege",
+            "actor": "gen_01",
+            "target": "set_14",
+            "expects": {"turns_to_reach": 3, "garrison_at_arrival": "weaker"},
+            "because": "set_14 is open and gen_01 is free",
         }
     )
 
     d = parse_directive(answer)
-    assert d.intent.objective == "take_settlement"
+    assert d.intent.objective == "besiege"
     assert d.intent.objective in ADVANCING_OBJECTIVES
-    assert d.commentary.startswith("Segesta")
-    assert d.horizon == "short"
+    assert "set_14" in d.commentary
+    assert d.play_params.get("actor") == "gen_01"
+    assert d.play_params.get("target") == "set_14"
 
 
 def test_the_nested_contract_still_parses():
@@ -185,3 +179,7 @@ def test_downgrade_annihilation():
     d = parse_directive(json.dumps(payload))
     d2 = downgrade_infeasible(d, own_strength=100, enemy_strength=200)
     assert d2.intent.objective == "win_cheaply"
+
+
+def test_directive_observations_unchanged():
+    assert "list_characters" in DIRECTIVE_OBSERVATIONS

@@ -363,6 +363,38 @@ Rules, and these are the safety model:
 
 **An intent is a prediction.** Before accepting it, the deterministic layer checks feasibility against a strength estimate and forces a downgrade if the model has declared annihilation against a superior force.
 
+### 8.4 The campaign directive contract
+
+Campaign counterpart to §8.3. Vocabulary is the three labels the movement layer can tell apart (`hold`, `besiege`, `reinforce`) — single-sourced in `campaign_vocab.py`.
+
+```json
+{
+  "question_id": "<echo the one you were given>",
+  "objective": "hold | besiege | reinforce",
+  "actor": "<general id, or null when hold>",
+  "target": "<settlement id, or null when hold>",
+  "abandon_if": {
+    "hostile_stack_within_turns": 2,
+    "treasury_below": 2000
+  },
+  "expects": {
+    "turns_to_reach": 3,
+    "garrison_at_arrival": "weaker | similar | stronger | unknown"
+  },
+  "because": "<one sentence naming the id that decided it>"
+}
+```
+
+Rules:
+
+- `expects` is a falsifiable prediction; both fields go to the prediction log and are paired with the observed outcome on arrival or expiry.
+- **`commit_until_turn` is not a model field.** The deterministic layer sets `current_turn + predicted_turns_to_reach + 1`, clamped to `[current+2, current+8]`, using the pathfinder's figure — never the model's.
+- Feasibility: if `expects` is optimistic vs the predictor/pathfinder, downgrade to hold and log both values.
+- Any id absent from the belief payload is a rejection (neutral hold), not a fuzzy match.
+- Malformed, late or missing → `{"objective":"hold","actor":null,"target":null}`; log it, do not block the turn.
+- Ids only to the director; names resolve at the narrator and log viewer.
+- `client.game_query` is granted on the provider; the composed brief stays primary. Tool usage is measured.
+
 ---
 
 ## 9. Evaluation and learning
