@@ -86,6 +86,10 @@ def record_own_move(
         y=y,
         role=character.role,
     )
+    if turn is not None:
+        attrs = dict(updated.attributes)
+        attrs["last_seen_turn"] = int(turn)
+        updated.attributes = attrs
     store.update(updated)
 
     # An army seeded as `{character}_army` travels with its general.
@@ -94,6 +98,9 @@ def record_own_move(
     if army is not None:
         from comstar_game_ai.agent.belief.entities import Army
 
+        army_attrs = dict(army.attributes)
+        if turn is not None:
+            army_attrs["last_seen_turn"] = int(turn)
         store.update(
             Army(
                 entity_id=army.entity_id,
@@ -101,7 +108,7 @@ def record_own_move(
                 observed_at=observed_at,
                 confidence=1.0,
                 existence=ExistenceStatus.OBSERVED_PRESENT,
-                attributes=dict(army.attributes),
+                attributes=army_attrs,
                 faction=army.faction,
                 x=x,
                 y=y,

@@ -6,8 +6,13 @@ import asyncio
 import logging
 import uuid
 from dataclasses import dataclass, field
+from typing import Any
 
 from comstar_game_ai.agent.answer_cache import assert_answer_cache_disabled
+from comstar_game_ai.agent.belief.refresh import (
+    advance_belief_for_turn,
+    treasury_from_belief,
+)
 from comstar_game_ai.agent.belief.store import BeliefStore
 from comstar_game_ai.agent.campaign_accept import (
     accept_campaign_answer,
@@ -15,6 +20,13 @@ from comstar_game_ai.agent.campaign_accept import (
 )
 from comstar_game_ai.agent.campaign_ids import CampaignIdMap
 from comstar_game_ai.agent.campaign_payload import compose_campaign_payload
+from comstar_game_ai.agent.campaign_vocab import STABLE_DIRECTOR_BACKSTORY
+from comstar_game_ai.agent.context_budget import (
+    assert_num_ctx_sufficient,
+    log_prompt_budget,
+    max_composed_length_sample,
+    read_provider_num_ctx,
+)
 from comstar_game_ai.agent.directive import neutral_directive
 from comstar_game_ai.agent.learning.consolidator import consolidate_offline
 from comstar_game_ai.agent.reach.context_builder import ObservableContext, build_observable_brief
@@ -55,6 +67,15 @@ class AgentRuntime:
 
     async def start(self) -> None:
         assert_answer_cache_disabled(load_config())
+        # F4: fail loudly before the first call if num_ctx cannot hold the brief.
+        sample = max_composed_length_sample(
+            backstory=STABLE_DIRECTOR_BACKSTORY,
+            question_text=campaign_directive_question(1, self.player_faction),
+            payload_text="turn: 1\n" + ("x" * 4000),
+        )
+        assert_num_ctx_sufficient(
+            composed_prompt=sample, num_ctx=read_provider_num_ctx()
+        )
         self.session = ReachSession()
         await self.session.start()
 
@@ -97,6 +118,13 @@ class AgentRuntime:
             self._hold_without_asking(turn, qid, "belief_empty")
             return
 
+        # F3: ages and confidence move every turn, including under a hold policy.
+        advance_belief_for_turn(
+            belief, current_turn=turn, player_faction=self.player_faction
+        )
+        belief.save()
+        treasury, income = treasury_from_belief(belief, player_faction=self.player_faction)
+
         standing = self.standing_store.refresh_status(
             current_turn=turn,
             prediction_log=default_campaign_prediction_log(),
@@ -108,10 +136,30 @@ class AgentRuntime:
             turn=turn,
             player_faction=self.player_faction,
             standing=standing_view,
+            treasury=treasury,
+            income=income,
             id_map=self.id_map,
         )
         self.id_map = payload.id_map
         self.id_map.save()
+
+        question = campaign_directive_question(
+            turn, self.player_faction, question_id=qid
+        )
+        composed = max_composed_length_sample(
+            backstory=STABLE_DIRECTOR_BACKSTORY,
+            question_text=question,
+            payload_text=payload.text,
+        )
+        log_prompt_budget(
+            turn=turn,
+            question_id=qid,
+            composed_prompt=composed,
+            num_ctx=read_provider_num_ctx(),
+        )
+        assert_num_ctx_sufficient(
+            composed_prompt=composed, num_ctx=read_provider_num_ctx()
+        )
 
         self.publisher.publish(
             EventKind.AO_REQUEST,
@@ -119,37 +167,32 @@ class AgentRuntime:
                 "summary": f"campaign turn {turn}",
                 "question_id": qid,
                 "state_hash": payload.state_hash,
+                "belief_hash": payload.belief_hash,
+                "payload_hash": payload.payload_hash,
             },
         )
-        # JSON mode returns raw text via the bridge; we re-accept through the
-        # contract so unknown ids / optimistic expects never reach the planner.
-        raw_directive = await call_campaign_director(
-            self.session,
-            text=campaign_directive_question(
-                turn, self.player_faction, question_id=qid
-            ),
-            context=payload.text,
-            question_id=qid,
-            on_status=lambda s: self.publisher.publish(
-                EventKind.AO_STATUS, {"summary": getattr(s, "phase", str(s))[:80]}
-            ),
-        )
-        # Prefer the raw JSON from the model when present; otherwise commentary
-        # already explains the failure and we accept that as neutral.
-        raw_text = ""
-        if raw_directive.raw:
+
+        async def _ask(text: str) -> Any:
+            return await call_campaign_director(
+                self.session,
+                text=text,
+                context=payload.text,
+                question_id=qid,
+                on_status=lambda s: self.publisher.publish(
+                    EventKind.AO_STATUS, {"summary": getattr(s, "phase", str(s))[:80]}
+                ),
+            )
+
+        def _raw_text_from(raw_directive: Any) -> str:
             import json as _json
 
-            raw_text = _json.dumps(raw_directive.raw)
-        elif raw_directive.commentary.startswith(
-            ("timeout:", "reach_error:", "error:", "malformed", "empty", "not_object")
-        ):
-            raw_text = ""
-        else:
-            # Flat schema answers land as objective + commentary via parse_directive.
-            import json as _json
-
-            raw_text = _json.dumps(
+            if raw_directive.raw:
+                return _json.dumps(raw_directive.raw)
+            if raw_directive.commentary.startswith(
+                ("timeout:", "reach_error:", "error:", "malformed", "empty", "not_object")
+            ):
+                return ""
+            return _json.dumps(
                 {
                     "question_id": qid,
                     "objective": raw_directive.intent.objective,
@@ -161,6 +204,11 @@ class AgentRuntime:
                 }
             )
 
+        # JSON mode returns raw text via the bridge; we re-accept through the
+        # contract so unknown ids / optimistic expects never reach the planner.
+        raw_directive = await _ask(question)
+        raw_text = _raw_text_from(raw_directive)
+
         prediction_log = default_campaign_prediction_log()
         if raw_text:
             accepted = accept_campaign_answer(
@@ -169,6 +217,36 @@ class AgentRuntime:
                 current_turn=turn,
                 prediction_log=prediction_log,
             )
+            # F7 reask: one second call with the floor rejection stated.
+            if (accepted.raw or {}).get("hold_floor_reask"):
+                floor = (accepted.raw or {}).get("hold_floor") or {}
+                predictor = floor.get("predictor") or {}
+                reask_text = (
+                    f"{question}\n\n"
+                    f"REJECTION\n"
+                    f"Your previous answer was hold. That is rejected: a reachable "
+                    f"weaker target is in the candidates block "
+                    f"({predictor.get('settlement_id')} via "
+                    f"{predictor.get('nearest_general_id')}, "
+                    f"{predictor.get('turns_to_reach')} turns). "
+                    f"Choose an advancing objective that uses an id from the brief. "
+                    f"Do not answer hold again without naming why every weaker "
+                    f"candidate is infeasible.\n"
+                )
+                _LOGGER.warning(
+                    "turn %s hold floor reask: predictor=%s", turn, predictor
+                )
+                raw_directive = await _ask(reask_text)
+                raw_text2 = _raw_text_from(raw_directive)
+                if raw_text2:
+                    # Second pass uses log so we do not loop forever.
+                    accepted = accept_campaign_answer(
+                        raw_text2,
+                        payload=payload,
+                        current_turn=turn,
+                        prediction_log=prediction_log,
+                        hold_floor="log",
+                    )
             directive = accepted.to_legacy_directive(issued_turn=turn)
             pred_id = (accepted.raw or {}).get("prediction_entry_id")
             accept_into_standing(
@@ -195,11 +273,12 @@ class AgentRuntime:
 
         self.directive_store.write(qid, directive)
         _LOGGER.info(
-            "turn %s directive: %s (%s) state_hash=%s",
+            "turn %s directive: %s (%s) belief_hash=%s payload_hash=%s",
             turn,
             directive.intent.objective,
             directive.commentary or "no commentary",
-            payload.state_hash,
+            payload.belief_hash,
+            payload.payload_hash,
         )
         self.publisher.publish(
             EventKind.AO_RESULT,
@@ -207,6 +286,8 @@ class AgentRuntime:
                 "summary": directive.intent.objective,
                 "question_id": qid,
                 "state_hash": payload.state_hash,
+                "belief_hash": payload.belief_hash,
+                "payload_hash": payload.payload_hash,
             },
         )
 

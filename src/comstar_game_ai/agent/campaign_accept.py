@@ -19,8 +19,9 @@ from comstar_game_ai.agent.campaign_payload import (
     predictor_garrison_for,
 )
 from comstar_game_ai.agent.campaign_vocab import ADVANCING_OBJECTIVES, NEUTRAL_OBJECTIVE
+from comstar_game_ai.agent.hold_floor import HoldFloorAction, apply_hold_floor
 from comstar_game_ai.agent.predictors.log import PredictionLog
-from comstar_game_ai.shared.config import repo_root
+from comstar_game_ai.shared.config import load_config, repo_root
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -29,12 +30,28 @@ def default_campaign_prediction_log() -> PredictionLog:
     return PredictionLog(repo_root() / "data" / "runtime" / "campaign_predictions.jsonl")
 
 
+def _hold_floor_action(config: dict | None = None) -> HoldFloorAction:
+    """§6: ship with ``reask``. ``retask`` is accepted as an alias."""
+    cfg = config if config is not None else load_config()
+    campaign = cfg.get("campaign") if isinstance(cfg, dict) else None
+    directive = campaign.get("directive") if isinstance(campaign, dict) else None
+    raw = None
+    if isinstance(directive, dict):
+        raw = directive.get("hold_floor")
+    if raw == "retask":
+        raw = "reask"
+    if raw in ("log", "upgrade", "reask"):
+        return raw  # type: ignore[return-value]
+    return "reask"
+
+
 def accept_campaign_answer(
     text: str,
     *,
     payload: CampaignPayload,
     current_turn: int,
     prediction_log: PredictionLog | None = None,
+    hold_floor: HoldFloorAction | None = None,
 ) -> CampaignDirective:
     """Full acceptance path for a campaign director response.
 
@@ -68,6 +85,20 @@ def accept_campaign_answer(
         predictor_garrison=predictor_garrison,
     )
 
+    # F7: floor under a hold that ignores a reachable weaker target.
+    directive = apply_hold_floor(
+        directive,
+        payload=payload,
+        current_turn=current_turn,
+        action=hold_floor if hold_floor is not None else _hold_floor_action(),
+    )
+    # Recompute pathfinder if the floor upgraded the objective.
+    if directive.objective in ADVANCING_OBJECTIVES:
+        pathfinder = pathfinder_turns_for(
+            payload, actor=directive.actor, target=directive.target
+        )
+        predictor_garrison = predictor_garrison_for(payload, directive.target)
+
     if directive.objective in ADVANCING_OBJECTIVES:
         predicted = pathfinder if pathfinder is not None else (
             directive.expects.turns_to_reach or 2
@@ -98,6 +129,8 @@ def accept_campaign_answer(
                     "turn": current_turn,
                     "question_id": directive.question_id,
                     "state_hash": payload.state_hash,
+                    "belief_hash": payload.belief_hash,
+                    "payload_hash": payload.payload_hash,
                     "commit_until_turn": directive.commit_until_turn,
                 },
             )

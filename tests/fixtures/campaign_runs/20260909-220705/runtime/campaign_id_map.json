@@ -1,0 +1,28 @@
+{
+  "settlements": {
+    "set_arretium": "arretium",
+    "set_ariminum": "ariminum",
+    "set_capua": "capua",
+    "set_rome": "rome",
+    "set_patavium": "patavium",
+    "set_mediolanium": "mediolanium",
+    "set_segestica": "segestica",
+    "set_segesta": "segesta"
+  },
+  "generals": {
+    "gen_flavius_julius": "Flavius Julius",
+    "gen_lucius_julius": "Lucius Julius",
+    "gen_quintus_julius": "Quintus Julius",
+    "gen_sextus_antio": "Sextus Antio",
+    "gen_decius_curtius": "Decius Curtius",
+    "gen_oppius_clausus": "Oppius Clausus",
+    "gen_vibius_julius": "Vibius Julius"
+  },
+  "factions": {
+    "fac_romans_julii": "romans_julii",
+    "fac_romans_scipii": "romans_scipii",
+    "fac_romans_senate": "romans_senate",
+    "fac_gauls": "gauls",
+    "fac_slave": "slave"
+  }
+}

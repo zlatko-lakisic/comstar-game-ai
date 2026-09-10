@@ -1,0 +1,269 @@
+OK  game_window: 'Total War: ROME REMASTERED' 1936x1119
+OK  trail: D:\Projects\comstar-game-ai\data\runtime\phase2_live_20260909-220705.log
+OK  telemetry ok: message_log.txt and scripting_log.txt both present
+INFO elevation: python_admin=False game_elevated=False matched_marker=False
+INFO combat: auto_resolve=True attack=False targets=0
+INFO directives: reading data\runtime\directive.json
+INFO bootstrap_from_logs: 0 records
+INFO state after bootstrap: campaign_map turn=None turns_seen=0
+INFO running 20 attempts (vision dismiss + observe + End Turn on readiness)...
+OK  overlay up (pid 44536)
+OK  publishing overlay events to 127.0.0.1:9876
+OK  deliberation started (pid 59476) — log: data\runtime\deliberate_20260909-220705.log
+INFO click Rome and leave it focused — starting in 12s
+  12...
+  11...
+  10...
+  9...
+  8...
+  7...
+  6...
+  5...
+  4...
+  3...
+  2...
+  1...
+INFO starting
+OK  first directive in: hold
+ATTEMPT 1/20 game_turn=2  sync UI on turn None
+VISION inspect: local_mode=campaign_map conf=0.70 detail=high_center_variance turn=unknown
+VISION panel: bounds=(0, 312, 71) parchment_ratio=0.209; clicking close X close=(0.160,0.077) conf=0.65
+VISION panel: close X cleared the panel
+ATTEMPT 1/20 game_turn=2  directive: hold
+ATTEMPT 1/20 game_turn=2  orders on turn None: halt_ai julii, list_characters, run_ai
+VISION inspect: local_mode=campaign_map conf=0.70 detail=high_center_variance turn=unknown
+ATTEMPT 1/20 game_turn=2  end-turn ready check ui=campaign_map buttons=no game_turn=2
+ATTEMPT 1/20 game_turn=2  ready for End Turn
+ATTEMPT 1/20 game_turn=2  ended turn (game_turn=2)
+ATTEMPT 1/20 game_turn=2  waiting for next Julii turn (after 2)
+VISION inspect: local_mode=campaign_map conf=0.70 detail=high_center_variance turn=unknown
+ATTEMPT 1/20 game_turn=2  wait status game_turn=2 baseline=2 turn_started=2 (from 2) ui=campaign_map rounds=0 autosaves=0
+VISION inspect: local_mode=campaign_map conf=0.70 detail=high_center_variance turn=unknown
+ATTEMPT 1/20 game_turn=2  wait status game_turn=2 baseline=2 turn_started=2 (from 2) ui=campaign_map rounds=0 autosaves=0
+VISION inspect: local_mode=campaign_map conf=0.70 detail=high_center_variance turn=unknown
+ATTEMPT 1/20 game_turn=2  wait status game_turn=2 baseline=2 turn_started=2 (from 2) ui=campaign_map rounds=0 autosaves=0
+VISION inspect: local_mode=campaign_map conf=0.70 detail=high_center_variance turn=unknown
+ATTEMPT 1/20 game_turn=2  wait status game_turn=2 baseline=2 turn_started=2 (from 2) ui=campaign_map rounds=0 autosaves=0
+ATTEMPT 1/20 game_turn=2  Rome handed turn 2 back
+ATTEMPT 1/20 game_turn=2  OK  turn cycle complete
+ATTEMPT 2/20 game_turn=2  sync UI on turn 2
+VISION inspect: local_mode=campaign_map conf=0.70 detail=high_center_variance turn=2
+ATTEMPT 2/20 game_turn=2  directive: hold
+ATTEMPT 2/20 game_turn=2  orders on turn 2: halt_ai julii, list_characters, run_ai
+VISION inspect: local_mode=campaign_map conf=0.70 detail=high_center_variance turn=2
+ATTEMPT 2/20 game_turn=2  end-turn ready check ui=campaign_map buttons=no game_turn=2
+ATTEMPT 2/20 game_turn=2  ready for End Turn
+ATTEMPT 2/20 game_turn=2  ended turn (game_turn=2)
+ATTEMPT 2/20 game_turn=2  waiting for next Julii turn (after 2)
+VISION inspect: local_mode=campaign_map conf=0.70 detail=high_center_variance turn=2
+ATTEMPT 2/20 game_turn=2  wait status game_turn=2 baseline=2 turn_started=2 (from 2) ui=campaign_map rounds=2 autosaves=2
+VISION inspect: local_mode=campaign_map conf=0.70 detail=high_center_variance turn=2
+ATTEMPT 2/20 game_turn=2  wait status game_turn=2 baseline=2 turn_started=2 (from 2) ui=campaign_map rounds=2 autosaves=2
+ATTEMPT 2/20 game_turn=2  Rome handed turn 3 back
+ATTEMPT 2/20 game_turn=2  OK  turn cycle complete
+ATTEMPT 3/20 game_turn=2  sync UI on turn 3
+VISION inspect: local_mode=campaign_map conf=0.70 detail=high_center_variance turn=3
+ATTEMPT 3/20 game_turn=3  directive: hold (directive expired after 1 plies)
+ATTEMPT 3/20 game_turn=3  orders on turn 3: halt_ai julii, list_characters, run_ai
+VISION inspect: local_mode=campaign_map conf=0.70 detail=high_center_variance turn=3
+ATTEMPT 3/20 game_turn=3  end-turn ready check ui=campaign_map buttons=no game_turn=3
+ATTEMPT 3/20 game_turn=3  ready for End Turn
+ATTEMPT 3/20 game_turn=3  ended turn (game_turn=3)
+ATTEMPT 3/20 game_turn=3  waiting for next Julii turn (after 3)
+VISION inspect: local_mode=campaign_map conf=0.70 detail=high_center_variance turn=3
+ATTEMPT 3/20 game_turn=3  wait status game_turn=3 baseline=3 turn_started=3 (from 3) ui=campaign_map rounds=3 autosaves=4
+VISION inspect: local_mode=campaign_map conf=0.70 detail=high_center_variance turn=3
+ATTEMPT 3/20 game_turn=3  wait status game_turn=3 baseline=3 turn_started=3 (from 3) ui=campaign_map rounds=3 autosaves=4
+VISION inspect: local_mode=campaign_map conf=0.70 detail=high_center_variance turn=3
+ATTEMPT 3/20 game_turn=3  wait status game_turn=3 baseline=3 turn_started=3 (from 3) ui=campaign_map rounds=3 autosaves=4
+VISION inspect: local_mode=modal conf=0.84 detail=left_overlay_panel turn=3
+VISION diplomacy: offer buttons accept=(0.454,0.780) reject=(0.497,0.780); clicking reject, then end-talks X
+VISION diplomacy: end-talks X reject=(0.541,0.780); clicking
+ATTEMPT 3/20 game_turn=3  wait status game_turn=3 baseline=3 turn_started=3 (from 3) ui=campaign_map rounds=3 autosaves=4
+VISION inspect: local_mode=campaign_map conf=0.70 detail=high_center_variance turn=3
+ATTEMPT 3/20 game_turn=3  wait status game_turn=3 baseline=3 turn_started=3 (from 3) ui=campaign_map rounds=3 autosaves=4
+VISION inspect: local_mode=campaign_map conf=0.70 detail=high_center_variance turn=3
+ATTEMPT 3/20 game_turn=3  wait status game_turn=3 baseline=3 turn_started=3 (from 3) ui=campaign_map rounds=3 autosaves=4
+VISION inspect: local_mode=campaign_map conf=0.70 detail=high_center_variance turn=3
+ATTEMPT 3/20 game_turn=3  wait status game_turn=3 baseline=3 turn_started=3 (from 3) ui=campaign_map rounds=3 autosaves=4
+ATTEMPT 3/20 game_turn=3  Rome handed turn 4 back
+ATTEMPT 3/20 game_turn=4  OK  turn cycle complete
+ATTEMPT 4/20 game_turn=4  sync UI on turn 4
+VISION inspect: local_mode=campaign_map conf=0.70 detail=high_center_variance turn=4
+ATTEMPT 4/20 game_turn=4  directive: hold
+ATTEMPT 4/20 game_turn=4  orders on turn 4: halt_ai julii, list_characters, run_ai
+VISION inspect: local_mode=campaign_map conf=0.70 detail=high_center_variance turn=4
+VISION panel: bounds=(0, 310, 71) parchment_ratio=0.158; clicking close X close=(0.160,0.077) conf=0.65
+VISION panel: close X cleared the panel
+ATTEMPT 4/20 game_turn=4  end-turn ready check ui=campaign_map buttons=no game_turn=4
+ATTEMPT 4/20 game_turn=4  ready for End Turn
+ATTEMPT 4/20 game_turn=4  ended turn (game_turn=4)
+ATTEMPT 4/20 game_turn=4  waiting for next Julii turn (after 4)
+VISION inspect: local_mode=campaign_map conf=0.70 detail=high_center_variance turn=4
+ATTEMPT 4/20 game_turn=4  wait status game_turn=4 baseline=4 turn_started=4 (from 4) ui=campaign_map rounds=4 autosaves=6
+VISION inspect: local_mode=campaign_map conf=0.70 detail=high_center_variance turn=4
+ATTEMPT 4/20 game_turn=4  wait status game_turn=4 baseline=4 turn_started=4 (from 4) ui=campaign_map rounds=4 autosaves=6
+VISION inspect: local_mode=campaign_map conf=0.70 detail=high_center_variance turn=4
+ATTEMPT 4/20 game_turn=4  wait status game_turn=4 baseline=4 turn_started=4 (from 4) ui=campaign_map rounds=4 autosaves=6
+VISION inspect: local_mode=campaign_map conf=0.70 detail=high_center_variance turn=4
+ATTEMPT 4/20 game_turn=4  wait status game_turn=4 baseline=4 turn_started=4 (from 4) ui=campaign_map rounds=4 autosaves=6
+ATTEMPT 4/20 game_turn=5  Rome handed turn 5 back
+ATTEMPT 4/20 game_turn=5  OK  turn cycle complete
+ATTEMPT 5/20 game_turn=5  sync UI on turn 5
+VISION inspect: local_mode=campaign_map conf=0.70 detail=high_center_variance turn=5
+ATTEMPT 5/20 game_turn=5  directive: hold
+ATTEMPT 5/20 game_turn=5  orders on turn 5: halt_ai julii, list_characters, run_ai
+VISION inspect: local_mode=campaign_map conf=0.70 detail=high_center_variance turn=5
+VISION panel: bounds=(0, 310, 71) parchment_ratio=0.158; clicking close X close=(0.160,0.077) conf=0.65
+VISION panel: close X cleared the panel
+ATTEMPT 5/20 game_turn=5  end-turn ready check ui=campaign_map buttons=no game_turn=5
+ATTEMPT 5/20 game_turn=5  ready for End Turn
+ATTEMPT 5/20 game_turn=5  ended turn (game_turn=5)
+ATTEMPT 5/20 game_turn=5  waiting for next Julii turn (after 5)
+VISION inspect: local_mode=campaign_map conf=0.70 detail=high_center_variance turn=5
+ATTEMPT 5/20 game_turn=5  wait status game_turn=5 baseline=5 turn_started=5 (from 5) ui=campaign_map rounds=5 autosaves=8
+VISION inspect: local_mode=campaign_map conf=0.60 detail=map_with_overlay turn=5
+ATTEMPT 5/20 game_turn=5  wait status game_turn=5 baseline=5 turn_started=5 (from 5) ui=campaign_map rounds=5 autosaves=8
+VISION inspect: local_mode=campaign_map conf=0.70 detail=high_center_variance turn=5
+ATTEMPT 5/20 game_turn=5  wait status game_turn=5 baseline=5 turn_started=5 (from 5) ui=campaign_map rounds=5 autosaves=8
+VISION inspect: local_mode=campaign_map conf=0.60 detail=map_with_overlay turn=5
+ATTEMPT 5/20 game_turn=5  wait status game_turn=5 baseline=5 turn_started=5 (from 5) ui=campaign_map rounds=5 autosaves=8
+VISION inspect: local_mode=campaign_map conf=0.70 detail=high_center_variance turn=5
+ATTEMPT 5/20 game_turn=5  wait status game_turn=5 baseline=5 turn_started=5 (from 5) ui=campaign_map rounds=5 autosaves=8
+VISION inspect: local_mode=campaign_map conf=0.70 detail=high_center_variance turn=5
+ATTEMPT 5/20 game_turn=6  wait status game_turn=5 baseline=5 turn_started=5 (from 5) ui=campaign_map rounds=5 autosaves=8
+ATTEMPT 5/20 game_turn=6  Rome handed turn 6 back
+ATTEMPT 5/20 game_turn=6  OK  turn cycle complete
+ATTEMPT 6/20 game_turn=6  sync UI on turn 6
+VISION inspect: local_mode=campaign_map conf=0.70 detail=high_center_variance turn=6
+ATTEMPT 6/20 game_turn=6  directive: hold
+ATTEMPT 6/20 game_turn=6  orders on turn 6: halt_ai julii, list_characters, run_ai
+VISION inspect: local_mode=campaign_map conf=0.70 detail=high_center_variance turn=6
+ATTEMPT 6/20 game_turn=6  end-turn ready check ui=campaign_map buttons=no game_turn=6
+ATTEMPT 6/20 game_turn=6  ready for End Turn
+ATTEMPT 6/20 game_turn=6  ended turn (game_turn=6)
+ATTEMPT 6/20 game_turn=6  waiting for next Julii turn (after 6)
+VISION inspect: local_mode=campaign_map conf=0.70 detail=high_center_variance turn=6
+ATTEMPT 6/20 game_turn=6  wait status game_turn=6 baseline=6 turn_started=6 (from 6) ui=campaign_map rounds=6 autosaves=10
+VISION inspect: local_mode=campaign_map conf=0.70 detail=high_center_variance turn=6
+ATTEMPT 6/20 game_turn=6  wait status game_turn=6 baseline=6 turn_started=6 (from 6) ui=campaign_map rounds=6 autosaves=10
+VISION inspect: local_mode=campaign_map conf=0.70 detail=high_center_variance turn=6
+ATTEMPT 6/20 game_turn=6  wait status game_turn=6 baseline=6 turn_started=6 (from 6) ui=campaign_map rounds=6 autosaves=10
+VISION inspect: local_mode=campaign_map conf=0.70 detail=high_center_variance turn=6
+ATTEMPT 6/20 game_turn=6  wait status game_turn=6 baseline=6 turn_started=6 (from 6) ui=campaign_map rounds=6 autosaves=10
+ATTEMPT 6/20 game_turn=6  Rome handed turn 7 back
+ATTEMPT 6/20 game_turn=7  OK  turn cycle complete
+ATTEMPT 7/20 game_turn=7  sync UI on turn 7
+VISION inspect: local_mode=campaign_map conf=0.70 detail=high_center_variance turn=7
+ATTEMPT 7/20 game_turn=7  directive: hold (directive expired after 1 plies)
+ATTEMPT 7/20 game_turn=7  orders on turn 7: halt_ai julii, list_characters, run_ai
+VISION inspect: local_mode=modal conf=0.80 detail=left_overlay_panel turn=7
+VISION panel: bounds=(44, 632, 71) parchment_ratio=0.253; clicking close X close=(0.327,0.077) conf=0.65
+VISION panel: close X cleared the panel
+ATTEMPT 7/20 game_turn=7  end-turn ready check ui=campaign_map buttons=no game_turn=7
+ATTEMPT 7/20 game_turn=7  ready for End Turn
+RomeShell: end_turn failed (no_turn_boundary)
+ATTEMPT 7/20 game_turn=7  WARN End Turn did not register
+ATTEMPT 7/20 game_turn=7  FAIL  turn cycle failed or timed out
+ATTEMPT 8/20 game_turn=7  sync UI on turn 7
+VISION inspect: local_mode=modal conf=0.92 detail=left_overlay_panel turn=7
+VISION scroll: floating notice, close X=(0.325,0.143); clicking
+VISION inspect: local_mode=modal conf=0.92 detail=left_overlay_panel turn=7
+VISION panel: bounds=(0, 634, 71) parchment_ratio=0.443; clicking close X close=(0.327,0.077) conf=0.65
+VISION panel: close X cleared the panel
+ATTEMPT 8/20 game_turn=7  directive: hold
+ATTEMPT 8/20 game_turn=7  orders on turn 7: halt_ai julii, list_characters, run_ai
+VISION inspect: local_mode=campaign_map conf=0.70 detail=high_center_variance turn=7
+ATTEMPT 8/20 game_turn=7  end-turn ready check ui=campaign_map buttons=no game_turn=7
+ATTEMPT 8/20 game_turn=7  ready for End Turn
+ATTEMPT 8/20 game_turn=7  ended turn (game_turn=7)
+ATTEMPT 8/20 game_turn=7  waiting for next Julii turn (after 7)
+VISION inspect: local_mode=campaign_map conf=0.70 detail=high_center_variance turn=7
+ATTEMPT 8/20 game_turn=7  wait status game_turn=7 baseline=7 turn_started=7 (from 7) ui=campaign_map rounds=7 autosaves=12
+VISION inspect: local_mode=campaign_map conf=0.70 detail=high_center_variance turn=7
+ATTEMPT 8/20 game_turn=7  wait status game_turn=7 baseline=7 turn_started=7 (from 7) ui=campaign_map rounds=7 autosaves=12
+VISION inspect: local_mode=campaign_map conf=0.70 detail=high_center_variance turn=7
+ATTEMPT 8/20 game_turn=7  wait status game_turn=7 baseline=7 turn_started=7 (from 7) ui=campaign_map rounds=7 autosaves=12
+OK  overlay closed
+OK  deliberation stopped
+Traceback (most recent call last):
+  File "D:\Projects\comstar-game-ai\scripts\run_phase2_actuation.py", line 443, in <module>
+    raise SystemExit(main())
+                     ^^^^^^
+  File "D:\Projects\comstar-game-ai\scripts\run_phase2_actuation.py", line 363, in main
+    result = driver.run_turns(
+             ^^^^^^^^^^^^^^^^^
+  File "D:\Projects\comstar-game-ai\src\comstar_game_ai\game_io\drivers\hardcoded_campaign.py", line 1013, in run_turns
+    if self.run_turn_stub(
+       ^^^^^^^^^^^^^^^^^^^
+  File "D:\Projects\comstar-game-ai\src\comstar_game_ai\game_io\drivers\hardcoded_campaign.py", line 949, in run_turn_stub
+    self.wait_for_turn_event(
+  File "D:\Projects\comstar-game-ai\src\comstar_game_ai\game_io\drivers\hardcoded_campaign.py", line 691, in wait_for_turn_event
+    marker = newest_turn_start_marker()
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Projects\comstar-game-ai\src\comstar_game_ai\game_io\logs\turn_boundary.py", line 83, in newest_turn_start_marker
+    return _newest_marker_in_saves(_TURN_START_RE)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Projects\comstar-game-ai\src\comstar_game_ai\game_io\logs\turn_boundary.py", line 93, in _newest_marker_in_saves
+    saves = default_saves_dir()
+            ^^^^^^^^^^^^^^^^^^^
+  File "D:\Projects\comstar-game-ai\src\comstar_game_ai\game_io\logs\message_log.py", line 33, in default_saves_dir
+    cfg = load_config()
+          ^^^^^^^^^^^^^
+  File "D:\Projects\comstar-game-ai\src\comstar_game_ai\shared\config.py", line 18, in load_config
+    data = yaml.safe_load(fh) or {}
+           ^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Zlatko.Lakisic\AppData\Local\Programs\Python\Python312\Lib\site-packages\yaml\__init__.py", line 125, in safe_load
+    return load(stream, SafeLoader)
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Zlatko.Lakisic\AppData\Local\Programs\Python\Python312\Lib\site-packages\yaml\__init__.py", line 81, in load
+    return loader.get_single_data()
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Zlatko.Lakisic\AppData\Local\Programs\Python\Python312\Lib\site-packages\yaml\constructor.py", line 49, in get_single_data
+    node = self.get_single_node()
+           ^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Zlatko.Lakisic\AppData\Local\Programs\Python\Python312\Lib\site-packages\yaml\composer.py", line 36, in get_single_node
+    document = self.compose_document()
+               ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Zlatko.Lakisic\AppData\Local\Programs\Python\Python312\Lib\site-packages\yaml\composer.py", line 55, in compose_document
+    node = self.compose_node(None, None)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Zlatko.Lakisic\AppData\Local\Programs\Python\Python312\Lib\site-packages\yaml\composer.py", line 84, in compose_node
+    node = self.compose_mapping_node(anchor)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Zlatko.Lakisic\AppData\Local\Programs\Python\Python312\Lib\site-packages\yaml\composer.py", line 133, in compose_mapping_node
+    item_value = self.compose_node(node, item_key)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Zlatko.Lakisic\AppData\Local\Programs\Python\Python312\Lib\site-packages\yaml\composer.py", line 84, in compose_node
+    node = self.compose_mapping_node(anchor)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Zlatko.Lakisic\AppData\Local\Programs\Python\Python312\Lib\site-packages\yaml\composer.py", line 133, in compose_mapping_node
+    item_value = self.compose_node(node, item_key)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Zlatko.Lakisic\AppData\Local\Programs\Python\Python312\Lib\site-packages\yaml\composer.py", line 84, in compose_node
+    node = self.compose_mapping_node(anchor)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Zlatko.Lakisic\AppData\Local\Programs\Python\Python312\Lib\site-packages\yaml\composer.py", line 133, in compose_mapping_node
+    item_value = self.compose_node(node, item_key)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Zlatko.Lakisic\AppData\Local\Programs\Python\Python312\Lib\site-packages\yaml\composer.py", line 82, in compose_node
+    node = self.compose_sequence_node(anchor)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Zlatko.Lakisic\AppData\Local\Programs\Python\Python312\Lib\site-packages\yaml\composer.py", line 110, in compose_sequence_node
+    while not self.check_event(SequenceEndEvent):
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Zlatko.Lakisic\AppData\Local\Programs\Python\Python312\Lib\site-packages\yaml\parser.py", line 98, in check_event
+    self.current_event = self.state()
+                         ^^^^^^^^^^^^
+  File "C:\Users\Zlatko.Lakisic\AppData\Local\Programs\Python\Python312\Lib\site-packages\yaml\parser.py", line 384, in parse_block_sequence_entry
+    if not self.check_token(BlockEntryToken, BlockEndToken):
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Zlatko.Lakisic\AppData\Local\Programs\Python\Python312\Lib\site-packages\yaml\scanner.py", line 116, in check_token
+    self.fetch_more_tokens()
+  File "C:\Users\Zlatko.Lakisic\AppData\Local\Programs\Python\Python312\Lib\site-packages\yaml\scanner.py", line 254, in fetch_more_tokens
+    if self.check_plain():
+       ^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Zlatko.Lakisic\AppData\Local\Programs\Python\Python312\Lib\site-packages\yaml\scanner.py", line 731, in check_plain
+    def check_plain(self):
+
+KeyboardInterrupt

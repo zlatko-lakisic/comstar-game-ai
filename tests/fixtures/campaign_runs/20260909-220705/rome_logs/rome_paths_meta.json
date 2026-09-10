@@ -1,0 +1,82 @@
+{
+  "message_log": {
+    "path": "C:\\Users\\Zlatko.Lakisic\\AppData\\Local\\Feral Interactive\\Total War ROME REMASTERED\\VFS\\Local\\Rome\\logs\\message_log.txt",
+    "exists": true,
+    "size": 745353,
+    "tail_bytes": 200000
+  },
+  "scripting_log": {
+    "path": "C:\\Users\\Zlatko.Lakisic\\AppData\\Local\\Feral Interactive\\Total War ROME REMASTERED\\VFS\\Local\\Rome\\logs\\scripting_log.txt",
+    "exists": true,
+    "size": 494288,
+    "tail_bytes": 200000
+  },
+  "saves_dir": "C:\\Users\\Zlatko.Lakisic\\AppData\\Local\\Feral Interactive\\Total War ROME REMASTERED\\VFS\\Local\\Rome\\saves",
+  "saves_newest": [
+    {
+      "name": "save_Autosave   The House of Julii   Turn 8 Start.sav",
+      "mtime": 1789006232.9443922,
+      "size": 1320040
+    },
+    {
+      "name": "save_Autosave   The House of Julii   Turn 7 End.sav",
+      "mtime": 1789006220.5602982,
+      "size": 1291147
+    },
+    {
+      "name": "save_Autosave   The House of Julii   Turn 20.sav",
+      "mtime": 1789003475.2378063,
+      "size": 1708966
+    },
+    {
+      "name": "save_Autosave   The House of Julii   Turn 20 Start.sav",
+      "mtime": 1788989535.484445,
+      "size": 1708958
+    },
+    {
+      "name": "save_Autosave   The House of Julii   Turn 19 End.sav",
+      "mtime": 1788989490.105286,
+      "size": 1662791
+    },
+    {
+      "name": "save_Autosave   The House of Julii   Turn 75.sav",
+      "mtime": 1788987776.6055136,
+      "size": 2447432
+    },
+    {
+      "name": "save_Autosave   The House of Julii   Turn 75 Start.sav",
+      "mtime": 1788824732.3334513,
+      "size": 2447432
+    },
+    {
+      "name": "save_Autosave   The House of Julii   Turn 74 End.sav",
+      "mtime": 1788824690.8534124,
+      "size": 2456212
+    },
+    {
+      "name": "save_Autosave   The House of Julii   Turn 55.sav",
+      "mtime": 1788818603.787124,
+      "size": 2284585
+    },
+    {
+      "name": "save_Quicksave.sav",
+      "mtime": 1707961182.0,
+      "size": 2285534
+    },
+    {
+      "name": "save_22-01-2024   The House of Julii   Turn 20.sav",
+      "mtime": 1705949205.0,
+      "size": 1724948
+    },
+    {
+      "name": "save_22-01-2024   The House of Julii   Turn 17.sav",
+      "mtime": 1705946217.0,
+      "size": 1690153
+    },
+    {
+      "name": "save_21-01-2024   The House of Julii   Turn 9.sav",
+      "mtime": 1705883722.0,
+      "size": 1427145
+    }
+  ]
+}

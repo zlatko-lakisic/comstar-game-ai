@@ -375,6 +375,7 @@ def seed_belief(
     *,
     player_faction: str,
     sight: float = DEFAULT_SIGHT,
+    seed_turn: int = 1,
 ) -> int:
     """Write the opening position into belief, without handing over the whole map.
 
@@ -436,7 +437,10 @@ def seed_belief(
                 x=float(region.x if region.x is not None else 0),
                 y=float(region.y if region.y is not None else 0),
                 population=int(population) if isinstance(population, int) else None,
-                attributes={"level": entry.get("level") or ""},
+                attributes={
+                    "level": entry.get("level") or "",
+                    "last_seen_turn": int(seed_turn),
+                },
             )
         )
         written += 1
@@ -465,6 +469,7 @@ def seed_belief(
                 x=float(entry["x"]),
                 y=float(entry["y"]),
                 role=str(entry["role"]),
+                attributes={"last_seen_turn": int(seed_turn)},
             )
         )
         written += 1
@@ -482,9 +487,13 @@ def seed_belief(
                     y=float(entry["y"]),
                     strength=float(units),
                     general=str(entry["name"]),
+                    attributes={"last_seen_turn": int(seed_turn)},
                 )
             )
             written += 1
+
+    # Record the belief clock so Process B's first advance is relative to seed.
+    store.faction_beliefs["_belief_clock"] = {"last_advanced_turn": int(seed_turn)}
 
     return written
 

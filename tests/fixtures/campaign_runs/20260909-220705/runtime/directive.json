@@ -1,0 +1,17 @@
+{
+  "question_id": "campaign-7-79860c68",
+  "directive": {
+    "question_id": "campaign-7-79860c68",
+    "objective": "hold",
+    "actor": null,
+    "target": null,
+    "commit_until_turn": null,
+    "abandon_if": {},
+    "expects": {
+      "turns_to_reach": null,
+      "garrison_at_arrival": "unknown"
+    },
+    "because": "threats first: no threats observed, then candidates: no settlement threatened by a hostile stack within 2 turns' march"
+  },
+  "ts": 1789006223.9338923
+}
