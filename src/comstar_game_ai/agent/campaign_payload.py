@@ -160,6 +160,9 @@ def compose_campaign_payload(
             continue
         if not (c.x or c.y):
             continue
+        role = (c.role or "").lower()
+        if role and role not in {"", "general", "leader", "heir", "named character"}:
+            continue
         gid = id_map.general_id(c)
         # Nearest owned or candidate settlement for "near / at" without names.
         near_id = None
