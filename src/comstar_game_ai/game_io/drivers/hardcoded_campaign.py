@@ -528,11 +528,17 @@ class HardcodedCampaignDriver:
             )
 
     def _known_game_turn(self) -> int:
-        """Best available Julii turn from autosave / inferred state (game truth)."""
+        """Best available Julii turn from the *current* campaign (mtime-newest start).
+
+        Prefer `turn_started` (newest Start.sav by write time) over a max of stored
+        numbers — leftover Turn 75 autosaves from an earlier campaign must not win.
+        """
+        started = self.turn_started
+        if started:
+            return started
         return max(
             int(self.state.turn or 0),
             int(self._last_autosave_turn or 0),
-            self.turn_started,
         )
 
     @property
