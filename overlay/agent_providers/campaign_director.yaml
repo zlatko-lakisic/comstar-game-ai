@@ -1,6 +1,11 @@
 id: campaign_director
 type: ollama
-model: llama3.1:8b
+model: phi4:14b
+# F5: deterministic tiebreak in the prompt requires temperature 0.
+# F4: must exceed composed prompt (backstory + payload) with margin; AO's
+# direct_ollama path must forward these into /api/chat options.
+temperature: 0
+num_ctx: 8192
 description: Strategic campaign directive at turn boundaries
 # role, goal and backstory are all mandatory: the engine refuses to build an agent
 # without them and rejects the request as invalid_request before any model runs.

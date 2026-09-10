@@ -96,6 +96,10 @@ It does not reset keyboard state. Keys already held when it is called interfere 
 
 `AGENTIC_ANSWER_CACHE` short circuits a repeated goal to a cached answer. **Turn it off.** The same question text in a different board state must never return a cached reply.
 
+### 3.7b Ollama `num_ctx` silent front-truncation
+
+When the composed prompt (stable backstory + payload) exceeds the effective context window, Ollama truncates from the **front** without error. ROLE and OBJECTIVES are the first content dropped; the model then redefines words like `CANDIDATES` from a fragment. Log composed token estimate beside `num_ctx` on every director call, and fail startup if the window is too small. Pin `num_ctx` and `temperature: 0` on `campaign_director` (see always-hold F4 / F5).
+
 ### 3.8 Reach allowlist asymmetry
 
 Since Reach 0.13.0, empty `allowedMcpProviderIds` and `allowedSkillIds` mean **overlay entries only**, which is what is wanted. But an empty `allowedAgentProviderIds` means **unrestricted**. List the agent ids explicitly.

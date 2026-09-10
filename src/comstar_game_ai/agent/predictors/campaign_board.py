@@ -57,16 +57,15 @@ def _own_faction_names(player_faction: str) -> set[str]:
 
 
 def _age_turns(entity: Any, *, current_turn: int) -> int:
-    """Belief entities carry observed_at (unix). Without a turn clock, age is 0 when fresh."""
-    # Attributes may hold last_seen_turn; otherwise treat as current.
+    """Turn age from attributes.last_seen_turn. Missing stamp → age = current_turn."""
     attrs = getattr(entity, "attributes", {}) or {}
     seen = attrs.get("last_seen_turn")
     if seen is None:
-        return 0
+        return max(0, int(current_turn))
     try:
         return max(0, int(current_turn) - int(seen))
     except (TypeError, ValueError):
-        return 0
+        return max(0, int(current_turn))
 
 
 def _distance(a_x: float, a_y: float, b_x: float, b_y: float) -> float:

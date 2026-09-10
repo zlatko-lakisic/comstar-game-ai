@@ -1,0 +1,27 @@
+INFO comstar_game_ai.agent.answer_cache: AGENTIC_ANSWER_CACHE asserted disabled
+INFO comstar_game_ai.agent.answer_cache: AGENTIC_ANSWER_CACHE asserted disabled
+INFO comstar_game_ai.agent.reach.session: Reach session active: agents=['client.battle_director', 'client.campaign_director', 'client.consolidator', 'client.doctrine_ingestor', 'client.modal_vision', 'client.narrator', 'client.opponent_modeler', 'client.post_mortem'] mcps=['client.game_query']
+INFO comstar_game_ai.agent.campaign_accept: accepted campaign directive turn=2 objective=hold actor=None target=None commit=None because='no immediate threats and no strong candidates to reinforce or besiege'
+INFO comstar_game_ai.agent.runtime: turn 2 game_query usage: calls=0 changed=0
+INFO comstar_game_ai.agent.runtime: turn 2 directive: hold (no immediate threats and no strong candidates to reinforce or besiege) state_hash=90a0b9f8
+INFO comstar_game_ai.agent.runtime: directive written for turn 2 (1 calls)
+INFO comstar_game_ai.agent.campaign_accept: accepted campaign directive turn=3 objective=hold actor=None target=None commit=None because='There are no threats and no general is idle or near a settlement with a weaker garrison.'
+INFO comstar_game_ai.agent.runtime: turn 3 game_query usage: calls=0 changed=0
+INFO comstar_game_ai.agent.runtime: turn 3 directive: hold (There are no threats and no general is idle or near a settlement with a weaker garrison.) state_hash=90a0b9f8
+INFO comstar_game_ai.agent.runtime: directive written for turn 3 (2 calls)
+INFO comstar_game_ai.agent.campaign_accept: accepted campaign directive turn=4 objective=hold actor=None target=None commit=None because='no threats observed and no opportunity to improve current situation'
+INFO comstar_game_ai.agent.runtime: turn 4 game_query usage: calls=0 changed=0
+INFO comstar_game_ai.agent.runtime: turn 4 directive: hold (no threats observed and no opportunity to improve current situation) state_hash=90a0b9f8
+INFO comstar_game_ai.agent.runtime: directive written for turn 4 (3 calls)
+INFO comstar_game_ai.agent.campaign_accept: accepted campaign directive turn=5 objective=hold actor=None target=None commit=None because="Threats first. A settlement you own with a hostile stack inside two turns' march outranks any opportunity."
+INFO comstar_game_ai.agent.runtime: turn 5 game_query usage: calls=0 changed=0
+INFO comstar_game_ai.agent.runtime: turn 5 directive: hold (Threats first. A settlement you own with a hostile stack inside two turns' march outranks any opportunity.) state_hash=90a0b9f8
+INFO comstar_game_ai.agent.runtime: directive written for turn 5 (4 calls)
+INFO comstar_game_ai.agent.campaign_accept: accepted campaign directive turn=7 objective=hold actor=None target=None commit=None because='no active threats to settlements and no candidate to prioritize'
+INFO comstar_game_ai.agent.runtime: turn 7 game_query usage: calls=0 changed=0
+INFO comstar_game_ai.agent.runtime: turn 7 directive: hold (no active threats to settlements and no candidate to prioritize) state_hash=90a0b9f8
+INFO comstar_game_ai.agent.runtime: directive written for turn 7 (5 calls)
+INFO comstar_game_ai.agent.campaign_accept: accepted campaign directive turn=7 objective=hold actor=None target=None commit=None because="threats first: no threats observed, then candidates: no settlement threatened by a hostile stack within 2 turns' march"
+INFO comstar_game_ai.agent.runtime: turn 7 game_query usage: calls=0 changed=0
+INFO comstar_game_ai.agent.runtime: turn 7 directive: hold (threats first: no threats observed, then candidates: no settlement threatened by a hostile stack within 2 turns' march) state_hash=90a0b9f8
+INFO comstar_game_ai.agent.runtime: directive written for turn 7 (6 calls)
