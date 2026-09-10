@@ -57,16 +57,42 @@ def _session(bridge: RecordingBridge) -> ReachSession:
     return ReachSession(bridge=bridge, enable_game_query=False)
 
 
-def _directive_answer(objective: str = "take_settlement", **extra: Any) -> str:
-    """Shaped like a real JSON-mode answer: flat, and only what the schema asks for."""
+def _campaign_directive_answer(objective: str = "besiege", **extra: Any) -> str:
+    """Shaped like a real JSON-mode campaign answer."""
+    payload: dict[str, Any] = {
+        "question_id": "q",
+        "objective": objective,
+        "actor": "gen_01",
+        "target": "set_14",
+        "expects": {"turns_to_reach": 3, "garrison_at_arrival": "weaker"},
+        "because": "set_14 is weakly held and gen_01 is free",
+    }
+    if objective == "hold":
+        payload["actor"] = None
+        payload["target"] = None
+        payload["expects"] = {"turns_to_reach": 0, "garrison_at_arrival": "unknown"}
+        payload["because"] = "consolidate"
+    payload.update(extra)
+    return json.dumps(payload)
+
+
+def _battle_directive_answer(objective: str = "hold", **extra: Any) -> str:
+    """Flat battle schema answer — must not look like the campaign contract."""
     payload: dict[str, Any] = {
         "objective": objective,
-        "reason": "Segesta is weakly held and Flavius is the nearer general.",
+        "reason": "hold the line",
         "horizon": "short",
-        "risk_posture": 0.2,
+        "risk_posture": 0.0,
     }
     payload.update(extra)
     return json.dumps(payload)
+
+
+# Back-compat alias used by older call sites in this file.
+def _directive_answer(objective: str = "besiege", **extra: Any) -> str:
+    if objective in {"annihilate", "win_cheaply", "break_and_pursue", "fortify"}:
+        return _battle_directive_answer(objective, **extra)
+    return _campaign_directive_answer(objective, **extra)
 
 
 # --- the campaign director -------------------------------------------------
@@ -86,8 +112,8 @@ async def test_the_campaign_director_is_asked_on_the_json_channel(campaign_brief
     frame = bridge.frame
     assert frame["agent_provider_id"] == "client.campaign_director"
     assert frame["response_format"] == {"type": "json_object"}
-    assert directive.intent.objective == "take_settlement"
-    assert directive.commentary.startswith("Segesta")
+    assert directive.intent.objective == "besiege"
+    assert "set_14" in directive.commentary
 
 
 async def test_the_campaign_director_is_constrained_to_campaign_objectives():
@@ -239,7 +265,9 @@ def test_the_prompt_carries_no_canned_answer_for_an_empty_map():
 
     question = campaign_directive_question(3, "julii").lower()
 
-    assert "empty" not in question
+    # Runtime short-circuits an empty belief; the prompt must not teach a hold-because-empty answer.
+    assert "map is empty" not in question
+    assert "belief_empty" not in question
 
 
 def test_an_empty_brief_says_it_is_empty(empty_belief):
@@ -260,25 +288,28 @@ def test_an_empty_brief_says_it_is_empty(empty_belief):
 
 
 def test_the_question_tells_the_model_what_its_answer_will_do():
-    """A model choosing a word without knowing the consequence is not deciding."""
+    """Stable half + per-turn identity; objectives must appear verbatim."""
     from comstar_game_ai.agent.reach.prompts import campaign_directive_question
+    from comstar_game_ai.agent.campaign_vocab import STABLE_DIRECTOR_BACKSTORY
 
     question = campaign_directive_question(3, "julii")
 
-    assert "keep every character where it stands" in question
+    assert question.startswith(STABLE_DIRECTOR_BACKSTORY.strip()[:40])
+    assert "nothing moves" in question
     for objective in CAMPAIGN_OBJECTIVES:
         assert objective in question, objective
 
 
 def test_the_question_does_not_restate_the_schema():
-    """Every token is read twice on the way in — once here, once as the grammar."""
+    """Schema lives in json_schema; the question must not paste a type grammar."""
     from comstar_game_ai.agent.reach.prompts import campaign_directive_question
 
     question = campaign_directive_question(3, "julii")
 
     assert '"type"' not in question
-    assert "JSON" not in question
-    assert len(question) < 900, len(question)
+    assert "json_schema" not in question
+    # Stable backstory is intentionally long; keep it bounded.
+    assert len(question) < 2500, len(question)
 
 
 # --- the battle director ---------------------------------------------------

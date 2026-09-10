@@ -4,11 +4,17 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import time
 import uuid
 from dataclasses import dataclass, field
 
+from comstar_game_ai.agent.answer_cache import assert_answer_cache_disabled
 from comstar_game_ai.agent.belief.store import BeliefStore
+from comstar_game_ai.agent.campaign_accept import (
+    accept_campaign_answer,
+    default_campaign_prediction_log,
+)
+from comstar_game_ai.agent.campaign_ids import CampaignIdMap
+from comstar_game_ai.agent.campaign_payload import compose_campaign_payload
 from comstar_game_ai.agent.directive import neutral_directive
 from comstar_game_ai.agent.learning.consolidator import consolidate_offline
 from comstar_game_ai.agent.reach.context_builder import ObservableContext, build_observable_brief
@@ -20,8 +26,14 @@ from comstar_game_ai.agent.reach.prompts import (
 from comstar_game_ai.agent.reach.kb_ingest import ingest_after_action as kb_ingest_after_action
 from comstar_game_ai.agent.reach.session import ReachSession
 from comstar_game_ai.agent.records.after_action import AfterActionRecord
+from comstar_game_ai.agent.standing import (
+    StandingDirectiveStore,
+    accept_into_standing,
+)
+from comstar_game_ai.agent.tool_usage import default_tool_usage_log
 from comstar_game_ai.game_io.drivers.hardcoded_campaign import HardcodedCampaignDriver
 from comstar_game_ai.game_io.logs.turn_boundary import latest_turn_start
+from comstar_game_ai.shared.config import load_config
 from comstar_game_ai.shared.ipc.events import EventKind
 from comstar_game_ai.shared.ipc.publisher import EventPublisher
 from comstar_game_ai.shared.runtime.directive_store import DirectiveStore
@@ -37,9 +49,12 @@ class AgentRuntime:
     player_faction: str = "julii"
     publisher: EventPublisher = field(default_factory=EventPublisher)
     directive_store: DirectiveStore = field(default_factory=DirectiveStore)
+    standing_store: StandingDirectiveStore = field(default_factory=StandingDirectiveStore)
     session: ReachSession | None = None
+    id_map: CampaignIdMap = field(default_factory=lambda: CampaignIdMap.load())
 
     async def start(self) -> None:
+        assert_answer_cache_disabled(load_config())
         self.session = ReachSession()
         await self.session.start()
 
@@ -81,35 +96,118 @@ class AgentRuntime:
             # Deciding it here costs no GPU and cannot be misread.
             self._hold_without_asking(turn, qid, "belief_empty")
             return
-        ctx = build_observable_brief(
-            ObservableContext(
-                phase="campaign",
-                turn=turn,
-                player_faction=self.player_faction,
-                summary=belief_summary or f"turn {turn}",
-            ),
-            belief,
+
+        standing = self.standing_store.refresh_status(
+            current_turn=turn,
+            prediction_log=default_campaign_prediction_log(),
         )
-        self.publisher.publish(EventKind.AO_REQUEST, {"summary": f"campaign turn {turn}", "question_id": qid})
-        directive = await call_campaign_director(
+        standing_view = standing.to_view() if standing is not None else None
+        payload = compose_campaign_payload(
+            belief=belief,
+            question_id=qid,
+            turn=turn,
+            player_faction=self.player_faction,
+            standing=standing_view,
+            id_map=self.id_map,
+        )
+        self.id_map = payload.id_map
+        self.id_map.save()
+
+        self.publisher.publish(
+            EventKind.AO_REQUEST,
+            {
+                "summary": f"campaign turn {turn}",
+                "question_id": qid,
+                "state_hash": payload.state_hash,
+            },
+        )
+        # JSON mode returns raw text via the bridge; we re-accept through the
+        # contract so unknown ids / optimistic expects never reach the planner.
+        raw_directive = await call_campaign_director(
             self.session,
-            text=campaign_directive_question(turn, self.player_faction),
-            context=ctx,
+            text=campaign_directive_question(
+                turn, self.player_faction, question_id=qid
+            ),
+            context=payload.text,
             question_id=qid,
             on_status=lambda s: self.publisher.publish(
                 EventKind.AO_STATUS, {"summary": getattr(s, "phase", str(s))[:80]}
             ),
         )
+        # Prefer the raw JSON from the model when present; otherwise commentary
+        # already explains the failure and we accept that as neutral.
+        raw_text = ""
+        if raw_directive.raw:
+            import json as _json
+
+            raw_text = _json.dumps(raw_directive.raw)
+        elif raw_directive.commentary.startswith(
+            ("timeout:", "reach_error:", "error:", "malformed", "empty", "not_object")
+        ):
+            raw_text = ""
+        else:
+            # Flat schema answers land as objective + commentary via parse_directive.
+            import json as _json
+
+            raw_text = _json.dumps(
+                {
+                    "question_id": qid,
+                    "objective": raw_directive.intent.objective,
+                    "actor": (raw_directive.play_params or {}).get("actor"),
+                    "target": (raw_directive.play_params or {}).get("target"),
+                    "abandon_if": dict(raw_directive.intent.abort_if or {}),
+                    "expects": (raw_directive.play_params or {}).get("expects") or {},
+                    "because": raw_directive.commentary,
+                }
+            )
+
+        prediction_log = default_campaign_prediction_log()
+        if raw_text:
+            accepted = accept_campaign_answer(
+                raw_text,
+                payload=payload,
+                current_turn=turn,
+                prediction_log=prediction_log,
+            )
+            directive = accepted.to_legacy_directive(issued_turn=turn)
+            pred_id = (accepted.raw or {}).get("prediction_entry_id")
+            accept_into_standing(
+                self.standing_store,
+                accepted,
+                current_turn=turn,
+                prediction_entry_id=pred_id if isinstance(pred_id, str) else None,
+            )
+        else:
+            directive = raw_directive
+            _LOGGER.warning(
+                "turn %s: empty/failed director answer — %s",
+                turn,
+                directive.commentary or "neutral",
+            )
+
+        usage = default_tool_usage_log().summary()
+        _LOGGER.info(
+            "turn %s game_query usage: calls=%s changed=%s",
+            turn,
+            usage["calls"],
+            usage["changed_directive"],
+        )
+
         self.directive_store.write(qid, directive)
         _LOGGER.info(
-            "turn %s directive: %s (%s)",
+            "turn %s directive: %s (%s) state_hash=%s",
             turn,
             directive.intent.objective,
             directive.commentary or "no commentary",
+            payload.state_hash,
         )
         self.publisher.publish(
             EventKind.AO_RESULT,
-            {"summary": directive.intent.objective, "question_id": qid},
+            {
+                "summary": directive.intent.objective,
+                "question_id": qid,
+                "state_hash": payload.state_hash,
+            },
         )
 
     async def deliberate_battle_tick(self, tick: int, battle_id: str) -> None:

@@ -22,7 +22,7 @@ class FakeBridge:
 
     async def direct_agent(self, **kwargs) -> dict[str, Any]:
         self.calls.append(kwargs)
-        return {"text": '{"intent": {"objective": "expand"}}'}
+        return {"text": '{"objective": "besiege", "because": "set_14 is open", "actor": "gen_01", "target": "set_14"}'}
 
     async def cancel(self, question_id: str) -> None:  # pragma: no cover - unused here
         return None
@@ -55,7 +55,7 @@ def test_a_registered_provider_is_requested():
     directive = _call(session)
 
     assert session.bridge.calls[0]["mcp_provider_ids"] == [GAME_QUERY_MCP]
-    assert directive.intent.objective == "expand"
+    assert directive.intent.objective == "besiege"
 
 
 def test_an_unregistered_provider_is_not_requested():
@@ -65,7 +65,7 @@ def test_an_unregistered_provider_is_not_requested():
     directive = _call(session)
 
     assert session.bridge.calls[0]["mcp_provider_ids"] == []
-    assert directive.intent.objective == "expand"
+    assert directive.intent.objective == "besiege"
 
 
 def test_an_explicit_list_still_wins():

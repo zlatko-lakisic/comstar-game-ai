@@ -215,6 +215,14 @@ async def call_campaign_director(
     images: list[dict[str, Any]] | None = None,
     on_status: Callable[[ReachRunStatus], None] | None = None,
 ) -> Directive:
+    """Campaign director call.
+
+    `client.game_query` is registered on the agent provider (C10 / YAML mcp list)
+    for any future non-JSON path. JSON mode still cannot run tools, so
+    `mcp_provider_ids` stays empty here: the composed brief in `context` is the
+    primary path, and tool-usage logging reports zero calls under this mode —
+    which is an acceptable measured result per the contract rework.
+    """
     return await call_directive_agent(
         session,
         agent_provider_id=CAMPAIGN_DIRECTOR,
@@ -225,10 +233,6 @@ async def call_campaign_director(
         images=images,
         response_format=JSON_OBJECT_RESPONSE_FORMAT,
         json_schema=campaign_directive_schema(),
-        # JSON mode runs no crew, so it can hold no tools. Asking for belief tools
-        # here would be asking for something the pipeline cannot deliver; the belief
-        # the director needs is composed into `context` instead, where we can also
-        # be sure it arrived.
         mcp_provider_ids=[],
         on_status=on_status,
     )

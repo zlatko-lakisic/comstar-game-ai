@@ -72,7 +72,17 @@ def test_hold_keeps_the_army_where_it_is():
 
 
 def test_an_advancing_objective_moves():
-    orders = CampaignPlanner().plan(_belief_with_a_reachable_target(), _directive("take_settlement"))
+    from comstar_game_ai.agent.campaign_ids import CampaignIdMap, sync_id_map_from_belief
+
+    belief = _belief_with_a_reachable_target()
+    id_map = sync_id_map_from_belief(belief)
+    actor = id_map.general_id(belief.get_characters()[0])
+    target = id_map.settlement_id(belief.get_settlements()[0])
+    directive = _directive(
+        "besiege",
+        play_params={"actor": actor, "target": target},
+    )
+    orders = CampaignPlanner(id_map=id_map).plan(belief, directive)
     assert len(_moves(orders)) == 1
 
 
@@ -83,7 +93,11 @@ def test_an_invented_objective_reads_as_hold():
 
 
 def test_avoid_actions_outranks_the_objective():
-    directive = _directive("attack", avoid_actions=["move_character"])
+    directive = _directive(
+        "besiege",
+        avoid_actions=["move_character"],
+        play_params={"actor": "gen_x", "target": "set_y"},
+    )
     orders = CampaignPlanner().plan(_belief_with_a_reachable_target(), directive)
     assert _moves(orders) == []
 
@@ -128,17 +142,17 @@ def test_a_missing_file_is_hold_not_a_free_hand(tmp_path):
 
 def test_a_fresh_directive_is_adopted(tmp_path):
     driver = _driver(tmp_path)
-    driver.directive_store.write("campaign-4-abc", _directive("expand"))
+    driver.directive_store.write("campaign-4-abc", _directive("besiege"))
 
     directive = driver.current_directive()
 
-    assert directive.intent.objective == "expand"
-    assert driver.last_directive == "expand"
+    assert directive.intent.objective == "besiege"
+    assert driver.last_directive == "besiege"
 
 
 def test_a_directive_from_an_earlier_session_is_ignored(tmp_path):
     driver = _driver(tmp_path, directive_max_age_s=60)
-    driver.directive_store.write("campaign-4-abc", _directive("expand"))
+    driver.directive_store.write("campaign-4-abc", _directive("besiege"))
     stale = driver.directive_store.read()
     payload = driver.directive_store.path.read_text(encoding="utf-8")
     driver.directive_store.path.write_text(
@@ -153,11 +167,11 @@ def test_a_directive_expires_after_its_own_ply_budget(tmp_path, monkeypatch):
     driver = _driver(tmp_path)
     turn = {"value": 10}
     monkeypatch.setattr(driver, "_known_game_turn", lambda: turn["value"])
-    driver.directive_store.write("campaign-10-abc", _directive("expand", valid_for_plies=2))
+    driver.directive_store.write("campaign-10-abc", _directive("besiege", valid_for_plies=2))
 
-    assert driver.current_directive().intent.objective == "expand"
+    assert driver.current_directive().intent.objective == "besiege"
     turn["value"] = 11
-    assert driver.current_directive().intent.objective == "expand"
+    assert driver.current_directive().intent.objective == "besiege"
     turn["value"] = 12
     assert driver.current_directive().intent.objective == "hold"
 
@@ -166,14 +180,14 @@ def test_a_new_directive_resets_the_ply_budget(tmp_path, monkeypatch):
     driver = _driver(tmp_path)
     turn = {"value": 10}
     monkeypatch.setattr(driver, "_known_game_turn", lambda: turn["value"])
-    driver.directive_store.write("campaign-10-abc", _directive("expand", valid_for_plies=1))
+    driver.directive_store.write("campaign-10-abc", _directive("besiege", valid_for_plies=1))
     driver.current_directive()
 
     turn["value"] = 11
     assert driver.current_directive().intent.objective == "hold"
 
-    driver.directive_store.write("campaign-11-def", _directive("attack", valid_for_plies=1))
-    assert driver.current_directive().intent.objective == "attack"
+    driver.directive_store.write("campaign-11-def", _directive("reinforce", valid_for_plies=1))
+    assert driver.current_directive().intent.objective == "reinforce"
 
 
 def test_a_corrupt_directive_file_is_hold(tmp_path):
@@ -187,10 +201,10 @@ def test_a_corrupt_directive_file_is_hold(tmp_path):
 def test_the_turn_records_which_directive_drove_it(tmp_path):
     driver = _driver(tmp_path)
     driver.intent_writer = IntentRecordWriter(tmp_path / "intents.jsonl")
-    driver.directive_store.write("campaign-4-abc", _directive("expand"))
+    driver.directive_store.write("campaign-4-abc", _directive("besiege"))
 
     driver.run_turn_stub(wait_for_next_turn=False)
 
     record = driver.intent_writer.path.read_text(encoding="utf-8")
     assert "campaign-4-abc" in record
-    assert "expand" in record
+    assert "besiege" in record

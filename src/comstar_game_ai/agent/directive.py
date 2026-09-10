@@ -8,33 +8,35 @@ import re
 from dataclasses import dataclass, field
 from typing import Any
 
+from comstar_game_ai.agent.campaign_vocab import (
+    ADVANCING_OBJECTIVES,
+    CAMPAIGN_OBJECTIVES,
+    NEUTRAL_OBJECTIVE,
+)
+
 _LOGGER = logging.getLogger(__name__)
 
-NEUTRAL_OBJECTIVE = "hold"
+# Re-export so existing imports of directive.ADVANCING_OBJECTIVES keep working
+# against the single vocabulary source.
+__all__ = [
+    "ADVANCING_OBJECTIVES",
+    "BATTLE_OBJECTIVES",
+    "CAMPAIGN_OBJECTIVES",
+    "DIRECTIVE_OBSERVATIONS",
+    "Directive",
+    "DirectiveIntent",
+    "HORIZONS",
+    "JSON_OBJECT_RESPONSE_FORMAT",
+    "NEUTRAL_OBJECTIVE",
+    "battle_directive_schema",
+    "campaign_directive_schema",
+    "downgrade_infeasible",
+    "neutral_directive",
+    "parse_directive",
+]
 
-#: Objectives that permit advancing a character this turn. "hold" — the neutral
-#: fallback, and what a silent or malformed AO answer becomes — is deliberately not
-#: here: when nobody is reasoning, the army stays where it is.
-ADVANCING_OBJECTIVES = frozenset(
-    {"expand", "advance", "attack", "take_settlement", "besiege", "pressure"}
-)
-
-#: The only console reads a directive may ask for. An unrecognised focus action is
-#: ignored rather than sent: the fair-play gate should never be the first thing
-#: standing between a model and Rome.
+#: The only console reads a directive may ask for.
 DIRECTIVE_OBSERVATIONS = frozenset({"list_characters", "list_units"})
-
-#: What a campaign directive may choose. Offering exactly this list — and no battle
-#: verbs — is what makes the enum worth constraining on: every value here means
-#: something to the planner, and four of the seven decide whether an army moves.
-CAMPAIGN_OBJECTIVES: tuple[str, ...] = (
-    "hold",
-    "fortify",
-    "expand",
-    "attack",
-    "take_settlement",
-    "besiege",
-)
 
 #: What a battle directive may choose.
 BATTLE_OBJECTIVES: tuple[str, ...] = (
@@ -47,39 +49,14 @@ BATTLE_OBJECTIVES: tuple[str, ...] = (
 
 HORIZONS: tuple[str, ...] = ("short", "normal", "long")
 
-#: Selects the engine's JSON mode, which is a different pipeline rather than a hint:
-#: it skips the crew and the prose sanitizer and asks the model for native structured
-#: output. Without it a directive comes back through a sanitizer whose job is to make
-#: an answer speakable — it unwraps a JSON object to the one field a voice assistant
-#: should read aloud, so nine fields arrived as the single word `normal`.
 JSON_OBJECT_RESPONSE_FORMAT: dict[str, str] = {"type": "json_object"}
 
 
 def _directive_schema(objectives: tuple[str, ...]) -> dict[str, Any]:
-    """Schema for one directive, shaped for Ollama's constrained decoding.
-
-    Small on purpose, in both directions. The engine puts the schema in the prompt
-    *and* compiles it into a decoding grammar, so every field costs tokens twice —
-    and on a shared GPU a thousand-token prompt is most of a minute before the first
-    token of the answer.
-
-    Flat, and free of arrays, for a harder reason. Under a grammar the model is only
-    ever offered valid next tokens, which means an unbounded field is an invitation
-    to keep going: the same prompt that answered in 115 tokens once ran to 11,400 on
-    the next call, repeating itself inside an array, and was still going when the
-    client gave up. Enums cannot do that, and a single free-text `reason` is the one
-    place left where it could — worth keeping, because a decision with no stated
-    reason cannot be reviewed.
-
-    Only the decision and its reason are required. A required field is *generated*
-    under constrained decoding rather than considered, so requiring a threshold would
-    collect an invented number where the parser's default is the honest answer.
-    """
+    """Flat schema for battle (and legacy) constrained decoding."""
     return {
         "type": "object",
         "properties": {
-            # Objective first: the shortest path to a complete, valid answer, since
-            # nothing is usable until the closing brace arrives.
             "objective": {"type": "string", "enum": list(objectives)},
             "reason": {"type": "string"},
             "horizon": {"type": "string", "enum": list(HORIZONS)},
@@ -90,7 +67,12 @@ def _directive_schema(objectives: tuple[str, ...]) -> dict[str, Any]:
 
 
 def campaign_directive_schema() -> dict[str, Any]:
-    return _directive_schema(CAMPAIGN_OBJECTIVES)
+    # Lazy: campaign_contract imports Directive from this module.
+    from comstar_game_ai.agent.campaign_contract import (
+        campaign_directive_schema as _campaign_schema,
+    )
+
+    return _campaign_schema()
 
 
 def battle_directive_schema() -> dict[str, Any]:
@@ -131,16 +113,7 @@ def neutral_directive(reason: str = "") -> Directive:
 
 
 def _coerce_directive_payload(text: str) -> tuple[dict[str, Any] | None, str]:
-    """Find the JSON object in an answer, or say why there is none.
-
-    Fences and surrounding prose are tolerated because a model that ignores the
-    format still produced reasoning worth reading. A bare word is not: this used to
-    map a lone `normal` onto "hold" and scan loose prose for any objective-shaped
-    word, which turned sanitizer debris into a decision — an invented directive that
-    the store, the overlay and the run report all presented as a real one. A
-    directive we cannot read is a directive we do not have, and `hold` reached
-    honestly through `neutral_directive` says so.
-    """
+    """Find the JSON object in an answer, or say why there is none."""
     raw = str(text or "").strip()
     if not raw:
         return None, "empty"
@@ -174,24 +147,29 @@ def _coerce_directive_payload(text: str) -> tuple[dict[str, Any] | None, str]:
 
 
 def parse_directive(text: str) -> Directive:
-    """Parse a JSON directive, tolerating fences and surrounding prose."""
+    """Parse a JSON directive, tolerating fences and surrounding prose.
+
+    Accepts both the campaign contract (actor/target/because/expects) and the
+    flat battle shape (objective/reason).
+    """
     data, reason = _coerce_directive_payload(text)
     if data is None:
         return neutral_directive(reason or "malformed_json")
     if not isinstance(data, dict):
         return neutral_directive("not_object")
     if reason:
-        # Readable, but the answer arrived wrapped — worth seeing, since JSON mode
-        # is supposed to make that impossible.
         _LOGGER.info("directive needed extraction from the answer (%s)", reason)
+
+    # Prefer the campaign contract when actor/target/because are present.
+    if any(k in data for k in ("actor", "target", "because", "expects")):
+        from comstar_game_ai.agent.campaign_contract import parse_campaign_directive
+
+        return parse_campaign_directive(text).to_legacy_directive()
 
     intent_raw = data.get("intent") or {}
     if not isinstance(intent_raw, dict):
         intent_raw = {}
 
-    # Two shapes are read here. The schema asks for a flat `objective`/`reason`,
-    # which is what a constrained answer looks like; the nested `intent` block is the
-    # full contract, still used by the battle plays and by anything hand-written.
     if "objective" not in intent_raw and data.get("objective"):
         intent_raw = {**intent_raw, "objective": data["objective"]}
 
@@ -215,7 +193,7 @@ def parse_directive(text: str) -> Directive:
         focus_actions=[str(x) for x in (data.get("focus_actions") or [])],
         avoid_actions=[str(x) for x in (data.get("avoid_actions") or [])],
         opponent_read=dict(data.get("opponent_read") or {}),
-        commentary=str(data.get("commentary") or data.get("reason") or ""),
+        commentary=str(data.get("commentary") or data.get("reason") or data.get("because") or ""),
         valid_for_plies=int(int(data.get("valid_for_plies", 4))),
         play_id=(str(data["play_id"]) if data.get("play_id") else None),
         play_params=play_params,

@@ -90,4 +90,6 @@ class PredictionLog:
 
     @staticmethod
     def _write_line(fh: TextIO, row: dict[str, Any]) -> None:
-        fh.write(json.dumps(row, sort_keys=True) + "\n")
+        from comstar_game_ai.agent.json_safe import dumps_json_safe
+
+        fh.write(dumps_json_safe(row, sort_keys=True) + "\n")
