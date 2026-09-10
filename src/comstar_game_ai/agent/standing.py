@@ -118,15 +118,22 @@ def accept_into_standing(
     *,
     current_turn: int,
     prediction_entry_id: str | None = None,
-) -> StandingDirective:
-    """Persist an accepted directive as the new standing plan."""
+) -> StandingDirective | None:
+    """Persist an accepted advancing directive as the standing plan.
+
+    `hold` clears standing — a completed consolidate is not a plan to continue,
+    and treating it as one locks the director into perpetual hold (C5 churn).
+    """
+    if directive.objective == NEUTRAL_OBJECTIVE:
+        store.clear()
+        return None
     standing = StandingDirective(
         objective=directive.objective,
         actor=directive.actor,
         target=directive.target,
         issued_turn=current_turn,
         commit_until_turn=int(directive.commit_until_turn or current_turn + 2),
-        status="in progress" if directive.objective != NEUTRAL_OBJECTIVE else "completed",
+        status="in progress",
         question_id=directive.question_id,
         prediction_entry_id=prediction_entry_id,
         expects=directive.expects.to_dict() if directive.expects else None,
