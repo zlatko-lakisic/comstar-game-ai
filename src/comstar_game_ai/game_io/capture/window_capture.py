@@ -1,4 +1,10 @@
-"""Window-targeted capture (MSS/dxcam preferred; PrintWindow fallback)."""
+"""MSS region capture — A/B / benchmark only.
+
+Production capture is WGC via ``wgc_capture.WgcCapture``. Instantiating
+``WindowCapture`` directly (or ``capture_for_hwnd(..., backend='mss')``) is for
+measurement scripts. ``capture.backend: mss`` fails Process A startup
+preconditions and must not be used for a run.
+"""
 
 from __future__ import annotations
 
@@ -93,7 +99,7 @@ def client_screen_rect(hwnd: int) -> tuple[int, int, int, int] | None:
 
 
 class WindowCapture:
-    """Capture game client area. Tries MSS (works with DirectX) then PrintWindow fallback."""
+    """MSS (then PrintWindow) client-region grab — unsupported for production runs."""
 
     def __init__(self, hwnd: int) -> None:
         self.hwnd = hwnd

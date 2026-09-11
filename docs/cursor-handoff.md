@@ -96,6 +96,10 @@ It does not reset keyboard state. Keys already held when it is called interfere 
 
 `AGENTIC_ANSWER_CACHE` short circuits a repeated goal to a cached answer. **Turn it off.** The same question text in a different board state must never return a cached reply.
 
+### 3.7b Ollama `num_ctx` silent front-truncation
+
+When the composed prompt (stable backstory + payload) exceeds the effective context window, Ollama truncates from the **front** without error. ROLE and OBJECTIVES are the first content dropped; the model then redefines words like `CANDIDATES` from a fragment. Log composed token estimate beside `num_ctx` on every director call, and fail startup if the window is too small. Pin `num_ctx` and `temperature: 0` on `campaign_director` (see always-hold F4 / F5).
+
 ### 3.8 Reach allowlist asymmetry
 
 Since Reach 0.13.0, empty `allowedMcpProviderIds` and `allowedSkillIds` mean **overlay entries only**, which is what is wanted. But an empty `allowedAgentProviderIds` means **unrestricted**. List the agent ids explicitly.
@@ -249,7 +253,9 @@ Optimistic execution with periodic reconciliation. Most actions succeed.
 
 **WGC window capture of the game window is primary.** Not Desktop Duplication. The reason is not the overlay: Desktop Duplication captures the whole monitor, so Windows toasts, the Steam overlay and Discord popups land in frames, and none can be excluded by display affinity because they are not our windows.
 
-`WDA_EXCLUDEFROMCAPTURE` (`0x00000011`) on every overlay surface as a second line. Top level windows only, owned by the calling process.
+Implemented as `capture.backend: wgc` (Windows Graphics Capture keyed to the Rome hwnd, client-area crop). `mss` remains constructible from A/B tooling only; Process A **refuses to start** if config sets `capture.backend` to anything other than `wgc`.
+
+`WDA_EXCLUDEFROMCAPTURE` (`0x00000011`) on overlay surfaces is an opt-in second line (`overlay.exclude_from_capture`). Top level windows only, owned by the calling process.
 
 Keep a rolling ring buffer of recent frames so the selector can look **backwards** after an event, rather than streaming forwards.
 
@@ -261,7 +267,7 @@ Compose each view from the pieces that carry decision relevant information: cont
 
 ### 7.3 Overlay surfaces
 
-Four, all click through and non activating, all excluded from capture:
+Four, all click through and non activating. Capture affinity is opt-in (`overlay.exclude_from_capture`, default off) so the overlay can appear on stream; frame hygiene relies on WGC window capture of the game (§7.1), proved by the capture-exclusion self test.
 
 1. **Edge glow** sized to the game window, colour encoding state: deliberating, acting, suspended, fault, idle. A text chip names the state so the colour need not be memorised.
 2. **Virtual keyboard**, only the keys the agent uses, fades in on press and out after idle. Held modifiers stay lit, taps flash.
