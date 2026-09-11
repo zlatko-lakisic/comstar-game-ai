@@ -28,8 +28,8 @@ flowchart TD
   calib[Calibrate map to client for this pose]
   project[Project destination map xy to client xy]
   hover[Hover; require cursor glyph]
-  click[Right-click destination]
-  order --> select --> calib --> project --> hover --> click
+  actuate[Right-click destination]
+  order --> select --> calib --> project --> hover --> actuate
 ```
 
 ---
