@@ -52,8 +52,13 @@ def _set_display_affinity(hwnd: int, affinity: int) -> bool:
     return bool(fn(wintypes.HWND(hwnd), wintypes.DWORD(affinity)))
 
 
-def apply_overlay_styles(hwnd: int) -> StyleReport:
-    """Make `hwnd` click-through, non-activating and invisible to capture.
+def apply_overlay_styles(hwnd: int, *, exclude_from_capture: bool = False) -> StyleReport:
+    """Make `hwnd` click-through and non-activating; optionally invisible to capture.
+
+    `exclude_from_capture` gates `SetWindowDisplayAffinity(WDA_EXCLUDEFROMCAPTURE)`.
+    Default is off: WGC window capture of the game is the primary exclusion path,
+    and affinity also hides the overlay from OBS. When on, behaviour matches the
+    historical always-on affinity call.
 
     Returns a report rather than swallowing failures: a silent
     SetWindowDisplayAffinity failure means the overlay is being fed to the vision
@@ -69,6 +74,12 @@ def apply_overlay_styles(hwnd: int) -> StyleReport:
         styles_ok = applied & OVERLAY_EX_STYLES == OVERLAY_EX_STYLES
     except Exception as exc:  # pragma: no cover - needs a real hwnd
         return StyleReport(hwnd, False, False, f"style call failed: {exc}")
+
+    if not exclude_from_capture:
+        # Affinity not requested; `capture_excluded` means the affinity requirement
+        # is satisfied (N/A), so StyleReport.ok still tracks styles only.
+        detail = "" if styles_ok else "requires Windows 10 2004 (build 19041) or later"
+        return StyleReport(hwnd, styles_ok, True, detail or "exclude_from_capture=false")
 
     try:
         excluded = _set_display_affinity(hwnd, WDA_EXCLUDEFROMCAPTURE)

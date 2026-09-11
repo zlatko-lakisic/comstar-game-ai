@@ -29,8 +29,8 @@ class SurfaceBase(QWidget):
         self.setAttribute(Qt.WA_TranslucentBackground)
         self.setAttribute(Qt.WA_ShowWithoutActivating)
 
-    def apply_win32_styles(self):
-        """Apply click-through / non-activating / capture-excluded styles.
+    def apply_win32_styles(self, *, exclude_from_capture: bool = False):
+        """Apply click-through / non-activating styles; capture affinity is opt-in.
 
         Returns the StyleReport, or None if styling could not run at all, so the
         self tests can tell a failed exclusion from a missing platform.
@@ -38,7 +38,9 @@ class SurfaceBase(QWidget):
         try:
             from comstar_game_ai.overlay_ui.win32_styles import apply_overlay_styles
 
-            return apply_overlay_styles(int(self.winId()))
+            return apply_overlay_styles(
+                int(self.winId()), exclude_from_capture=exclude_from_capture
+            )
         except Exception:
             return None
 
@@ -344,8 +346,16 @@ class CursorLeashSurface(SurfaceBase):
 class OverlaySurfaces:
     """Manage the overlay's top-level windows, synced to the game's client area."""
 
-    def __init__(self, game_hwnd: int, *, test_pattern: bool = False, sync_ms: int = 400) -> None:
+    def __init__(
+        self,
+        game_hwnd: int,
+        *,
+        test_pattern: bool = False,
+        sync_ms: int = 400,
+        exclude_from_capture: bool = False,
+    ) -> None:
         self.game_hwnd = game_hwnd
+        self.exclude_from_capture = exclude_from_capture
         self.glow = EdgeGlowSurface(test_pattern=test_pattern)
         self.state = StateChipSurface()
         self.chat = ChatPanelSurface()
@@ -353,7 +363,10 @@ class OverlaySurfaces:
         self.leash = CursorLeashSurface()
         # Glow first so it paints beneath the readable surfaces.
         self._surfaces = [self.glow, self.state, self.chat, self.keyboard, self.leash]
-        self.style_reports = [surface.apply_win32_styles() for surface in self._surfaces]
+        self.style_reports = [
+            surface.apply_win32_styles(exclude_from_capture=exclude_from_capture)
+            for surface in self._surfaces
+        ]
         self._timer = QTimer()
         self._timer.timeout.connect(self._sync_geometry)
         self._timer.start(sync_ms)

@@ -5,8 +5,8 @@ from __future__ import annotations
 import sys
 from dataclasses import dataclass, field
 
+from comstar_game_ai.game_io.capture.factory import grab_capture_frame
 from comstar_game_ai.game_io.capture.ring_buffer import RingBuffer
-from comstar_game_ai.game_io.capture.window_capture import WindowCapture
 from comstar_game_ai.game_io.overlay_stub import OverlayStub, foreground_is
 from comstar_game_ai.game_io.preconditions import check_preconditions
 from comstar_game_ai.game_io.window import find_game_window
@@ -42,33 +42,46 @@ def run_self_tests(*, require_game: bool = False) -> SelfTestResult:
         return result
 
     result.tests["game_window"] = True
-    cap = WindowCapture(game.hwnd)
-    frame = cap.grab()
-    result.tests["capture"] = frame is not None and len(frame.data) > 0
-    if not result.tests["capture"]:
-        result.ok = False
-        result.messages.append("window capture failed")
-
-    ring = RingBuffer(max_seconds=2.0)
-    if frame:
-        ring.push(frame.data, frame.width, frame.height)
-    result.tests["ring_buffer"] = len(ring) == 1
-
-    overlay = None
     try:
-        overlay = OverlayStub.create(game.hwnd, test_pattern=True)
-        result.tests["non_activation"] = foreground_is(game.hwnd)
-        cap2 = WindowCapture(game.hwnd)
-        frame2 = cap2.grab()
-        result.tests["capture_with_overlay"] = frame2 is not None
-        if not result.tests["non_activation"]:
+        frame = grab_capture_frame(game.hwnd)
+        result.tests["capture"] = frame is not None and bool(frame.data)
+        result.tests["capture_backend_wgc"] = frame is not None and frame.backend == "wgc"
+        if not result.tests["capture"]:
             result.ok = False
-            result.messages.append("overlay stole foreground")
-    except Exception as exc:
-        result.tests["overlay_stub"] = False
-        result.messages.append(f"overlay stub skipped: {exc}")
+            result.messages.append("window capture failed")
+        elif not result.tests["capture_backend_wgc"]:
+            result.ok = False
+            result.messages.append(
+                f"capture backend is {frame.backend!r}, required wgc"
+            )
+
+        ring = RingBuffer(max_seconds=2.0)
+        if frame:
+            ring.push(frame.data, frame.width, frame.height)
+        result.tests["ring_buffer"] = len(ring) == 1
+
+        overlay = None
+        try:
+            overlay = OverlayStub.create(game.hwnd, test_pattern=True)
+            result.tests["non_activation"] = foreground_is(game.hwnd)
+            frame2 = grab_capture_frame(game.hwnd)
+            result.tests["capture_with_overlay"] = frame2 is not None
+            if frame2 is not None:
+                result.tests["capture_backend_wgc"] = (
+                    result.tests.get("capture_backend_wgc", False) and frame2.backend == "wgc"
+                )
+            if not result.tests["non_activation"]:
+                result.ok = False
+                result.messages.append("overlay stole foreground")
+        except Exception as exc:
+            result.tests["overlay_stub"] = False
+            result.messages.append(f"overlay stub skipped: {exc}")
+        finally:
+            if overlay is not None:
+                overlay.destroy()
     finally:
-        if overlay is not None:
-            overlay.destroy()
+        from comstar_game_ai.game_io.capture.wgc_capture import release_wgc_capture
+
+        release_wgc_capture(game.hwnd)
 
     return result

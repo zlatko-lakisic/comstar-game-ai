@@ -10,6 +10,7 @@ from __future__ import annotations
 from PIL import Image, ImageDraw
 
 from comstar_game_ai.overlay_ui.checks import (
+    capture_backend_verdict,
     capture_exclusion_verdict,
     click_through_verdict,
     non_activation_verdict,
@@ -36,6 +37,25 @@ def _leaked_frame() -> Image.Image:
     draw = ImageDraw.Draw(image)
     draw.rectangle((0, 0, 640, 6), fill=TEST_PATTERN_RGB)
     return image
+
+
+# --- capture backend ---------------------------------------------------------
+
+
+def test_wgc_backend_passes():
+    outcome = capture_backend_verdict("wgc")
+    assert outcome.ok
+    assert "wgc" in outcome.detail
+
+
+def test_mss_backend_fails():
+    outcome = capture_backend_verdict("mss")
+    assert not outcome.ok
+    assert "mss" in outcome.detail
+
+
+def test_missing_backend_fails():
+    assert not capture_backend_verdict(None).ok
 
 
 # --- capture exclusion -------------------------------------------------------

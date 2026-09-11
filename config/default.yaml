@@ -26,7 +26,9 @@ display:
 capture:
   ring_buffer_seconds: 5
   target_fps: 30
-  backend: wgc  # wgc | printwindow
+  # Production: wgc only (Windows Graphics Capture of the game hwnd).
+  # mss is constructible from A/B scripts but refused at Process A startup.
+  backend: wgc
 
 campaign:
   mode: grand_campaign
@@ -132,3 +134,9 @@ paths:
 ipc:
   event_socket_host: "127.0.0.1"
   event_socket_port: 9876
+
+overlay:
+  # Opt-in SetWindowDisplayAffinity(WDA_EXCLUDEFROMCAPTURE). Off by default so
+  # OBS can show the overlay; WGC window capture of the game is primary for
+  # frame hygiene. The capture-exclusion self-test must still pass with this false.
+  exclude_from_capture: false

@@ -29,7 +29,7 @@ The cost is that the host app design currently recommends Desktop Duplication vi
 
 ### Decided 2026-09-01: both, with window capture load bearing
 
-**WGC window capture of the game window is the primary mechanism. `WDA_EXCLUDEFROMCAPTURE` on every overlay surface is cheap insurance on top.**
+**WGC window capture of the game window is the primary mechanism.** Display affinity is optional insurance, not the default.
 
 The reason window capture has to be primary is not this overlay at all.
 
@@ -39,7 +39,7 @@ Window capture excludes all of it structurally, because it captures the game win
 
 **The specific risk that makes a leak worse than it sounds.** The chat window in section 4.4 displays AO's own previous directive. If it leaked into a frame, the model would be shown its own prior output rendered as part of the game state, on every subsequent call. That is a self reinforcing loop, and it would degrade reasoning subtly rather than failing visibly, which is the worst way for a defect to behave.
 
-Affinity stays because it costs three API calls at startup and covers the case where an overlay surface somehow lands inside a window capture. Its degradation on Windows builds before 2004 is harmless in this combination, since a blank overlay window is not in a game window capture either way.
+**Affinity is opt-in** via `overlay.exclude_from_capture` (default `false`). When true, Process C calls `SetWindowDisplayAffinity` on each surface as today. When false, that call is skipped so the overlay remains visible to OBS and other display captures. Affinity also hides the overlay from stream tools, which is why it is no longer unconditional: with window capture working, it is redundant for frame hygiene.
 
 **The cost, stated honestly.** DXcam is monitor and region based, so window capture likely means a different capture path. That is a real change to the recommendation in `host-app-architecture.md` and it should be treated as work rather than a configuration flag.
 
@@ -47,9 +47,11 @@ Affinity stays because it costs three API calls at startup and covers the case w
 
 Because this design already assumes silent failure is the normal failure, verify rather than trust. At startup, render a known test pattern into every overlay surface, take a capture through the real capture path, and assert the pattern is absent. Refuse to run if it is present.
 
+**That self test is what proves window capture is load bearing**, rather than assuming affinity is doing the work. It stays a hard precondition and is **not** conditional on `exclude_from_capture`. A pass with the flag false means WGC window capture of the game is excluding the overlay; a fail with the flag false means the capture path is still Desktop Duplication (or equivalent) and must be fixed — do not flip the flag back on and call it done.
+
 **Built 2026-09-04** as `comstar-overlay --self-test`, which runs all three window checks against the full overlay and exits non-zero on any failure. The verdicts live in `overlay_ui/checks.py` and are unit tested against synthetic frames, including the case that matters most: a check must not pass because the overlay never appeared.
 
-**Passed 2026-09-05** against a live game, all five surfaces up: styles on all five, non-activation, click through at seven sampled points, and capture exclusion with **0 stray pixels** in a 1920x1080 frame. An exact zero, rather than a tolerated few, means `WDA_EXCLUDEFROMCAPTURE` is holding against the mss capture path and no part of the overlay reaches the vision model.
+**Passed 2026-09-05** against a live game, all five surfaces up: styles on all five, non-activation, click through at seven sampled points, and capture exclusion with **0 stray pixels** in a 1920x1080 frame (then with affinity still on by default).
 
 The harness runs a countdown before it measures anything. Launched from a console, the console holds focus, and without the countdown the non-activation check gets answered about the console instead of the game. For the same reason the verdict distinguishes three cases, not two: the game has focus, an overlay surface has focus, or something else does — reporting the third as "the overlay stole focus" would send the reader hunting a bug that is not there.
 
