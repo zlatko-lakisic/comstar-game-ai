@@ -19,8 +19,11 @@
 6. UI mode classifier kept reporting `local_mode=campaign_map conf=0.70` — **misleading**. Evidence is the miss frame banner + glyph failure, not the classifier.
 7. Attempts 2–4 are fallout: `pose_unverified:quiesce_timeout` → sticky “notice only” parchment loops (likely army HUD misread) → `stack_not_selected`. Operator aborted with Ctrl+C mid attempt 4 AO wait.
 
-**Smoking gun asset:**  
-`data/runtime/map_target_misses/20260911-103815_segesta.jpg` — top-centre banner **“Keep scrolling to toggle the Map Overlay”** with progress bar nearly full.
+**Smoking gun asset** (committed under docs — `data/runtime/` is gitignored):
+
+![Vision miss frame — Keep scrolling to toggle the Map Overlay](design/assets/map-overlay-zoom/20260911-103815_segesta-miss.jpg)
+
+Top-centre banner: **“Keep scrolling to toggle the Map Overlay”** (progress bar nearly full).
 
 ---
 
@@ -82,16 +85,21 @@ Design doc that chose max-out: `docs/design/map-window-projection.md` § Canonic
 
 ## 4. Asset inventory (this incident)
 
-Preserve these paths; do not delete while investigating.
+Evidence **frames are in-repo** under `docs/design/assets/map-overlay-zoom/`. Original capture paths under `data/runtime/` remain on the game box (gitignored by `data/`).
 
-### 4.1 Primary evidence (must keep)
+### 4.1 Primary evidence (committed)
 
-| Path | Size | Created / written | Role |
-|------|------|-------------------|------|
-| `data/runtime/map_target_misses/20260911-103815_segesta.jpg` | ~189 KiB | 2026-09-11 **10:38:15** | Vision miss frame — **shows Map Overlay toggle banner** |
-| `data/runtime/map_projection_debug/20260911-103822_miss_segesta.jpg` | ~239 KiB | 2026-09-11 **10:38:22** | Projection debug after glyph miss — same campaign HUD; Flavius selected near Arretium |
-| `data/runtime/phase2_live_20260911-103631.log` | ~7.1 KiB | 10:36:31 → 10:41:17 | Operator-facing trail (attempts, MARCH lines, KeyboardInterrupt) |
-| `data/runtime/deliberate_20260911-103631.log` | ~23 KiB | 10:36:33 → 10:41:15 | AO / hold-floor / map_target_vision timestamps |
+| Path | Size | Captured | Role |
+|------|------|----------|------|
+| [`design/assets/map-overlay-zoom/20260911-103815_segesta-miss.jpg`](design/assets/map-overlay-zoom/20260911-103815_segesta-miss.jpg) | ~189 KiB | 10:38:15 | Vision miss — **Map Overlay toggle banner** |
+| [`design/assets/map-overlay-zoom/20260911-103822_miss_segesta-debug.jpg`](design/assets/map-overlay-zoom/20260911-103822_miss_segesta-debug.jpg) | ~239 KiB | 10:38:22 | Projection debug after glyph miss |
+| `data/runtime/phase2_live_20260911-103631.log` (local only) | ~7.1 KiB | 10:36:31 → 10:41:17 | Operator-facing trail |
+| `data/runtime/deliberate_20260911-103631.log` (local only) | ~23 KiB | 10:36:33 → 10:41:15 | AO / hold-floor / vision timestamps |
+
+Local originals (same bytes as the committed JPGs):
+
+- `data/runtime/map_target_misses/20260911-103815_segesta.jpg`
+- `data/runtime/map_projection_debug/20260911-103822_miss_segesta.jpg`
 
 ### 4.2 Session sidecar files (touched during run)
 
@@ -112,12 +120,16 @@ Preserve these paths; do not delete while investigating.
 
 ### 4.4 What the miss frame shows (20260911-103815)
 
+![Miss frame with Map Overlay scroll banner](design/assets/map-overlay-zoom/20260911-103815_segesta-miss.jpg)
+
 - Top-centre parchment banner: **“Keep scrolling to toggle the Map Overlay.”** Progress bar nearly complete.
 - Flavius Julius selected south of Arretium; green movement range visible.
 - Bottom army parchment panel (5/20 cards); left character card; top-right treasury 5000 / 270 BC / minimap frustum over Italy.
 - Terrain / colouration consistent with overlay transition or overlay-adjacent state (operator: “factions map”).
 
 ### 4.5 What the projection debug frame shows (20260911-103822)
+
+![Projection debug frame after no_move_cursor](design/assets/map-overlay-zoom/20260911-103822_miss_segesta-debug.jpg)
 
 - Captured ~7s after miss frame during glyph ladder failure.
 - Still Flavius selected; army + character HUD parchment prominent.
