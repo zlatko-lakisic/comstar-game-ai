@@ -1,0 +1,32 @@
+{
+  "game": {
+    "title": "Total War: ROME REMASTERED",
+    "rect": [
+      2153,
+      0,
+      3449,
+      759
+    ]
+  },
+  "turns": {
+    "turns_ok": 6,
+    "turns_failed": 3,
+    "requested": 20,
+    "desyncs": 3,
+    "circuit_breaker": 1,
+    "game_turn_start": 5,
+    "game_turn_end": 6,
+    "turns_advanced": 5,
+    "turn_baseline_resets": 1,
+    "attacks_ordered": 0,
+    "battles_resolved": 0
+  },
+  "directives": {
+    "enabled": true,
+    "blocking": true,
+    "last": "besiege"
+  },
+  "state": "campaign_map",
+  "belief_history_len": 26,
+  "intent_log": "D:\\Projects\\comstar-game-ai\\data\\intent_records\\handoff_1789144027.jsonl"
+}

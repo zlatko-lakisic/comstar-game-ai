@@ -1,0 +1,322 @@
+OK  game_window: 'Total War: ROME REMASTERED' 1296x759
+OK  trail: D:\Projects\comstar-game-ai\data\runtime\phase2_live_20260911-122707.log
+OK  telemetry ok: message_log.txt and scripting_log.txt both present
+INFO elevation: python_admin=False game_elevated=False matched_marker=False
+INFO combat: auto_resolve=True attack=False targets=0 lists_row=(0.3, 0.415)
+INFO march: use_map_vision=False abort_s=600.0 min_conf=0.55 (ready via AO agent_state)
+INFO directives: blocking AO each turn via data\runtime\directive.json
+INFO bootstrap_from_logs: 0 records
+INFO state after bootstrap: campaign_map turn=None turns_seen=0
+INFO running 20 attempts (vision dismiss + observe + End Turn on readiness)...
+OK  overlay up (pid 176000)
+OK  publishing overlay events to 127.0.0.1:9876
+INFO starting AO session (blocks until agent ready)...
+OK  AO deliberator ready — log: data\runtime\deliberate_20260911-122707.log
+INFO click Rome and leave it focused — starting in 12s
+  12...
+  11...
+  10...
+  9...
+  8...
+  7...
+  6...
+  5...
+  4...
+  3...
+  2...
+  1...
+INFO starting
+ATTEMPT 1/20 game_turn=6  sync UI on turn 6
+VISION inspect: local_mode=campaign_map conf=0.70 detail=high_center_variance turn=6
+ATTEMPT 1/20 game_turn=6  waiting for AO on turn 6
+INFO AO agent: campaign_director busy direct_agent
+ATTEMPT 1/20 game_turn=6  AO answered: besiege
+ATTEMPT 1/20 game_turn=6  directive: besiege
+ATTEMPT 1/20 game_turn=6  orders on turn 6: halt_ai julii, list_characters, march Flavius Julius toward segesta, run_ai
+MARCH select: row (0.3, 0.415) verified via frustum who=Flavius Julius cards=1
+MARCH pose: ok=False rot=point_to_north w=55.6 h=41.9 aspect=1.327 centre=(67.5,87.1) expected_w=55.6 failed=['frustum_centre']
+MARCH refused: pose_unverified checks=[frustum_centre] aabb_w=55.6 aabb_h=41.9 aspect=1.327 expected_w=55.6
+MARCH refused: pose_unverified:frustum_centre
+ATTEMPT 1/20 game_turn=6  FAIL  turn cycle failed or timed out
+ATTEMPT 2/20 game_turn=6  sync UI on turn 6
+VISION inspect: local_mode=campaign_map conf=0.70 detail=high_center_variance turn=6
+ATTEMPT 2/20 game_turn=6  waiting for AO on turn 6
+INFO AO agent: campaign_director busy direct_agent
+ATTEMPT 2/20 game_turn=6  AO answered: besiege
+ATTEMPT 2/20 game_turn=6  directive: besiege
+ATTEMPT 2/20 game_turn=6  orders on turn 6: halt_ai julii, list_characters, march Flavius Julius toward segesta, run_ai
+MARCH select: row (0.3, 0.415) frustum ≠ Flavius Julius from=(89.0,82.0) — next row
+MARCH select: row (0.3, 0.455) verified via frustum who=Flavius Julius cards=1
+MARCH pose: ok=True rot=point_to_north w=57.0 h=40.3 aspect=1.412 centre=(69.5,86.3) expected_w=55.6 failed=[]
+MARCH surface: {'variance': 0.006444, 'saturation_mean': 0.642, 'hue_bins_used': 8, 'edge_density': 0.0723, 'mean_luma': 0.3813, 'legend_warm_left': 0.0294, 'legend_warm_right': 0.0197, 'sample_pixels': 103424, 'roi_norms': [0.3, 0.2, 0.7, 0.48], 'is_map_overlay': False, 'detail': 'textured_map'}
+MARCH client=1280x720 (norms are client-relative) from=(89.0,82.0) to=(83.0,84.0) label=segesta who=Flavius Julius cards=1 dist=6.3 projection=True
+MARCH calib: army_anchor scale=0.0133 at map=(89.0,82.0)
+MARCH project: map=(83.0,84.0) → client=(0.420,0.453) calib=army_anchor residual_rms=0.0000 probes=5 who=Flavius Julius
+MARCH project: glyph at (0.440,0.460) (tried primary)
+MARCH debug frame: data\runtime\map_projection_debug\20260911-122943_hit_Flavius_Julius.jpg
+MARCH ordered click=(0.440,0.460) button=right cursor_changed=True vision=False calib=army_anchor who=Flavius Julius cards=1 step=(88.05131670194949, 82.31622776601684)
+VISION inspect: local_mode=campaign_map conf=0.70 detail=high_center_variance turn=6
+ATTEMPT 2/20 game_turn=6  end-turn ready check ui=campaign_map buttons=no game_turn=6
+ATTEMPT 2/20 game_turn=6  ready for End Turn
+ATTEMPT 2/20 game_turn=6  ended turn (game_turn=6)
+ATTEMPT 2/20 game_turn=6  waiting for next Julii turn (after 6)
+VISION inspect: local_mode=campaign_map conf=0.70 detail=high_center_variance turn=6
+ATTEMPT 2/20 game_turn=6  wait status game_turn=6 baseline=6 turn_started=6 (from 6) ui=campaign_map rounds=0 autosaves=0
+VISION inspect: local_mode=campaign_map conf=0.70 detail=high_center_variance turn=6
+ATTEMPT 2/20 game_turn=6  wait status game_turn=6 baseline=6 turn_started=6 (from 6) ui=campaign_map rounds=0 autosaves=0
+VISION inspect: local_mode=campaign_map conf=0.70 detail=high_center_variance turn=6
+ATTEMPT 2/20 game_turn=6  wait status game_turn=6 baseline=6 turn_started=6 (from 6) ui=campaign_map rounds=0 autosaves=0
+VISION inspect: local_mode=campaign_map conf=0.70 detail=high_center_variance turn=6
+ATTEMPT 2/20 game_turn=6  wait status game_turn=6 baseline=6 turn_started=6 (from 6) ui=campaign_map rounds=0 autosaves=0
+ATTEMPT 2/20 game_turn=6  Rome handed turn 2 back
+ATTEMPT 2/20 game_turn=6  OK  turn cycle complete
+ATTEMPT 3/20 game_turn=6  sync UI on turn 6
+VISION inspect: local_mode=campaign_map conf=0.70 detail=high_center_variance turn=6
+ATTEMPT 3/20 game_turn=2  waiting for AO on turn 2
+INFO AO agent: campaign_director busy direct_agent
+ATTEMPT 3/20 game_turn=2  AO answered: besiege
+ATTEMPT 3/20 game_turn=2  directive: besiege
+ATTEMPT 3/20 game_turn=2  orders on turn 2: halt_ai julii, list_characters, march Flavius Julius toward segesta, run_ai
+MARCH select: row (0.3, 0.415) verified via frustum who=Flavius Julius cards=1
+MARCH pose: ok=True rot=point_to_north w=55.6 h=41.9 aspect=1.327 centre=(67.5,87.1) expected_w=55.6 failed=[]
+MARCH surface: {'variance': 0.00737, 'saturation_mean': 0.3935, 'hue_bins_used': 8, 'edge_density': 0.0826, 'mean_luma': 0.3836, 'legend_warm_left': 0.029, 'legend_warm_right': 0.0249, 'sample_pixels': 103424, 'roi_norms': [0.3, 0.2, 0.7, 0.48], 'is_map_overlay': False, 'detail': 'textured_map'}
+MARCH client=1280x720 (norms are client-relative) from=(88.0,82.0) to=(83.0,84.0) label=segesta who=Flavius Julius cards=1 dist=5.4 projection=True
+MARCH calib: army_anchor scale=0.0133 at map=(88.0,82.0)
+MARCH project: map=(83.0,84.0) → client=(0.433,0.453) calib=army_anchor residual_rms=0.0000 probes=5 who=Flavius Julius
+MARCH project: glyph at (0.450,0.460) (tried primary)
+MARCH debug frame: data\runtime\map_projection_debug\20260911-123108_hit_Flavius_Julius.jpg
+MARCH ordered click=(0.450,0.460) button=right cursor_changed=True vision=False calib=army_anchor who=Flavius Julius cards=1 step=(87.07152330911474, 82.37139067635411)
+VISION inspect: local_mode=campaign_map conf=0.70 detail=high_center_variance turn=2
+ATTEMPT 3/20 game_turn=2  end-turn ready check ui=campaign_map buttons=no game_turn=2
+ATTEMPT 3/20 game_turn=2  ready for End Turn
+ATTEMPT 3/20 game_turn=2  ended turn (game_turn=2)
+ATTEMPT 3/20 game_turn=2  waiting for next Julii turn (after 2)
+VISION inspect: local_mode=campaign_map conf=0.70 detail=high_center_variance turn=2
+ATTEMPT 3/20 game_turn=2  wait status game_turn=2 baseline=2 turn_started=2 (from 2) ui=campaign_map rounds=1 autosaves=2
+VISION inspect: local_mode=campaign_map conf=0.70 detail=high_center_variance turn=2
+ATTEMPT 3/20 game_turn=2  wait status game_turn=2 baseline=2 turn_started=2 (from 2) ui=campaign_map rounds=1 autosaves=2
+VISION inspect: local_mode=campaign_map conf=0.70 detail=high_center_variance turn=2
+ATTEMPT 3/20 game_turn=2  wait status game_turn=2 baseline=2 turn_started=2 (from 2) ui=campaign_map rounds=1 autosaves=2
+VISION inspect: local_mode=campaign_map conf=0.70 detail=high_center_variance turn=2
+ATTEMPT 3/20 game_turn=2  wait status game_turn=2 baseline=2 turn_started=2 (from 2) ui=campaign_map rounds=1 autosaves=2
+VISION inspect: local_mode=campaign_map conf=0.70 detail=high_center_variance turn=2
+ATTEMPT 3/20 game_turn=2  wait status game_turn=2 baseline=2 turn_started=2 (from 2) ui=campaign_map rounds=1 autosaves=2
+VISION inspect: local_mode=campaign_map conf=0.70 detail=high_center_variance turn=2
+ATTEMPT 3/20 game_turn=2  wait status game_turn=2 baseline=2 turn_started=2 (from 2) ui=campaign_map rounds=1 autosaves=2
+VISION inspect: local_mode=modal conf=0.61 detail=panel_over_centre turn=2
+VISION diplomacy: offer buttons accept=(0.454,0.779) reject=(0.498,0.779); clicking reject, then end-talks X
+VISION diplomacy: end-talks X reject=(0.541,0.779); clicking
+ATTEMPT 3/20 game_turn=2  wait status game_turn=2 baseline=2 turn_started=2 (from 2) ui=campaign_map rounds=1 autosaves=2
+VISION inspect: local_mode=campaign_map conf=0.70 detail=high_center_variance turn=2
+ATTEMPT 3/20 game_turn=2  wait status game_turn=2 baseline=2 turn_started=2 (from 2) ui=campaign_map rounds=1 autosaves=2
+ATTEMPT 3/20 game_turn=3  Rome handed turn 3 back
+ATTEMPT 3/20 game_turn=3  OK  turn cycle complete
+ATTEMPT 4/20 game_turn=3  sync UI on turn 3
+VISION inspect: local_mode=campaign_map conf=0.70 detail=high_center_variance turn=3
+ATTEMPT 4/20 game_turn=3  waiting for AO on turn 3
+INFO AO agent: campaign_director busy direct_agent
+ATTEMPT 4/20 game_turn=3  AO answered: besiege
+ATTEMPT 4/20 game_turn=3  directive: besiege
+ATTEMPT 4/20 game_turn=3  orders on turn 3: halt_ai julii, list_characters, march Flavius Julius toward segesta, run_ai
+MARCH select: row (0.3, 0.415) verified via frustum who=Flavius Julius cards=1
+MARCH pose: ok=True rot=point_to_north w=55.6 h=41.9 aspect=1.327 centre=(67.5,87.1) expected_w=55.6 failed=[]
+MARCH surface: {'variance': 0.005055, 'saturation_mean': 0.6425, 'hue_bins_used': 7, 'edge_density': 0.0682, 'mean_luma': 0.3282, 'legend_warm_left': 0.0295, 'legend_warm_right': 0.0364, 'sample_pixels': 103424, 'roi_norms': [0.3, 0.2, 0.7, 0.48], 'is_map_overlay': False, 'detail': 'textured_map'}
+MARCH client=1280x720 (norms are client-relative) from=(87.0,82.0) to=(83.0,84.0) label=segesta who=Flavius Julius cards=1 dist=4.5 projection=True
+MARCH calib: army_anchor scale=0.0133 at map=(87.0,82.0)
+MARCH project: map=(83.0,84.0) → client=(0.447,0.453) calib=army_anchor residual_rms=0.0000 probes=5 who=Flavius Julius
+MARCH project: glyph at (0.460,0.460) (tried primary)
+MARCH debug frame: data\runtime\map_projection_debug\20260911-123245_hit_Flavius_Julius.jpg
+MARCH ordered click=(0.460,0.460) button=right cursor_changed=True vision=False calib=army_anchor who=Flavius Julius cards=1 step=(86.10557280900008, 82.44721359549996)
+VISION inspect: local_mode=campaign_map conf=0.70 detail=high_center_variance turn=3
+ATTEMPT 4/20 game_turn=3  end-turn ready check ui=campaign_map buttons=no game_turn=3
+ATTEMPT 4/20 game_turn=3  ready for End Turn
+ATTEMPT 4/20 game_turn=3  ended turn (game_turn=3)
+ATTEMPT 4/20 game_turn=3  waiting for next Julii turn (after 3)
+VISION inspect: local_mode=campaign_map conf=0.70 detail=high_center_variance turn=3
+ATTEMPT 4/20 game_turn=3  wait status game_turn=3 baseline=3 turn_started=3 (from 3) ui=campaign_map rounds=3 autosaves=4
+VISION inspect: local_mode=campaign_map conf=0.70 detail=high_center_variance turn=3
+ATTEMPT 4/20 game_turn=3  wait status game_turn=3 baseline=3 turn_started=3 (from 3) ui=campaign_map rounds=3 autosaves=4
+VISION inspect: local_mode=campaign_map conf=0.70 detail=high_center_variance turn=3
+ATTEMPT 4/20 game_turn=3  wait status game_turn=3 baseline=3 turn_started=3 (from 3) ui=campaign_map rounds=3 autosaves=4
+VISION inspect: local_mode=campaign_map conf=0.70 detail=high_center_variance turn=3
+ATTEMPT 4/20 game_turn=3  wait status game_turn=3 baseline=3 turn_started=3 (from 3) ui=campaign_map rounds=3 autosaves=4
+VISION inspect: local_mode=campaign_map conf=0.70 detail=high_center_variance turn=3
+ATTEMPT 4/20 game_turn=3  wait status game_turn=3 baseline=3 turn_started=3 (from 3) ui=campaign_map rounds=3 autosaves=4
+ATTEMPT 4/20 game_turn=3  Rome handed turn 4 back
+ATTEMPT 4/20 game_turn=4  OK  turn cycle complete
+ATTEMPT 5/20 game_turn=4  sync UI on turn 4
+VISION inspect: local_mode=campaign_map conf=0.70 detail=high_center_variance turn=4
+ATTEMPT 5/20 game_turn=4  waiting for AO on turn 4
+INFO AO agent: campaign_director busy direct_agent
+ATTEMPT 5/20 game_turn=4  AO answered: besiege
+ATTEMPT 5/20 game_turn=4  directive: besiege
+ATTEMPT 5/20 game_turn=4  orders on turn 4: halt_ai julii, list_characters, march Flavius Julius toward segesta, run_ai
+MARCH select: row (0.3, 0.415) verified via frustum who=Flavius Julius cards=1
+MARCH pose: ok=True rot=point_to_north w=55.6 h=41.9 aspect=1.327 centre=(67.5,87.1) expected_w=55.6 failed=[]
+MARCH surface: {'variance': 0.007306, 'saturation_mean': 0.3932, 'hue_bins_used': 8, 'edge_density': 0.0814, 'mean_luma': 0.3865, 'legend_warm_left': 0.029, 'legend_warm_right': 0.0266, 'sample_pixels': 103424, 'roi_norms': [0.3, 0.2, 0.7, 0.48], 'is_map_overlay': False, 'detail': 'textured_map'}
+MARCH client=1280x720 (norms are client-relative) from=(86.0,82.0) to=(83.0,84.0) label=segesta who=Flavius Julius cards=1 dist=3.6 projection=True
+MARCH calib: army_anchor scale=0.0133 at map=(86.0,82.0)
+MARCH project: map=(83.0,84.0) → client=(0.460,0.453) calib=army_anchor residual_rms=0.0000 probes=5 who=Flavius Julius
+MARCH project: glyph at (0.470,0.460) (tried primary)
+MARCH debug frame: data\runtime\map_projection_debug\20260911-123414_hit_Flavius_Julius.jpg
+MARCH ordered click=(0.470,0.460) button=right cursor_changed=True vision=False calib=army_anchor who=Flavius Julius cards=1 step=(85.16794970566215, 82.55470019622523)
+VISION inspect: local_mode=campaign_map conf=0.70 detail=high_center_variance turn=4
+ATTEMPT 5/20 game_turn=4  end-turn ready check ui=campaign_map buttons=no game_turn=4
+ATTEMPT 5/20 game_turn=4  ready for End Turn
+ATTEMPT 5/20 game_turn=4  ended turn (game_turn=4)
+ATTEMPT 5/20 game_turn=4  waiting for next Julii turn (after 4)
+VISION inspect: local_mode=campaign_map conf=0.70 detail=high_center_variance turn=4
+ATTEMPT 5/20 game_turn=4  wait status game_turn=4 baseline=4 turn_started=4 (from 4) ui=campaign_map rounds=4 autosaves=6
+VISION inspect: local_mode=campaign_map conf=0.70 detail=high_center_variance turn=4
+ATTEMPT 5/20 game_turn=4  wait status game_turn=4 baseline=4 turn_started=4 (from 4) ui=campaign_map rounds=4 autosaves=6
+VISION inspect: local_mode=campaign_map conf=0.70 detail=high_center_variance turn=4
+ATTEMPT 5/20 game_turn=4  wait status game_turn=4 baseline=4 turn_started=4 (from 4) ui=campaign_map rounds=4 autosaves=6
+VISION inspect: local_mode=campaign_map conf=0.70 detail=high_center_variance turn=4
+ATTEMPT 5/20 game_turn=5  wait status game_turn=4 baseline=4 turn_started=4 (from 4) ui=campaign_map rounds=4 autosaves=6
+ATTEMPT 5/20 game_turn=5  Rome handed turn 5 back
+ATTEMPT 5/20 game_turn=5  OK  turn cycle complete
+ATTEMPT 6/20 game_turn=5  sync UI on turn 5
+VISION inspect: local_mode=campaign_map conf=0.70 detail=high_center_variance turn=5
+VISION inspect: local_mode=campaign_map conf=0.70 detail=high_center_variance turn=5
+VISION panel: notice only (parchment_ratio=0.148, no decision, no close X); leaving it and continuing
+VISION inspect: local_mode=modal conf=0.74 detail=left_overlay_panel turn=5
+VISION alert panel: decision buttons accept=(0.443,0.490) reject=(0.462,0.569); clicking reject
+VISION alert panel: dismissing remaining panel
+VISION panel: bounds=(0, 209, 47) parchment_ratio=0.211; clicking close X close=(0.159,0.076) conf=0.65
+VISION panel: close X cleared the panel
+ATTEMPT 6/20 game_turn=5  waiting for AO on turn 5
+INFO AO agent: campaign_director busy direct_agent
+ATTEMPT 6/20 game_turn=5  AO answered: besiege
+ATTEMPT 6/20 game_turn=5  directive: besiege
+ATTEMPT 6/20 game_turn=5  orders on turn 5: halt_ai julii, list_characters, march Flavius Julius toward segesta, run_ai
+MARCH select: row (0.3, 0.415) verified via frustum who=Flavius Julius cards=1
+MARCH pose: ok=True rot=point_to_north w=55.6 h=41.9 aspect=1.327 centre=(67.5,87.1) expected_w=55.6 failed=[]
+MARCH surface: {'variance': 0.005041, 'saturation_mean': 0.6381, 'hue_bins_used': 7, 'edge_density': 0.0685, 'mean_luma': 0.3288, 'legend_warm_left': 0.0293, 'legend_warm_right': 0.0367, 'sample_pixels': 103424, 'roi_norms': [0.3, 0.2, 0.7, 0.48], 'is_map_overlay': False, 'detail': 'textured_map'}
+MARCH client=1280x720 (norms are client-relative) from=(85.0,83.0) to=(83.0,84.0) label=segesta who=Flavius Julius cards=1 dist=2.2 projection=True
+MARCH calib: army_anchor scale=0.0133 at map=(85.0,83.0)
+MARCH project: map=(83.0,84.0) → client=(0.473,0.467) calib=army_anchor residual_rms=0.0000 probes=5 who=Flavius Julius
+MARCH project: glyph at (0.480,0.470) (tried primary)
+MARCH debug frame: data\runtime\map_projection_debug\20260911-123551_hit_Flavius_Julius.jpg
+MARCH ordered click=(0.480,0.470) button=right cursor_changed=True vision=False calib=army_anchor who=Flavius Julius cards=1 step=(84.10557280900008, 83.44721359549996)
+VISION inspect: local_mode=campaign_map conf=0.70 detail=high_center_variance turn=5
+ATTEMPT 6/20 game_turn=5  end-turn ready check ui=campaign_map buttons=no game_turn=5
+ATTEMPT 6/20 game_turn=5  ready for End Turn
+ATTEMPT 6/20 game_turn=5  ended turn (game_turn=5)
+ATTEMPT 6/20 game_turn=5  waiting for next Julii turn (after 5)
+VISION inspect: local_mode=campaign_map conf=0.70 detail=high_center_variance turn=5
+ATTEMPT 6/20 game_turn=5  wait status game_turn=5 baseline=5 turn_started=5 (from 5) ui=campaign_map rounds=5 autosaves=8
+VISION inspect: local_mode=campaign_map conf=0.70 detail=high_center_variance turn=5
+ATTEMPT 6/20 game_turn=5  wait status game_turn=5 baseline=5 turn_started=5 (from 5) ui=campaign_map rounds=5 autosaves=8
+ATTEMPT 6/20 game_turn=5  Rome handed turn 6 back
+ATTEMPT 6/20 game_turn=6  OK  turn cycle complete
+ATTEMPT 7/20 game_turn=6  sync UI on turn 6
+VISION inspect: local_mode=campaign_map conf=0.70 detail=high_center_variance turn=6
+ATTEMPT 7/20 game_turn=6  waiting for AO on turn 6
+INFO AO agent: campaign_director busy direct_agent
+ATTEMPT 7/20 game_turn=6  AO answered: besiege
+ATTEMPT 7/20 game_turn=6  directive: besiege
+ATTEMPT 7/20 game_turn=6  orders on turn 6: halt_ai julii, list_characters, march Flavius Julius toward segesta, run_ai
+MARCH select: row (0.3, 0.415) verified via frustum who=Flavius Julius cards=1
+MARCH pose: ok=True rot=point_to_north w=55.6 h=41.9 aspect=1.327 centre=(67.5,87.1) expected_w=55.6 failed=[]
+MARCH surface: {'variance': 0.007515, 'saturation_mean': 0.368, 'hue_bins_used': 9, 'edge_density': 0.0822, 'mean_luma': 0.3918, 'legend_warm_left': 0.029, 'legend_warm_right': 0.0271, 'sample_pixels': 103424, 'roi_norms': [0.3, 0.2, 0.7, 0.48], 'is_map_overlay': False, 'detail': 'textured_map'}
+MARCH client=1280x720 (norms are client-relative) from=(84.0,83.0) to=(83.0,84.0) label=segesta who=Flavius Julius cards=1 dist=1.4 projection=True
+MARCH calib: army_anchor scale=0.0133 at map=(84.0,83.0)
+MARCH project: map=(83.0,84.0) → client=(0.487,0.467) calib=army_anchor residual_rms=0.0000 probes=4 who=Flavius Julius
+MARCH project: glyph at (0.486,0.466) (tried (0.490,0.470):same; (0.489,0.469):same; (0.487,0.467):same)
+MARCH debug frame: data\runtime\map_projection_debug\20260911-123724_hit_Flavius_Julius.jpg
+MARCH ordered click=(0.486,0.466) button=right cursor_changed=True vision=False calib=army_anchor who=Flavius Julius cards=1 step=(83.29289321881345, 83.70710678118655)
+VISION inspect: local_mode=campaign_map conf=0.70 detail=high_center_variance turn=6
+ATTEMPT 7/20 game_turn=6  end-turn ready check ui=campaign_map buttons=no game_turn=6
+ATTEMPT 7/20 game_turn=6  ready for End Turn
+ATTEMPT 7/20 game_turn=6  ended turn (game_turn=6)
+ATTEMPT 7/20 game_turn=6  waiting for next Julii turn (after 6)
+VISION inspect: local_mode=campaign_map conf=0.70 detail=high_center_variance turn=6
+ATTEMPT 7/20 game_turn=6  wait status game_turn=6 baseline=6 turn_started=6 (from 6) ui=campaign_map rounds=6 autosaves=10
+VISION inspect: local_mode=campaign_map conf=0.70 detail=high_center_variance turn=6
+ATTEMPT 7/20 game_turn=6  wait status game_turn=6 baseline=6 turn_started=6 (from 6) ui=campaign_map rounds=6 autosaves=10
+VISION inspect: local_mode=campaign_map conf=0.70 detail=high_center_variance turn=6
+ATTEMPT 7/20 game_turn=6  wait status game_turn=6 baseline=6 turn_started=6 (from 6) ui=campaign_map rounds=6 autosaves=10
+VISION inspect: local_mode=campaign_map conf=0.70 detail=high_center_variance turn=6
+ATTEMPT 7/20 game_turn=6  wait status game_turn=6 baseline=6 turn_started=6 (from 6) ui=campaign_map rounds=6 autosaves=10
+ATTEMPT 7/20 game_turn=6  Rome handed turn 7 back
+ATTEMPT 7/20 game_turn=7  OK  turn cycle complete
+ATTEMPT 8/20 game_turn=7  sync UI on turn 7
+VISION inspect: local_mode=campaign_map conf=0.70 detail=high_center_variance turn=7
+ATTEMPT 8/20 game_turn=7  waiting for AO on turn 7
+INFO AO agent: campaign_director busy direct_agent
+ATTEMPT 8/20 game_turn=7  AO answered: besiege
+ATTEMPT 8/20 game_turn=7  directive: besiege
+ATTEMPT 8/20 game_turn=7  orders on turn 7: halt_ai julii, list_characters, run_ai
+VISION inspect: local_mode=modal conf=0.85 detail=left_overlay_panel turn=7
+VISION scroll: floating notice, close X=(0.622,0.351); clicking
+VISION scroll: close X cleared the notice
+VISION inspect: local_mode=campaign_map conf=0.70 detail=high_center_variance turn=7
+VISION panel: bounds=(29, 421, 47) parchment_ratio=0.255; clicking close X close=(0.327,0.077) conf=0.64
+VISION panel: close X cleared the panel
+ATTEMPT 8/20 game_turn=7  end-turn ready check ui=campaign_map buttons=no game_turn=7
+ATTEMPT 8/20 game_turn=7  ready for End Turn
+ATTEMPT 8/20 game_turn=7  WARN End Turn did not register
+ATTEMPT 8/20 game_turn=7  FAIL  turn cycle failed or timed out
+ATTEMPT 9/20 game_turn=7  sync UI on turn 7
+VISION inspect: local_mode=modal conf=0.92 detail=left_overlay_panel turn=7
+VISION scroll: floating notice, close X=(0.872,0.105); clicking
+VISION inspect: local_mode=modal conf=0.92 detail=left_overlay_panel turn=7
+VISION scroll: floating notice, close X=(0.872,0.105); clicking
+VISION inspect: local_mode=modal conf=0.92 detail=left_overlay_panel turn=7
+VISION scroll: floating notice, close X=(0.872,0.105); clicking
+VISION inspect: local_mode=modal conf=0.92 detail=left_overlay_panel turn=7
+VISION scroll: floating notice, close X=(0.872,0.105); clicking
+ATTEMPT 9/20 game_turn=7  skip — state=campaign_modal ui=modal
+ATTEMPT 9/20 game_turn=7  FAIL  turn cycle failed or timed out
+ATTEMPT 9/20 game_turn=7  FAIL  circuit_breaker: turn_failed turn=7 state_hash=7
+WARN  turns_ok=6 turns_failed=3 desyncs=3
+OK  campaign advanced 5 turns (endpoints seen: 5 -> 6)
+INFO turn baseline re-read 1x — Rome's saves folder still holds an earlier campaign, so the endpoints above are not a measure of this run
+OK  belief_history=26 armies=5 settlements=8
+OK  attacks_ordered=0 battles_auto_resolved=0
+OK  last directive: besiege
+OK  report: data\runtime\phase2_report.json
+OK  overlay closed
+OK  AO deliberator stopped
+
+FAIL Phase 2 — circuit breaker: identical refusal on the same turn (overlay FAULT published; run ended)
+Exception ignored in: <function _ProactorBasePipeTransport.__del__ at 0x00000213B77F2F20>
+Traceback (most recent call last):
+  File "C:\Users\Zlatko.Lakisic\AppData\Local\Programs\Python\Python312\Lib\asyncio\proactor_events.py", line 116, in __del__
+    _warn(f"unclosed transport {self!r}", ResourceWarning, source=self)
+                               ^^^^^^^^
+  File "C:\Users\Zlatko.Lakisic\AppData\Local\Programs\Python\Python312\Lib\asyncio\proactor_events.py", line 80, in __repr__
+    info.append(f'fd={self._sock.fileno()}')
+                      ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Zlatko.Lakisic\AppData\Local\Programs\Python\Python312\Lib\asyncio\windows_utils.py", line 102, in fileno
+    raise ValueError("I/O operation on closed pipe")
+ValueError: I/O operation on closed pipe
+Exception ignored in: <function BaseSubprocessTransport.__del__ at 0x00000213B77F16C0>
+Traceback (most recent call last):
+  File "C:\Users\Zlatko.Lakisic\AppData\Local\Programs\Python\Python312\Lib\asyncio\base_subprocess.py", line 125, in __del__
+    _warn(f"unclosed transport {self!r}", ResourceWarning, source=self)
+                               ^^^^^^^^
+  File "C:\Users\Zlatko.Lakisic\AppData\Local\Programs\Python\Python312\Lib\asyncio\base_subprocess.py", line 78, in __repr__
+    info.append(f'stdout={stdout.pipe}')
+                         ^^^^^^^^^^^^^
+  File "C:\Users\Zlatko.Lakisic\AppData\Local\Programs\Python\Python312\Lib\asyncio\proactor_events.py", line 80, in __repr__
+    info.append(f'fd={self._sock.fileno()}')
+                      ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Zlatko.Lakisic\AppData\Local\Programs\Python\Python312\Lib\asyncio\windows_utils.py", line 102, in fileno
+    raise ValueError("I/O operation on closed pipe")
+ValueError: I/O operation on closed pipe
+Exception ignored in: <function _ProactorBasePipeTransport.__del__ at 0x00000213B77F2F20>
+Traceback (most recent call last):
+  File "C:\Users\Zlatko.Lakisic\AppData\Local\Programs\Python\Python312\Lib\asyncio\proactor_events.py", line 116, in __del__
+    _warn(f"unclosed transport {self!r}", ResourceWarning, source=self)
+                               ^^^^^^^^
+  File "C:\Users\Zlatko.Lakisic\AppData\Local\Programs\Python\Python312\Lib\asyncio\proactor_events.py", line 80, in __repr__
+    info.append(f'fd={self._sock.fileno()}')
+                      ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Zlatko.Lakisic\AppData\Local\Programs\Python\Python312\Lib\asyncio\windows_utils.py", line 102, in fileno
+    raise ValueError("I/O operation on closed pipe")
+ValueError: I/O operation on closed pipe
+Task was destroyed but it is pending!
+task: <Task pending name='Task-4' coro=<LocalMcpHost._drain() running at D:\Projects\agentic-orchestration-reach\python\ao_reach\local_mcp_host.py:160> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+Task was destroyed but it is pending!
+task: <Task pending name='Task-5' coro=<LocalMcpHost._drain() running at D:\Projects\agentic-orchestration-reach\python\ao_reach\local_mcp_host.py:160> wait_for=<Future pending cb=[Task.task_wakeup()]>>
