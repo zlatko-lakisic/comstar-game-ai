@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 from ao_reach.mcp_bootstrap import SessionMcpBootstrap
 from ao_reach.session_bridge import SessionBridge
@@ -28,8 +28,10 @@ class ReachSession:
         *,
         bridge: SessionBridge | None = None,
         enable_game_query: bool = True,
+        on_agent_state: Callable[[Any], None] | None = None,
     ) -> None:
         self.bridge = bridge or SessionBridge()
+        self._on_agent_state = on_agent_state
         self._mcp_bootstrap: SessionMcpBootstrap | None = (
             GameQueryMcpBootstrap() if enable_game_query else None
         )
@@ -52,19 +54,26 @@ class ReachSession:
 
     async def start(self, config: dict[str, Any] | None = None) -> None:
         from comstar_game_ai.agent.answer_cache import assert_answer_cache_disabled
+        from comstar_game_ai.agent.reach.agent_lifecycle import attach_agent_state_listener
         from comstar_game_ai.shared.config import load_config
 
         assert_answer_cache_disabled(config if config is not None else load_config())
         reach_cfg = build_connection_config(config)
+        attach_agent_state_listener(
+            self.bridge,
+            on_update=self._on_agent_state,
+            write_status_file=True,
+        )
         await self.bridge.start(
             config=reach_cfg,
             overlay_root=str(overlay_root()),
             mcp_bootstrap=self._mcp_bootstrap,
         )
         _LOGGER.info(
-            "Reach session active: agents=%s mcps=%s",
+            "Reach session active: agents=%s mcps=%s agent_state=%s",
             self.bridge.registered_agent_ids,
             self.bridge.registered_mcp_ids,
+            getattr(self.bridge, "agent_state_capability", False),
         )
 
     async def refresh_overlay(self) -> None:
