@@ -49,6 +49,15 @@ def check_preconditions(
     build_ok, build_msg = check_windows_build()
     result.require(build_ok, build_msg)
 
+    from comstar_game_ai.game_io.capture.factory import configured_capture_backend
+
+    backend = configured_capture_backend(cfg)
+    result.require(
+        backend == "wgc",
+        f"capture.backend={backend!r} is unsupported for runs; use wgc "
+        "(mss remains constructible only from A/B tooling, not via config)",
+    )
+
     subs = cfg.get("game", {}).get("window_title_substrings") or ["Rome"]
     game = find_game_window(subs)
     if require_game:

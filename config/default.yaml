@@ -6,6 +6,10 @@ ao:
   mtls_material_dir: ".cursor/secrets/mtls/comstar-game-ai"
   model: phi4:14b  # F6 / §6: Segesta floor; see docs/ada-model.md
   vision_model: "llava:7b"
+  # Catalog id on Ada (AO jetson/extra). Do not pack client.detect_* into the
+  # default overlay until Ada detection ensure keeps the Reach WS alive.
+  detection_agent: "detect_yolox_nano"
+  detection_rtw_agent: "client.detect_rtw_campaign"
 
 game:
   window_title_substrings:
@@ -26,7 +30,9 @@ display:
 capture:
   ring_buffer_seconds: 5
   target_fps: 30
-  backend: wgc  # wgc | printwindow
+  # Production: wgc only (Windows Graphics Capture of the game hwnd).
+  # mss is constructible from A/B scripts but refused at Process A startup.
+  backend: wgc
 
 campaign:
   mode: grand_campaign
@@ -137,3 +143,9 @@ paths:
 ipc:
   event_socket_host: "127.0.0.1"
   event_socket_port: 9876
+
+overlay:
+  # Opt-in SetWindowDisplayAffinity(WDA_EXCLUDEFROMCAPTURE). Off by default so
+  # OBS can show the overlay; WGC window capture of the game is primary for
+  # frame hygiene. The capture-exclusion self-test must still pass with this false.
+  exclude_from_capture: false

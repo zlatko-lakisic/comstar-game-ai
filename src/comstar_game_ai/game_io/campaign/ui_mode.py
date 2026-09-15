@@ -60,9 +60,9 @@ class UiClassification:
 def _bgra_to_rgb_image(frame: CaptureFrame):
     from PIL import Image
 
-    # MSS returns BGRA (4 bytes per pixel); PrintWindow returns BGRX (also 4 bytes).
-    # PIL "BGRX" decoder handles both since it ignores the 4th channel.
-    raw_mode = "BGRX" if frame.backend != "mss" else "BGRA"
+    # Ring buffer / grab contract is BGRA for wgc and mss. PrintWindow is BGRX;
+    # PIL "BGRX" ignores alpha so either label works when alpha is opaque.
+    raw_mode = "BGRA" if frame.backend in {"mss", "wgc"} else "BGRX"
     try:
         return Image.frombytes("RGB", (frame.width, frame.height), frame.data, "raw", raw_mode)
     except Exception:
@@ -270,9 +270,9 @@ def grab_and_classify(hwnd: int | None) -> UiClassification:
     if not hwnd:
         return UiClassification(mode=CampaignUiMode.UNKNOWN, confidence=0.0, detail="no_hwnd")
     try:
-        from comstar_game_ai.game_io.capture.window_capture import WindowCapture
+        from comstar_game_ai.game_io.capture.factory import grab_capture_frame
 
-        return classify_frame(WindowCapture(hwnd).grab())
+        return classify_frame(grab_capture_frame(hwnd))
     except Exception as exc:
         _LOGGER.debug("grab_and_classify failed: %s", exc)
         return UiClassification(mode=CampaignUiMode.UNKNOWN, confidence=0.0, detail=str(exc))
@@ -283,9 +283,9 @@ def grab_rgb_image(hwnd: int | None):
     if not hwnd:
         return None
     try:
-        from comstar_game_ai.game_io.capture.window_capture import WindowCapture
+        from comstar_game_ai.game_io.capture.factory import grab_capture_frame
 
-        frame = WindowCapture(hwnd).grab()
+        frame = grab_capture_frame(hwnd)
         if frame is None or not frame.data or frame.width < 2 or frame.height < 2:
             return None
         return _bgra_to_rgb_image(frame)

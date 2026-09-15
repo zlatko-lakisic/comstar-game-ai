@@ -253,7 +253,9 @@ Optimistic execution with periodic reconciliation. Most actions succeed.
 
 **WGC window capture of the game window is primary.** Not Desktop Duplication. The reason is not the overlay: Desktop Duplication captures the whole monitor, so Windows toasts, the Steam overlay and Discord popups land in frames, and none can be excluded by display affinity because they are not our windows.
 
-`WDA_EXCLUDEFROMCAPTURE` (`0x00000011`) on every overlay surface as a second line. Top level windows only, owned by the calling process.
+Implemented as `capture.backend: wgc` (Windows Graphics Capture keyed to the Rome hwnd, client-area crop). `mss` remains constructible from A/B tooling only; Process A **refuses to start** if config sets `capture.backend` to anything other than `wgc`.
+
+`WDA_EXCLUDEFROMCAPTURE` (`0x00000011`) on overlay surfaces is an opt-in second line (`overlay.exclude_from_capture`). Top level windows only, owned by the calling process.
 
 Keep a rolling ring buffer of recent frames so the selector can look **backwards** after an event, rather than streaming forwards.
 
@@ -265,7 +267,7 @@ Compose each view from the pieces that carry decision relevant information: cont
 
 ### 7.3 Overlay surfaces
 
-Four, all click through and non activating, all excluded from capture:
+Four, all click through and non activating. Capture affinity is opt-in (`overlay.exclude_from_capture`, default off) so the overlay can appear on stream; frame hygiene relies on WGC window capture of the game (§7.1), proved by the capture-exclusion self test.
 
 1. **Edge glow** sized to the game window, colour encoding state: deliberating, acting, suspended, fault, idle. A text chip names the state so the colour need not be memorised.
 2. **Virtual keyboard**, only the keys the agent uses, fades in on press and out after idle. Held modifiers stay lit, taps flash.

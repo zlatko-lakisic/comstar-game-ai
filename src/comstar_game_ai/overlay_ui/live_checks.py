@@ -18,6 +18,7 @@ from dataclasses import dataclass, field
 
 from comstar_game_ai.overlay_ui.checks import (
     CheckOutcome,
+    capture_backend_verdict,
     capture_exclusion_verdict,
     click_through_verdict,
     non_activation_verdict,
@@ -105,7 +106,7 @@ def _style_outcome(surfaces) -> CheckOutcome:
         if report is None:
             problems.append(f"{name}: styling did not run")
             continue
-        if not report.capture_excluded:
+        if getattr(surfaces, "exclude_from_capture", False) and not report.capture_excluded:
             problems.append(f"{name}: SetWindowDisplayAffinity failed ({report.detail})")
         absent = missing_styles(int(surface.winId()))
         if absent:
@@ -113,10 +114,15 @@ def _style_outcome(surfaces) -> CheckOutcome:
     if problems:
         return CheckOutcome("overlay_window_styles", False, "; ".join(problems))
     count = len(surfaces.surfaces)
+    affinity = (
+        " and capture-excluded"
+        if getattr(surfaces, "exclude_from_capture", False)
+        else " (capture affinity off)"
+    )
     return CheckOutcome(
         "overlay_window_styles",
         True,
-        f"all {count} surfaces are layered, click-through, non-activating and capture-excluded",
+        f"all {count} surfaces are layered, click-through, non-activating{affinity}",
     )
 
 
@@ -146,7 +152,7 @@ def run_overlay_self_tests(
     from PySide6.QtCore import QEventLoop, QTimer
     from PySide6.QtWidgets import QApplication
 
-    from comstar_game_ai.game_io.campaign.ui_mode import grab_rgb_image
+    from comstar_game_ai.game_io.capture.factory import grab_capture_frame
     from comstar_game_ai.game_io.window import find_game_window
     from comstar_game_ai.overlay_ui.surfaces import OverlaySurfaces
     from comstar_game_ai.shared.config import load_config
@@ -161,9 +167,17 @@ def run_overlay_self_tests(
     countdown(countdown_seconds)
 
     app = QApplication.instance() or QApplication(sys.argv)
+    exclude_from_capture = bool(
+        config.get("overlay", {}).get("exclude_from_capture", False)
+    )
     # Test-pattern mode fills the client area with a colour the game never
-    # produces, so capture exclusion is proved rather than assumed.
-    surfaces = OverlaySurfaces(game.hwnd, test_pattern=True)
+    # produces, so capture exclusion is proved rather than assumed. With
+    # exclude_from_capture false, a pass means WGC window capture is load-bearing.
+    surfaces = OverlaySurfaces(
+        game.hwnd,
+        test_pattern=True,
+        exclude_from_capture=exclude_from_capture,
+    )
     try:
         surfaces.show_all()
         loop = QEventLoop()
@@ -182,13 +196,21 @@ def run_overlay_self_tests(
         ]
         report.record(click_through_verdict(samples, overlay_hwnds=overlay_hwnds))
 
-        frame = grab_rgb_image(game.hwnd)
-        if frame is None:
+        capture_frame = grab_capture_frame(game.hwnd)
+        report.record(
+            capture_backend_verdict(None if capture_frame is None else capture_frame.backend)
+        )
+        if capture_frame is None:
             report.fail("capture returned nothing, so capture exclusion could not be judged")
         else:
-            report.record(capture_exclusion_verdict(frame))
+            from comstar_game_ai.game_io.campaign.ui_mode import _bgra_to_rgb_image
+
+            report.record(capture_exclusion_verdict(_bgra_to_rgb_image(capture_frame)))
     finally:
         surfaces.close_all()
         app.processEvents()
+        from comstar_game_ai.game_io.capture.wgc_capture import release_wgc_capture
+
+        release_wgc_capture(game.hwnd)
 
     return report

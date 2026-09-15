@@ -1,0 +1,257 @@
+2026-09-11 12:27:08,949 INFO comstar_game_ai.agent.answer_cache: AGENTIC_ANSWER_CACHE asserted disabled
+2026-09-11 12:27:08,963 INFO comstar_game_ai.agent.answer_cache: AGENTIC_ANSWER_CACHE asserted disabled
+2026-09-11 12:27:11,910 INFO comstar_game_ai.agent.reach.agent_lifecycle: AO agent_state: battle_director starting overlay_register
+2026-09-11 12:27:11,911 INFO comstar_game_ai.agent.reach.agent_lifecycle: AO agent_state: campaign_director starting overlay_register
+2026-09-11 12:27:11,912 INFO comstar_game_ai.agent.reach.agent_lifecycle: AO agent_state: consolidator starting overlay_register
+2026-09-11 12:27:11,912 INFO comstar_game_ai.agent.reach.agent_lifecycle: AO agent_state: doctrine_ingestor starting overlay_register
+2026-09-11 12:27:11,913 INFO comstar_game_ai.agent.reach.agent_lifecycle: AO agent_state: map_target_vision starting overlay_register
+2026-09-11 12:27:11,914 INFO comstar_game_ai.agent.reach.agent_lifecycle: AO agent_state: modal_vision starting overlay_register
+2026-09-11 12:27:11,914 INFO comstar_game_ai.agent.reach.agent_lifecycle: AO agent_state: narrator starting overlay_register
+2026-09-11 12:27:11,915 INFO comstar_game_ai.agent.reach.agent_lifecycle: AO agent_state: opponent_modeler starting overlay_register
+2026-09-11 12:27:11,916 INFO comstar_game_ai.agent.reach.agent_lifecycle: AO agent_state: post_mortem starting overlay_register
+2026-09-11 12:27:11,934 INFO comstar_game_ai.agent.reach.session: Reach session active: agents=['client.battle_director', 'client.campaign_director', 'client.consolidator', 'client.doctrine_ingestor', 'client.map_target_vision', 'client.modal_vision', 'client.narrator', 'client.opponent_modeler', 'client.post_mortem'] mcps=['client.game_query'] agent_state=True
+2026-09-11 12:27:11,934 INFO comstar_game_ai.agent.reach.agent_lifecycle: AO agent_state: battle_director ready overlay_ack
+2026-09-11 12:27:11,934 INFO comstar_game_ai.agent.sync_deliberator: sync deliberator ready
+2026-09-11 12:27:11,935 INFO comstar_game_ai.agent.reach.agent_lifecycle: AO agent_state: campaign_director ready overlay_ack
+2026-09-11 12:27:11,936 INFO comstar_game_ai.agent.reach.agent_lifecycle: AO agent_state: consolidator ready overlay_ack
+2026-09-11 12:27:11,937 INFO comstar_game_ai.agent.reach.agent_lifecycle: AO agent_state: doctrine_ingestor ready overlay_ack
+2026-09-11 12:27:11,937 INFO comstar_game_ai.agent.reach.agent_lifecycle: AO agent_state: map_target_vision ready overlay_ack
+2026-09-11 12:27:11,938 INFO comstar_game_ai.agent.reach.agent_lifecycle: AO agent_state: modal_vision ready overlay_ack
+2026-09-11 12:27:11,939 INFO comstar_game_ai.agent.reach.agent_lifecycle: AO agent_state: narrator ready overlay_ack
+2026-09-11 12:27:11,939 INFO comstar_game_ai.agent.reach.agent_lifecycle: AO agent_state: opponent_modeler ready overlay_ack
+2026-09-11 12:27:11,940 INFO comstar_game_ai.agent.reach.agent_lifecycle: AO agent_state: post_mortem ready overlay_ack
+2026-09-11 12:27:25,058 INFO comstar_game_ai.agent.sync_deliberator: blocking on AO director for turn 6 (ceiling 1860s)
+2026-09-11 12:27:25,067 INFO comstar_game_ai.agent.belief.refresh: belief advanced turn=6 elapsed=5 decayed=20 refreshed=none
+2026-09-11 12:27:25,077 INFO comstar_game_ai.agent.context_budget: turn 6 prompt budget: composed_tokens_est=1050 num_ctx=8192 question_id=campaign-6-a010431f
+2026-09-11 12:27:25,081 INFO comstar_game_ai.agent.reach.director: AO ready: client.campaign_director state=ready model=None
+2026-09-11 12:27:25,082 INFO comstar_game_ai.agent.reach.agent_lifecycle: AO agent_state: campaign_director busy direct_agent
+2026-09-11 12:27:25,083 INFO comstar_game_ai.agent.reach.agent_lifecycle: AO agent_state: campaign_director busy direct_agent
+2026-09-11 12:27:30,065 INFO comstar_game_ai.agent.sync_deliberator: AO agent: campaign_director busy direct_agent
+2026-09-11 12:27:47,444 WARNING comstar_game_ai.agent.hold_floor: hold floor turn=6 action=reask model_because='no threats, no candidates, standing directive is in progress' predictor={'settlement_id': 'set_segesta', 'nearest_general_id': 'gen_flavius_julius', 'turns_to_reach': 1, 'garrison': 'weaker', 'confidence': 0.6, 'age_turns': 5, 'threats': [], 'candidates_head': ['set_segesta  owner fac_slave  1 turns  garrison weaker  confidence 0.6  age 5', 'set_capua  owner fac_romans_scipii  2 turns  garrison stronger  confidence 0.6  age 5', 'set_mediolanium  owner fac_gauls  2 turns  garrison similar  confidence 0.6  age 5']}
+2026-09-11 12:27:47,444 INFO comstar_game_ai.agent.campaign_accept: accepted campaign directive turn=6 objective=hold actor=None target=None commit=None because='hold rejected by floor: reachable weaker set_segesta via gen_flavius_julius in 1 turns'
+2026-09-11 12:27:47,444 WARNING comstar_game_ai.agent.runtime: turn 6 hold floor reask: predictor={'settlement_id': 'set_segesta', 'nearest_general_id': 'gen_flavius_julius', 'turns_to_reach': 1, 'garrison': 'weaker', 'confidence': 0.6, 'age_turns': 5, 'threats': [], 'candidates_head': ['set_segesta  owner fac_slave  1 turns  garrison weaker  confidence 0.6  age 5', 'set_capua  owner fac_romans_scipii  2 turns  garrison stronger  confidence 0.6  age 5', 'set_mediolanium  owner fac_gauls  2 turns  garrison similar  confidence 0.6  age 5']}
+2026-09-11 12:27:47,444 INFO comstar_game_ai.agent.reach.agent_lifecycle: waiting for client.campaign_director ready (now busy, safety=900s)
+2026-09-11 12:27:47,445 INFO comstar_game_ai.agent.reach.agent_lifecycle: AO agent_state: campaign_director ready run_end
+2026-09-11 12:27:47,445 INFO comstar_game_ai.agent.reach.director: AO ready: client.campaign_director state=ready model=None
+2026-09-11 12:27:47,446 INFO comstar_game_ai.agent.reach.agent_lifecycle: AO agent_state: campaign_director busy direct_agent
+2026-09-11 12:27:47,449 INFO comstar_game_ai.agent.reach.agent_lifecycle: AO agent_state: campaign_director busy direct_agent
+2026-09-11 12:28:11,640 WARNING comstar_game_ai.agent.hold_floor: hold floor turn=6 action=upgrade model_because='missing_actor_or_target' predictor={'settlement_id': 'set_segesta', 'nearest_general_id': 'gen_flavius_julius', 'turns_to_reach': 1, 'garrison': 'weaker', 'confidence': 0.6, 'age_turns': 5, 'threats': [], 'candidates_head': ['set_segesta  owner fac_slave  1 turns  garrison weaker  confidence 0.6  age 5', 'set_capua  owner fac_romans_scipii  2 turns  garrison stronger  confidence 0.6  age 5', 'set_mediolanium  owner fac_gauls  2 turns  garrison similar  confidence 0.6  age 5']}
+2026-09-11 12:28:11,640 INFO comstar_game_ai.agent.hold_floor: hold floor upgraded turn=6 to besiege gen_flavius_julius -> set_segesta
+2026-09-11 12:28:11,641 INFO comstar_game_ai.agent.campaign_accept: accepted campaign directive turn=6 objective=besiege actor=gen_flavius_julius target=set_segesta commit=8 because='hold floor upgraded: reachable weaker set_segesta (1 turns, garrison weaker); model said: missing_actor_or_target'
+2026-09-11 12:28:11,641 INFO comstar_game_ai.agent.runtime: turn 6 game_query usage: calls=0 changed=0
+2026-09-11 12:28:11,642 INFO comstar_game_ai.agent.runtime: turn 6 directive: besiege (hold floor upgraded: reachable weaker set_segesta (1 turns, garrison weaker); model said: missing_actor_or_target) belief_hash=5107ceff payload_hash=67eedbac
+2026-09-11 12:28:11,642 INFO comstar_game_ai.agent.reach.agent_lifecycle: AO agent_state: campaign_director ready run_end
+2026-09-11 12:28:19,701 INFO comstar_game_ai.game_io.campaign.march: march: frustum centre=(69.5,90.3) from=(89.0,82.0) dist=21.2 match=True
+2026-09-11 12:28:25,942 INFO comstar_game_ai.game_io.campaign.camera_pose: MARCH pose: ok=False rot=point_to_north w=55.6 h=41.9 aspect=1.327 centre=(67.5,87.1) expected_w=55.6 failed=['frustum_centre']
+2026-09-11 12:28:25,942 INFO comstar_game_ai.game_io.campaign.march: march refused: pose_unverified:frustum_centre
+2026-09-11 12:28:25,942 WARNING comstar_game_ai.game_io.drivers.hardcoded_campaign: march failed: march Flavius Julius toward segesta (pose_unverified:frustum_centre)
+2026-09-11 12:28:26,811 INFO comstar_game_ai.agent.sync_deliberator: blocking on AO director for turn 6 (ceiling 1860s)
+2026-09-11 12:28:26,820 INFO comstar_game_ai.agent.belief.refresh: belief advanced turn=6 elapsed=0 decayed=0 refreshed=none
+2026-09-11 12:28:26,834 INFO comstar_game_ai.agent.context_budget: turn 6 prompt budget: composed_tokens_est=1050 num_ctx=8192 question_id=campaign-6-0fecc849
+2026-09-11 12:28:26,838 INFO comstar_game_ai.agent.reach.director: AO ready: client.campaign_director state=ready model=None
+2026-09-11 12:28:26,839 INFO comstar_game_ai.agent.reach.agent_lifecycle: AO agent_state: campaign_director busy direct_agent
+2026-09-11 12:28:26,841 INFO comstar_game_ai.agent.reach.agent_lifecycle: AO agent_state: campaign_director busy direct_agent
+2026-09-11 12:28:31,818 INFO comstar_game_ai.agent.sync_deliberator: AO agent: campaign_director busy direct_agent
+2026-09-11 12:28:50,666 WARNING comstar_game_ai.agent.hold_floor: hold floor turn=6 action=reask model_because='no threats observed, no candidates to prioritize' predictor={'settlement_id': 'set_segesta', 'nearest_general_id': 'gen_flavius_julius', 'turns_to_reach': 1, 'garrison': 'weaker', 'confidence': 0.6, 'age_turns': 5, 'threats': [], 'candidates_head': ['set_segesta  owner fac_slave  1 turns  garrison weaker  confidence 0.6  age 5', 'set_capua  owner fac_romans_scipii  2 turns  garrison stronger  confidence 0.6  age 5', 'set_mediolanium  owner fac_gauls  2 turns  garrison similar  confidence 0.6  age 5']}
+2026-09-11 12:28:50,666 INFO comstar_game_ai.agent.campaign_accept: accepted campaign directive turn=6 objective=hold actor=None target=None commit=None because='hold rejected by floor: reachable weaker set_segesta via gen_flavius_julius in 1 turns'
+2026-09-11 12:28:50,666 WARNING comstar_game_ai.agent.runtime: turn 6 hold floor reask: predictor={'settlement_id': 'set_segesta', 'nearest_general_id': 'gen_flavius_julius', 'turns_to_reach': 1, 'garrison': 'weaker', 'confidence': 0.6, 'age_turns': 5, 'threats': [], 'candidates_head': ['set_segesta  owner fac_slave  1 turns  garrison weaker  confidence 0.6  age 5', 'set_capua  owner fac_romans_scipii  2 turns  garrison stronger  confidence 0.6  age 5', 'set_mediolanium  owner fac_gauls  2 turns  garrison similar  confidence 0.6  age 5']}
+2026-09-11 12:28:50,666 INFO comstar_game_ai.agent.reach.agent_lifecycle: waiting for client.campaign_director ready (now busy, safety=900s)
+2026-09-11 12:28:50,666 INFO comstar_game_ai.agent.reach.agent_lifecycle: AO agent_state: campaign_director ready run_end
+2026-09-11 12:28:50,667 INFO comstar_game_ai.agent.reach.director: AO ready: client.campaign_director state=ready model=None
+2026-09-11 12:28:50,667 INFO comstar_game_ai.agent.reach.agent_lifecycle: AO agent_state: campaign_director busy direct_agent
+2026-09-11 12:28:50,671 INFO comstar_game_ai.agent.reach.agent_lifecycle: AO agent_state: campaign_director busy direct_agent
+2026-09-11 12:29:15,410 WARNING comstar_game_ai.agent.hold_floor: hold floor turn=6 action=upgrade model_because='missing_actor_or_target' predictor={'settlement_id': 'set_segesta', 'nearest_general_id': 'gen_flavius_julius', 'turns_to_reach': 1, 'garrison': 'weaker', 'confidence': 0.6, 'age_turns': 5, 'threats': [], 'candidates_head': ['set_segesta  owner fac_slave  1 turns  garrison weaker  confidence 0.6  age 5', 'set_capua  owner fac_romans_scipii  2 turns  garrison stronger  confidence 0.6  age 5', 'set_mediolanium  owner fac_gauls  2 turns  garrison similar  confidence 0.6  age 5']}
+2026-09-11 12:29:15,411 INFO comstar_game_ai.agent.hold_floor: hold floor upgraded turn=6 to besiege gen_flavius_julius -> set_segesta
+2026-09-11 12:29:15,411 INFO comstar_game_ai.agent.campaign_accept: accepted campaign directive turn=6 objective=besiege actor=gen_flavius_julius target=set_segesta commit=8 because='hold floor upgraded: reachable weaker set_segesta (1 turns, garrison weaker); model said: missing_actor_or_target'
+2026-09-11 12:29:15,412 INFO comstar_game_ai.agent.runtime: turn 6 game_query usage: calls=0 changed=0
+2026-09-11 12:29:15,412 INFO comstar_game_ai.agent.runtime: turn 6 directive: besiege (hold floor upgraded: reachable weaker set_segesta (1 turns, garrison weaker); model said: missing_actor_or_target) belief_hash=5107ceff payload_hash=67eedbac
+2026-09-11 12:29:15,412 INFO comstar_game_ai.agent.reach.agent_lifecycle: AO agent_state: campaign_director ready run_end
+2026-09-11 12:29:23,360 INFO comstar_game_ai.game_io.campaign.march: march: frustum centre=(67.5,87.1) from=(89.0,82.0) dist=22.0 match=False
+2026-09-11 12:29:29,585 INFO comstar_game_ai.game_io.campaign.march: march: frustum centre=(69.5,86.3) from=(89.0,82.0) dist=19.9 match=True
+2026-09-11 12:29:35,830 INFO comstar_game_ai.game_io.campaign.camera_pose: MARCH pose: ok=True rot=point_to_north w=57.0 h=40.3 aspect=1.412 centre=(69.5,86.3) expected_w=55.6 failed=[]
+2026-09-11 12:29:36,066 INFO comstar_game_ai.game_io.campaign.map_surface: map_surface: {'variance': 0.006444, 'saturation_mean': 0.642, 'hue_bins_used': 8, 'edge_density': 0.0723, 'mean_luma': 0.3813, 'legend_warm_left': 0.0294, 'legend_warm_right': 0.0197, 'sample_pixels': 103424, 'roi_norms': [0.3, 0.2, 0.7, 0.48], 'is_map_overlay': False, 'detail': 'textured_map'}
+2026-09-11 12:29:43,260 INFO comstar_game_ai.game_io.campaign.march: march ordered for Flavius Julius click=(0.440,0.460) button=right cursor_changed=True vision=False calib=army_anchor step=(88.05131670194949, 82.31622776601684) cards=1
+2026-09-11 12:29:45,558 INFO comstar_game_ai.game_io.campaign.end_turn: turn ended via pydirect_shift_enter (autosaved turn 1)
+2026-09-11 12:29:45,558 INFO comstar_game_ai.game_io.console.romeshell: RomeShell: end_turn ok via pydirect_shift_enter
+2026-09-11 12:29:57,602 INFO comstar_game_ai.agent.sync_deliberator: blocking on AO director for turn 2 (ceiling 1860s)
+2026-09-11 12:29:57,611 INFO comstar_game_ai.agent.belief.refresh: belief advanced turn=2 elapsed=1 decayed=20 refreshed=none
+2026-09-11 12:29:57,624 INFO comstar_game_ai.agent.context_budget: turn 2 prompt budget: composed_tokens_est=1050 num_ctx=8192 question_id=campaign-2-54908826
+2026-09-11 12:29:57,628 INFO comstar_game_ai.agent.reach.director: AO ready: client.campaign_director state=ready model=None
+2026-09-11 12:29:57,628 INFO comstar_game_ai.agent.reach.agent_lifecycle: AO agent_state: campaign_director busy direct_agent
+2026-09-11 12:29:57,630 INFO comstar_game_ai.agent.reach.agent_lifecycle: AO agent_state: campaign_director busy direct_agent
+2026-09-11 12:30:02,610 INFO comstar_game_ai.agent.sync_deliberator: AO agent: campaign_director busy direct_agent
+2026-09-11 12:30:21,326 WARNING comstar_game_ai.agent.hold_floor: hold floor turn=2 action=reask model_because='no threats observed, no candidates with higher priority' predictor={'settlement_id': 'set_segesta', 'nearest_general_id': 'gen_flavius_julius', 'turns_to_reach': 1, 'garrison': 'weaker', 'confidence': 0.6, 'age_turns': 1, 'threats': [], 'candidates_head': ['set_segesta  owner fac_slave  1 turns  garrison weaker  confidence 0.6  age 1', 'set_capua  owner fac_romans_scipii  2 turns  garrison stronger  confidence 0.6  age 1', 'set_mediolanium  owner fac_gauls  2 turns  garrison similar  confidence 0.6  age 1']}
+2026-09-11 12:30:21,327 INFO comstar_game_ai.agent.campaign_accept: accepted campaign directive turn=2 objective=hold actor=None target=None commit=None because='hold rejected by floor: reachable weaker set_segesta via gen_flavius_julius in 1 turns'
+2026-09-11 12:30:21,327 WARNING comstar_game_ai.agent.runtime: turn 2 hold floor reask: predictor={'settlement_id': 'set_segesta', 'nearest_general_id': 'gen_flavius_julius', 'turns_to_reach': 1, 'garrison': 'weaker', 'confidence': 0.6, 'age_turns': 1, 'threats': [], 'candidates_head': ['set_segesta  owner fac_slave  1 turns  garrison weaker  confidence 0.6  age 1', 'set_capua  owner fac_romans_scipii  2 turns  garrison stronger  confidence 0.6  age 1', 'set_mediolanium  owner fac_gauls  2 turns  garrison similar  confidence 0.6  age 1']}
+2026-09-11 12:30:21,327 INFO comstar_game_ai.agent.reach.agent_lifecycle: waiting for client.campaign_director ready (now busy, safety=900s)
+2026-09-11 12:30:21,327 INFO comstar_game_ai.agent.reach.agent_lifecycle: AO agent_state: campaign_director ready run_end
+2026-09-11 12:30:21,327 INFO comstar_game_ai.agent.reach.director: AO ready: client.campaign_director state=ready model=None
+2026-09-11 12:30:21,327 INFO comstar_game_ai.agent.reach.agent_lifecycle: AO agent_state: campaign_director busy direct_agent
+2026-09-11 12:30:21,330 INFO comstar_game_ai.agent.reach.agent_lifecycle: AO agent_state: campaign_director busy direct_agent
+2026-09-11 12:30:46,912 INFO comstar_game_ai.agent.reach.agent_lifecycle: AO agent_state: campaign_director ready run_end
+2026-09-11 12:30:46,913 WARNING comstar_game_ai.agent.hold_floor: hold floor turn=2 action=upgrade model_because='missing_actor_or_target' predictor={'settlement_id': 'set_segesta', 'nearest_general_id': 'gen_flavius_julius', 'turns_to_reach': 1, 'garrison': 'weaker', 'confidence': 0.6, 'age_turns': 1, 'threats': [], 'candidates_head': ['set_segesta  owner fac_slave  1 turns  garrison weaker  confidence 0.6  age 1', 'set_capua  owner fac_romans_scipii  2 turns  garrison stronger  confidence 0.6  age 1', 'set_mediolanium  owner fac_gauls  2 turns  garrison similar  confidence 0.6  age 1']}
+2026-09-11 12:30:46,913 INFO comstar_game_ai.agent.hold_floor: hold floor upgraded turn=2 to besiege gen_flavius_julius -> set_segesta
+2026-09-11 12:30:46,914 INFO comstar_game_ai.agent.campaign_accept: accepted campaign directive turn=2 objective=besiege actor=gen_flavius_julius target=set_segesta commit=4 because='hold floor upgraded: reachable weaker set_segesta (1 turns, garrison weaker); model said: missing_actor_or_target'
+2026-09-11 12:30:46,914 INFO comstar_game_ai.agent.runtime: turn 2 game_query usage: calls=0 changed=0
+2026-09-11 12:30:46,915 INFO comstar_game_ai.agent.runtime: turn 2 directive: besiege (hold floor upgraded: reachable weaker set_segesta (1 turns, garrison weaker); model said: missing_actor_or_target) belief_hash=3d71da8f payload_hash=35259b45
+2026-09-11 12:30:54,966 INFO comstar_game_ai.game_io.campaign.march: march: frustum centre=(67.5,87.1) from=(88.0,82.0) dist=21.1 match=True
+2026-09-11 12:31:01,221 INFO comstar_game_ai.game_io.campaign.camera_pose: MARCH pose: ok=True rot=point_to_north w=55.6 h=41.9 aspect=1.327 centre=(67.5,87.1) expected_w=55.6 failed=[]
+2026-09-11 12:31:01,420 INFO comstar_game_ai.game_io.campaign.map_surface: map_surface: {'variance': 0.00737, 'saturation_mean': 0.3935, 'hue_bins_used': 8, 'edge_density': 0.0826, 'mean_luma': 0.3836, 'legend_warm_left': 0.029, 'legend_warm_right': 0.0249, 'sample_pixels': 103424, 'roi_norms': [0.3, 0.2, 0.7, 0.48], 'is_map_overlay': False, 'detail': 'textured_map'}
+2026-09-11 12:31:08,615 INFO comstar_game_ai.game_io.campaign.march: march ordered for Flavius Julius click=(0.450,0.460) button=right cursor_changed=True vision=False calib=army_anchor step=(87.07152330911474, 82.37139067635411) cards=1
+2026-09-11 12:31:10,818 INFO comstar_game_ai.game_io.campaign.end_turn: turn ended via pydirect_shift_enter (autosaved turn 2)
+2026-09-11 12:31:10,818 INFO comstar_game_ai.game_io.console.romeshell: RomeShell: end_turn ok via pydirect_shift_enter
+2026-09-11 12:31:34,483 INFO comstar_game_ai.agent.sync_deliberator: blocking on AO director for turn 3 (ceiling 1860s)
+2026-09-11 12:31:34,492 INFO comstar_game_ai.agent.belief.refresh: belief advanced turn=3 elapsed=2 decayed=20 refreshed=none
+2026-09-11 12:31:34,506 INFO comstar_game_ai.agent.context_budget: turn 3 prompt budget: composed_tokens_est=1050 num_ctx=8192 question_id=campaign-3-566a36c7
+2026-09-11 12:31:34,510 INFO comstar_game_ai.agent.reach.director: AO ready: client.campaign_director state=ready model=None
+2026-09-11 12:31:34,510 INFO comstar_game_ai.agent.reach.agent_lifecycle: AO agent_state: campaign_director busy direct_agent
+2026-09-11 12:31:34,515 INFO comstar_game_ai.agent.reach.agent_lifecycle: AO agent_state: campaign_director busy direct_agent
+2026-09-11 12:31:39,491 INFO comstar_game_ai.agent.sync_deliberator: AO agent: campaign_director busy direct_agent
+2026-09-11 12:31:58,662 WARNING comstar_game_ai.agent.hold_floor: hold floor turn=3 action=reask model_because='no threats or candidates' predictor={'settlement_id': 'set_segesta', 'nearest_general_id': 'gen_flavius_julius', 'turns_to_reach': 1, 'garrison': 'weaker', 'confidence': 0.6, 'age_turns': 2, 'threats': [], 'candidates_head': ['set_segesta  owner fac_slave  1 turns  garrison weaker  confidence 0.6  age 2', 'set_capua  owner fac_romans_scipii  2 turns  garrison stronger  confidence 0.6  age 2', 'set_mediolanium  owner fac_gauls  2 turns  garrison similar  confidence 0.6  age 2']}
+2026-09-11 12:31:58,663 INFO comstar_game_ai.agent.campaign_accept: accepted campaign directive turn=3 objective=hold actor=None target=None commit=None because='hold rejected by floor: reachable weaker set_segesta via gen_flavius_julius in 1 turns'
+2026-09-11 12:31:58,663 WARNING comstar_game_ai.agent.runtime: turn 3 hold floor reask: predictor={'settlement_id': 'set_segesta', 'nearest_general_id': 'gen_flavius_julius', 'turns_to_reach': 1, 'garrison': 'weaker', 'confidence': 0.6, 'age_turns': 2, 'threats': [], 'candidates_head': ['set_segesta  owner fac_slave  1 turns  garrison weaker  confidence 0.6  age 2', 'set_capua  owner fac_romans_scipii  2 turns  garrison stronger  confidence 0.6  age 2', 'set_mediolanium  owner fac_gauls  2 turns  garrison similar  confidence 0.6  age 2']}
+2026-09-11 12:31:58,663 INFO comstar_game_ai.agent.reach.agent_lifecycle: waiting for client.campaign_director ready (now busy, safety=900s)
+2026-09-11 12:31:58,663 INFO comstar_game_ai.agent.reach.agent_lifecycle: AO agent_state: campaign_director ready run_end
+2026-09-11 12:31:58,663 INFO comstar_game_ai.agent.reach.director: AO ready: client.campaign_director state=ready model=None
+2026-09-11 12:31:58,664 INFO comstar_game_ai.agent.reach.agent_lifecycle: AO agent_state: campaign_director busy direct_agent
+2026-09-11 12:31:58,667 INFO comstar_game_ai.agent.reach.agent_lifecycle: AO agent_state: campaign_director busy direct_agent
+2026-09-11 12:32:23,899 WARNING comstar_game_ai.agent.hold_floor: hold floor turn=3 action=upgrade model_because='missing_actor_or_target' predictor={'settlement_id': 'set_segesta', 'nearest_general_id': 'gen_flavius_julius', 'turns_to_reach': 1, 'garrison': 'weaker', 'confidence': 0.6, 'age_turns': 2, 'threats': [], 'candidates_head': ['set_segesta  owner fac_slave  1 turns  garrison weaker  confidence 0.6  age 2', 'set_capua  owner fac_romans_scipii  2 turns  garrison stronger  confidence 0.6  age 2', 'set_mediolanium  owner fac_gauls  2 turns  garrison similar  confidence 0.6  age 2']}
+2026-09-11 12:32:23,899 INFO comstar_game_ai.agent.hold_floor: hold floor upgraded turn=3 to besiege gen_flavius_julius -> set_segesta
+2026-09-11 12:32:23,900 INFO comstar_game_ai.agent.campaign_accept: accepted campaign directive turn=3 objective=besiege actor=gen_flavius_julius target=set_segesta commit=5 because='hold floor upgraded: reachable weaker set_segesta (1 turns, garrison weaker); model said: missing_actor_or_target'
+2026-09-11 12:32:23,900 INFO comstar_game_ai.agent.runtime: turn 3 game_query usage: calls=0 changed=0
+2026-09-11 12:32:23,901 INFO comstar_game_ai.agent.runtime: turn 3 directive: besiege (hold floor upgraded: reachable weaker set_segesta (1 turns, garrison weaker); model said: missing_actor_or_target) belief_hash=894eeb51 payload_hash=c7713660
+2026-09-11 12:32:23,901 INFO comstar_game_ai.agent.reach.agent_lifecycle: AO agent_state: campaign_director ready run_end
+2026-09-11 12:32:31,948 INFO comstar_game_ai.game_io.campaign.march: march: frustum centre=(67.5,87.1) from=(87.0,82.0) dist=20.1 match=True
+2026-09-11 12:32:38,189 INFO comstar_game_ai.game_io.campaign.camera_pose: MARCH pose: ok=True rot=point_to_north w=55.6 h=41.9 aspect=1.327 centre=(67.5,87.1) expected_w=55.6 failed=[]
+2026-09-11 12:32:38,394 INFO comstar_game_ai.game_io.campaign.map_surface: map_surface: {'variance': 0.005055, 'saturation_mean': 0.6425, 'hue_bins_used': 7, 'edge_density': 0.0682, 'mean_luma': 0.3282, 'legend_warm_left': 0.0295, 'legend_warm_right': 0.0364, 'sample_pixels': 103424, 'roi_norms': [0.3, 0.2, 0.7, 0.48], 'is_map_overlay': False, 'detail': 'textured_map'}
+2026-09-11 12:32:45,575 INFO comstar_game_ai.game_io.campaign.march: march ordered for Flavius Julius click=(0.460,0.460) button=right cursor_changed=True vision=False calib=army_anchor step=(86.10557280900008, 82.44721359549996) cards=1
+2026-09-11 12:32:47,764 INFO comstar_game_ai.game_io.campaign.end_turn: turn ended via pydirect_shift_enter (autosaved turn 3)
+2026-09-11 12:32:47,764 INFO comstar_game_ai.game_io.console.romeshell: RomeShell: end_turn ok via pydirect_shift_enter
+2026-09-11 12:33:03,918 INFO comstar_game_ai.agent.sync_deliberator: blocking on AO director for turn 4 (ceiling 1860s)
+2026-09-11 12:33:03,926 INFO comstar_game_ai.agent.belief.refresh: belief advanced turn=4 elapsed=3 decayed=20 refreshed=none
+2026-09-11 12:33:03,940 INFO comstar_game_ai.agent.context_budget: turn 4 prompt budget: composed_tokens_est=1050 num_ctx=8192 question_id=campaign-4-be14cf40
+2026-09-11 12:33:03,943 INFO comstar_game_ai.agent.reach.director: AO ready: client.campaign_director state=ready model=None
+2026-09-11 12:33:03,944 INFO comstar_game_ai.agent.reach.agent_lifecycle: AO agent_state: campaign_director busy direct_agent
+2026-09-11 12:33:03,948 INFO comstar_game_ai.agent.reach.agent_lifecycle: AO agent_state: campaign_director busy direct_agent
+2026-09-11 12:33:08,925 INFO comstar_game_ai.agent.sync_deliberator: AO agent: campaign_director busy direct_agent
+2026-09-11 12:33:27,267 WARNING comstar_game_ai.agent.hold_floor: hold floor turn=4 action=reask model_because='no threats, no candidates, standing directive not completed' predictor={'settlement_id': 'set_segesta', 'nearest_general_id': 'gen_flavius_julius', 'turns_to_reach': 1, 'garrison': 'weaker', 'confidence': 0.6, 'age_turns': 3, 'threats': [], 'candidates_head': ['set_segesta  owner fac_slave  1 turns  garrison weaker  confidence 0.6  age 3', 'set_capua  owner fac_romans_scipii  2 turns  garrison stronger  confidence 0.6  age 3', 'set_mediolanium  owner fac_gauls  2 turns  garrison similar  confidence 0.6  age 3']}
+2026-09-11 12:33:27,268 INFO comstar_game_ai.agent.campaign_accept: accepted campaign directive turn=4 objective=hold actor=None target=None commit=None because='hold rejected by floor: reachable weaker set_segesta via gen_flavius_julius in 1 turns'
+2026-09-11 12:33:27,268 WARNING comstar_game_ai.agent.runtime: turn 4 hold floor reask: predictor={'settlement_id': 'set_segesta', 'nearest_general_id': 'gen_flavius_julius', 'turns_to_reach': 1, 'garrison': 'weaker', 'confidence': 0.6, 'age_turns': 3, 'threats': [], 'candidates_head': ['set_segesta  owner fac_slave  1 turns  garrison weaker  confidence 0.6  age 3', 'set_capua  owner fac_romans_scipii  2 turns  garrison stronger  confidence 0.6  age 3', 'set_mediolanium  owner fac_gauls  2 turns  garrison similar  confidence 0.6  age 3']}
+2026-09-11 12:33:27,268 INFO comstar_game_ai.agent.reach.agent_lifecycle: waiting for client.campaign_director ready (now busy, safety=900s)
+2026-09-11 12:33:27,268 INFO comstar_game_ai.agent.reach.agent_lifecycle: AO agent_state: campaign_director ready run_end
+2026-09-11 12:33:27,269 INFO comstar_game_ai.agent.reach.director: AO ready: client.campaign_director state=ready model=None
+2026-09-11 12:33:27,269 INFO comstar_game_ai.agent.reach.agent_lifecycle: AO agent_state: campaign_director busy direct_agent
+2026-09-11 12:33:27,273 INFO comstar_game_ai.agent.reach.agent_lifecycle: AO agent_state: campaign_director busy direct_agent
+2026-09-11 12:33:52,845 WARNING comstar_game_ai.agent.hold_floor: hold floor turn=4 action=upgrade model_because='missing_actor_or_target' predictor={'settlement_id': 'set_segesta', 'nearest_general_id': 'gen_flavius_julius', 'turns_to_reach': 1, 'garrison': 'weaker', 'confidence': 0.6, 'age_turns': 3, 'threats': [], 'candidates_head': ['set_segesta  owner fac_slave  1 turns  garrison weaker  confidence 0.6  age 3', 'set_capua  owner fac_romans_scipii  2 turns  garrison stronger  confidence 0.6  age 3', 'set_mediolanium  owner fac_gauls  2 turns  garrison similar  confidence 0.6  age 3']}
+2026-09-11 12:33:52,846 INFO comstar_game_ai.agent.hold_floor: hold floor upgraded turn=4 to besiege gen_flavius_julius -> set_segesta
+2026-09-11 12:33:52,846 INFO comstar_game_ai.agent.campaign_accept: accepted campaign directive turn=4 objective=besiege actor=gen_flavius_julius target=set_segesta commit=6 because='hold floor upgraded: reachable weaker set_segesta (1 turns, garrison weaker); model said: missing_actor_or_target'
+2026-09-11 12:33:52,847 INFO comstar_game_ai.agent.runtime: turn 4 game_query usage: calls=0 changed=0
+2026-09-11 12:33:52,848 INFO comstar_game_ai.agent.runtime: turn 4 directive: besiege (hold floor upgraded: reachable weaker set_segesta (1 turns, garrison weaker); model said: missing_actor_or_target) belief_hash=6b3bfe83 payload_hash=8682e950
+2026-09-11 12:33:52,849 INFO comstar_game_ai.agent.reach.agent_lifecycle: AO agent_state: campaign_director ready run_end
+2026-09-11 12:34:00,892 INFO comstar_game_ai.game_io.campaign.march: march: frustum centre=(67.5,87.1) from=(86.0,82.0) dist=19.1 match=True
+2026-09-11 12:34:07,131 INFO comstar_game_ai.game_io.campaign.camera_pose: MARCH pose: ok=True rot=point_to_north w=55.6 h=41.9 aspect=1.327 centre=(67.5,87.1) expected_w=55.6 failed=[]
+2026-09-11 12:34:07,333 INFO comstar_game_ai.game_io.campaign.map_surface: map_surface: {'variance': 0.007306, 'saturation_mean': 0.3932, 'hue_bins_used': 8, 'edge_density': 0.0814, 'mean_luma': 0.3865, 'legend_warm_left': 0.029, 'legend_warm_right': 0.0266, 'sample_pixels': 103424, 'roi_norms': [0.3, 0.2, 0.7, 0.48], 'is_map_overlay': False, 'detail': 'textured_map'}
+2026-09-11 12:34:14,507 INFO comstar_game_ai.game_io.campaign.march: march ordered for Flavius Julius click=(0.470,0.460) button=right cursor_changed=True vision=False calib=army_anchor step=(85.16794970566215, 82.55470019622523) cards=1
+2026-09-11 12:34:26,969 INFO comstar_game_ai.game_io.campaign.end_turn: turn ended via scancode_shift_enter (autosaved turn 4)
+2026-09-11 12:34:26,969 INFO comstar_game_ai.game_io.console.romeshell: RomeShell: end_turn ok via scancode_shift_enter
+2026-09-11 12:34:40,869 INFO comstar_game_ai.agent.sync_deliberator: blocking on AO director for turn 5 (ceiling 1860s)
+2026-09-11 12:34:40,878 INFO comstar_game_ai.agent.belief.refresh: belief advanced turn=5 elapsed=4 decayed=2 refreshed=none
+2026-09-11 12:34:40,892 INFO comstar_game_ai.agent.context_budget: turn 5 prompt budget: composed_tokens_est=1050 num_ctx=8192 question_id=campaign-5-8997d0df
+2026-09-11 12:34:40,896 INFO comstar_game_ai.agent.reach.director: AO ready: client.campaign_director state=ready model=None
+2026-09-11 12:34:40,896 INFO comstar_game_ai.agent.reach.agent_lifecycle: AO agent_state: campaign_director busy direct_agent
+2026-09-11 12:34:40,899 INFO comstar_game_ai.agent.reach.agent_lifecycle: AO agent_state: campaign_director busy direct_agent
+2026-09-11 12:34:45,876 INFO comstar_game_ai.agent.sync_deliberator: AO agent: campaign_director busy direct_agent
+2026-09-11 12:35:04,403 INFO comstar_game_ai.agent.reach.agent_lifecycle: AO agent_state: campaign_director ready run_end
+2026-09-11 12:35:04,419 WARNING comstar_game_ai.agent.hold_floor: hold floor turn=5 action=reask model_because='no threats observed, no candidates with higher priority' predictor={'settlement_id': 'set_segesta', 'nearest_general_id': 'gen_flavius_julius', 'turns_to_reach': 1, 'garrison': 'weaker', 'confidence': 0.6, 'age_turns': 4, 'threats': [], 'candidates_head': ['set_segesta  owner fac_slave  1 turns  garrison weaker  confidence 0.6  age 4', 'set_capua  owner fac_romans_scipii  2 turns  garrison stronger  confidence 0.6  age 4', 'set_mediolanium  owner fac_gauls  2 turns  garrison similar  confidence 0.6  age 4']}
+2026-09-11 12:35:04,419 INFO comstar_game_ai.agent.campaign_accept: accepted campaign directive turn=5 objective=hold actor=None target=None commit=None because='hold rejected by floor: reachable weaker set_segesta via gen_flavius_julius in 1 turns'
+2026-09-11 12:35:04,419 WARNING comstar_game_ai.agent.runtime: turn 5 hold floor reask: predictor={'settlement_id': 'set_segesta', 'nearest_general_id': 'gen_flavius_julius', 'turns_to_reach': 1, 'garrison': 'weaker', 'confidence': 0.6, 'age_turns': 4, 'threats': [], 'candidates_head': ['set_segesta  owner fac_slave  1 turns  garrison weaker  confidence 0.6  age 4', 'set_capua  owner fac_romans_scipii  2 turns  garrison stronger  confidence 0.6  age 4', 'set_mediolanium  owner fac_gauls  2 turns  garrison similar  confidence 0.6  age 4']}
+2026-09-11 12:35:04,419 INFO comstar_game_ai.agent.reach.director: AO ready: client.campaign_director state=ready model=None
+2026-09-11 12:35:04,420 INFO comstar_game_ai.agent.reach.agent_lifecycle: AO agent_state: campaign_director busy direct_agent
+2026-09-11 12:35:04,423 INFO comstar_game_ai.agent.reach.agent_lifecycle: AO agent_state: campaign_director busy direct_agent
+2026-09-11 12:35:29,353 WARNING comstar_game_ai.agent.hold_floor: hold floor turn=5 action=upgrade model_because='missing_actor_or_target' predictor={'settlement_id': 'set_segesta', 'nearest_general_id': 'gen_flavius_julius', 'turns_to_reach': 1, 'garrison': 'weaker', 'confidence': 0.6, 'age_turns': 4, 'threats': [], 'candidates_head': ['set_segesta  owner fac_slave  1 turns  garrison weaker  confidence 0.6  age 4', 'set_capua  owner fac_romans_scipii  2 turns  garrison stronger  confidence 0.6  age 4', 'set_mediolanium  owner fac_gauls  2 turns  garrison similar  confidence 0.6  age 4']}
+2026-09-11 12:35:29,353 INFO comstar_game_ai.agent.hold_floor: hold floor upgraded turn=5 to besiege gen_flavius_julius -> set_segesta
+2026-09-11 12:35:29,354 INFO comstar_game_ai.agent.campaign_accept: accepted campaign directive turn=5 objective=besiege actor=gen_flavius_julius target=set_segesta commit=7 because='hold floor upgraded: reachable weaker set_segesta (1 turns, garrison weaker); model said: missing_actor_or_target'
+2026-09-11 12:35:29,354 INFO comstar_game_ai.agent.runtime: turn 5 game_query usage: calls=0 changed=0
+2026-09-11 12:35:29,355 INFO comstar_game_ai.agent.runtime: turn 5 directive: besiege (hold floor upgraded: reachable weaker set_segesta (1 turns, garrison weaker); model said: missing_actor_or_target) belief_hash=8e4d55db payload_hash=09428ef2
+2026-09-11 12:35:29,355 INFO comstar_game_ai.agent.reach.agent_lifecycle: AO agent_state: campaign_director ready run_end
+2026-09-11 12:35:37,392 INFO comstar_game_ai.game_io.campaign.march: march: frustum centre=(67.5,87.1) from=(85.0,83.0) dist=17.9 match=True
+2026-09-11 12:35:43,642 INFO comstar_game_ai.game_io.campaign.camera_pose: MARCH pose: ok=True rot=point_to_north w=55.6 h=41.9 aspect=1.327 centre=(67.5,87.1) expected_w=55.6 failed=[]
+2026-09-11 12:35:43,835 INFO comstar_game_ai.game_io.campaign.map_surface: map_surface: {'variance': 0.005041, 'saturation_mean': 0.6381, 'hue_bins_used': 7, 'edge_density': 0.0685, 'mean_luma': 0.3288, 'legend_warm_left': 0.0293, 'legend_warm_right': 0.0367, 'sample_pixels': 103424, 'roi_norms': [0.3, 0.2, 0.7, 0.48], 'is_map_overlay': False, 'detail': 'textured_map'}
+2026-09-11 12:35:51,010 INFO comstar_game_ai.game_io.campaign.march: march ordered for Flavius Julius click=(0.480,0.470) button=right cursor_changed=True vision=False calib=army_anchor step=(84.10557280900008, 83.44721359549996) cards=1
+2026-09-11 12:36:03,869 INFO comstar_game_ai.game_io.campaign.end_turn: turn ended via scancode_shift_enter (autosaved turn 5)
+2026-09-11 12:36:03,869 INFO comstar_game_ai.game_io.console.romeshell: RomeShell: end_turn ok via scancode_shift_enter
+2026-09-11 12:36:10,998 INFO comstar_game_ai.agent.sync_deliberator: blocking on AO director for turn 6 (ceiling 1860s)
+2026-09-11 12:36:11,008 INFO comstar_game_ai.agent.belief.refresh: belief advanced turn=6 elapsed=5 decayed=2 refreshed=none
+2026-09-11 12:36:11,025 INFO comstar_game_ai.agent.context_budget: turn 6 prompt budget: composed_tokens_est=1050 num_ctx=8192 question_id=campaign-6-b35b33e2
+2026-09-11 12:36:11,029 INFO comstar_game_ai.agent.reach.director: AO ready: client.campaign_director state=ready model=None
+2026-09-11 12:36:11,030 INFO comstar_game_ai.agent.reach.agent_lifecycle: AO agent_state: campaign_director busy direct_agent
+2026-09-11 12:36:11,032 INFO comstar_game_ai.agent.reach.agent_lifecycle: AO agent_state: campaign_director busy direct_agent
+2026-09-11 12:36:16,007 INFO comstar_game_ai.agent.sync_deliberator: AO agent: campaign_director busy direct_agent
+2026-09-11 12:36:34,740 WARNING comstar_game_ai.agent.hold_floor: hold floor turn=6 action=reask model_because='no threats or candidates' predictor={'settlement_id': 'set_segesta', 'nearest_general_id': 'gen_flavius_julius', 'turns_to_reach': 1, 'garrison': 'weaker', 'confidence': 0.6, 'age_turns': 5, 'threats': [], 'candidates_head': ['set_segesta  owner fac_slave  1 turns  garrison weaker  confidence 0.6  age 5', 'set_capua  owner fac_romans_scipii  2 turns  garrison stronger  confidence 0.6  age 5', 'set_mediolanium  owner fac_gauls  2 turns  garrison similar  confidence 0.6  age 5']}
+2026-09-11 12:36:34,740 INFO comstar_game_ai.agent.campaign_accept: accepted campaign directive turn=6 objective=hold actor=None target=None commit=None because='hold rejected by floor: reachable weaker set_segesta via gen_flavius_julius in 1 turns'
+2026-09-11 12:36:34,740 WARNING comstar_game_ai.agent.runtime: turn 6 hold floor reask: predictor={'settlement_id': 'set_segesta', 'nearest_general_id': 'gen_flavius_julius', 'turns_to_reach': 1, 'garrison': 'weaker', 'confidence': 0.6, 'age_turns': 5, 'threats': [], 'candidates_head': ['set_segesta  owner fac_slave  1 turns  garrison weaker  confidence 0.6  age 5', 'set_capua  owner fac_romans_scipii  2 turns  garrison stronger  confidence 0.6  age 5', 'set_mediolanium  owner fac_gauls  2 turns  garrison similar  confidence 0.6  age 5']}
+2026-09-11 12:36:34,740 INFO comstar_game_ai.agent.reach.agent_lifecycle: waiting for client.campaign_director ready (now busy, safety=900s)
+2026-09-11 12:36:34,741 INFO comstar_game_ai.agent.reach.agent_lifecycle: AO agent_state: campaign_director ready run_end
+2026-09-11 12:36:34,742 INFO comstar_game_ai.agent.reach.director: AO ready: client.campaign_director state=ready model=None
+2026-09-11 12:36:34,743 INFO comstar_game_ai.agent.reach.agent_lifecycle: AO agent_state: campaign_director busy direct_agent
+2026-09-11 12:36:34,745 INFO comstar_game_ai.agent.reach.agent_lifecycle: AO agent_state: campaign_director busy direct_agent
+2026-09-11 12:36:59,148 WARNING comstar_game_ai.agent.hold_floor: hold floor turn=6 action=upgrade model_because='missing_actor_or_target' predictor={'settlement_id': 'set_segesta', 'nearest_general_id': 'gen_flavius_julius', 'turns_to_reach': 1, 'garrison': 'weaker', 'confidence': 0.6, 'age_turns': 5, 'threats': [], 'candidates_head': ['set_segesta  owner fac_slave  1 turns  garrison weaker  confidence 0.6  age 5', 'set_capua  owner fac_romans_scipii  2 turns  garrison stronger  confidence 0.6  age 5', 'set_mediolanium  owner fac_gauls  2 turns  garrison similar  confidence 0.6  age 5']}
+2026-09-11 12:36:59,148 INFO comstar_game_ai.agent.hold_floor: hold floor upgraded turn=6 to besiege gen_flavius_julius -> set_segesta
+2026-09-11 12:36:59,148 INFO comstar_game_ai.agent.campaign_accept: accepted campaign directive turn=6 objective=besiege actor=gen_flavius_julius target=set_segesta commit=8 because='hold floor upgraded: reachable weaker set_segesta (1 turns, garrison weaker); model said: missing_actor_or_target'
+2026-09-11 12:36:59,149 INFO comstar_game_ai.agent.runtime: turn 6 game_query usage: calls=0 changed=0
+2026-09-11 12:36:59,149 INFO comstar_game_ai.agent.runtime: turn 6 directive: besiege (hold floor upgraded: reachable weaker set_segesta (1 turns, garrison weaker); model said: missing_actor_or_target) belief_hash=5107ceff payload_hash=9ad2b93f
+2026-09-11 12:36:59,150 INFO comstar_game_ai.agent.reach.agent_lifecycle: AO agent_state: campaign_director ready run_end
+2026-09-11 12:37:07,198 INFO comstar_game_ai.game_io.campaign.march: march: frustum centre=(67.5,87.1) from=(84.0,83.0) dist=17.0 match=True
+2026-09-11 12:37:13,432 INFO comstar_game_ai.game_io.campaign.camera_pose: MARCH pose: ok=True rot=point_to_north w=55.6 h=41.9 aspect=1.327 centre=(67.5,87.1) expected_w=55.6 failed=[]
+2026-09-11 12:37:13,647 INFO comstar_game_ai.game_io.campaign.map_surface: map_surface: {'variance': 0.007515, 'saturation_mean': 0.368, 'hue_bins_used': 9, 'edge_density': 0.0822, 'mean_luma': 0.3918, 'legend_warm_left': 0.029, 'legend_warm_right': 0.0271, 'sample_pixels': 103424, 'roi_norms': [0.3, 0.2, 0.7, 0.48], 'is_map_overlay': False, 'detail': 'textured_map'}
+2026-09-11 12:37:24,890 INFO comstar_game_ai.game_io.campaign.march: march ordered for Flavius Julius click=(0.486,0.466) button=right cursor_changed=True vision=False calib=army_anchor step=(83.29289321881345, 83.70710678118655) cards=1
+2026-09-11 12:37:37,750 INFO comstar_game_ai.game_io.campaign.end_turn: turn ended via scancode_shift_enter (autosaved turn 6)
+2026-09-11 12:37:37,750 INFO comstar_game_ai.game_io.console.romeshell: RomeShell: end_turn ok via scancode_shift_enter
+2026-09-11 12:37:48,733 INFO comstar_game_ai.agent.sync_deliberator: blocking on AO director for turn 7 (ceiling 1860s)
+2026-09-11 12:37:48,743 INFO comstar_game_ai.agent.belief.refresh: belief advanced turn=7 elapsed=6 decayed=2 refreshed=none
+2026-09-11 12:37:48,755 INFO comstar_game_ai.agent.context_budget: turn 7 prompt budget: composed_tokens_est=1048 num_ctx=8192 question_id=campaign-7-950ee919
+2026-09-11 12:37:48,760 INFO comstar_game_ai.agent.reach.director: AO ready: client.campaign_director state=ready model=None
+2026-09-11 12:37:48,761 INFO comstar_game_ai.agent.reach.agent_lifecycle: AO agent_state: campaign_director busy direct_agent
+2026-09-11 12:37:48,764 INFO comstar_game_ai.agent.reach.agent_lifecycle: AO agent_state: campaign_director busy direct_agent
+2026-09-11 12:37:53,740 INFO comstar_game_ai.agent.sync_deliberator: AO agent: campaign_director busy direct_agent
+2026-09-11 12:38:13,000 WARNING comstar_game_ai.agent.hold_floor: hold floor turn=7 action=reask model_because='no threats, no candidates, standing directive incomplete' predictor={'settlement_id': 'set_segesta', 'nearest_general_id': 'gen_flavius_julius', 'turns_to_reach': 0, 'garrison': 'weaker', 'confidence': 0.6, 'age_turns': 6, 'threats': [], 'candidates_head': ['set_segesta  owner fac_slave  0 turns  garrison weaker  confidence 0.6  age 6', 'set_capua  owner fac_romans_scipii  2 turns  garrison stronger  confidence 0.6  age 6', 'set_mediolanium  owner fac_gauls  2 turns  garrison similar  confidence 0.6  age 6']}
+2026-09-11 12:38:13,000 INFO comstar_game_ai.agent.campaign_accept: accepted campaign directive turn=7 objective=hold actor=None target=None commit=None because='hold rejected by floor: reachable weaker set_segesta via gen_flavius_julius in 0 turns'
+2026-09-11 12:38:13,000 WARNING comstar_game_ai.agent.runtime: turn 7 hold floor reask: predictor={'settlement_id': 'set_segesta', 'nearest_general_id': 'gen_flavius_julius', 'turns_to_reach': 0, 'garrison': 'weaker', 'confidence': 0.6, 'age_turns': 6, 'threats': [], 'candidates_head': ['set_segesta  owner fac_slave  0 turns  garrison weaker  confidence 0.6  age 6', 'set_capua  owner fac_romans_scipii  2 turns  garrison stronger  confidence 0.6  age 6', 'set_mediolanium  owner fac_gauls  2 turns  garrison similar  confidence 0.6  age 6']}
+2026-09-11 12:38:13,000 INFO comstar_game_ai.agent.reach.agent_lifecycle: waiting for client.campaign_director ready (now busy, safety=900s)
+2026-09-11 12:38:13,000 INFO comstar_game_ai.agent.reach.agent_lifecycle: AO agent_state: campaign_director ready run_end
+2026-09-11 12:38:13,001 INFO comstar_game_ai.agent.reach.director: AO ready: client.campaign_director state=ready model=None
+2026-09-11 12:38:13,001 INFO comstar_game_ai.agent.reach.agent_lifecycle: AO agent_state: campaign_director busy direct_agent
+2026-09-11 12:38:13,010 INFO comstar_game_ai.agent.reach.agent_lifecycle: AO agent_state: campaign_director busy direct_agent
+2026-09-11 12:38:40,129 INFO comstar_game_ai.agent.campaign_accept: accepted campaign directive turn=7 objective=besiege actor=gen_flavius_julius target=set_segesta commit=9 because='The standing directive is to besiege gen_flavius_julius -> set_segesta, and it is still in progress. The target is reachable and the general is idle.'
+2026-09-11 12:38:40,130 INFO comstar_game_ai.agent.runtime: turn 7 game_query usage: calls=0 changed=0
+2026-09-11 12:38:40,130 INFO comstar_game_ai.agent.runtime: turn 7 directive: besiege (The standing directive is to besiege gen_flavius_julius -> set_segesta, and it is still in progress. The target is reachable and the general is idle.) belief_hash=304fd6aa payload_hash=b936d90e
+2026-09-11 12:38:40,131 INFO comstar_game_ai.agent.reach.agent_lifecycle: AO agent_state: campaign_director ready run_end
+2026-09-11 12:39:04,958 INFO comstar_game_ai.game_io.campaign.end_turn: End turn click attempt norm=(0.98, 0.97) screen=(3415, 731)
+2026-09-11 12:39:13,480 WARNING comstar_game_ai.game_io.console.romeshell: RomeShell: end_turn failed (no_turn_boundary)
+2026-09-11 12:39:18,844 INFO comstar_game_ai.game_io.drivers.hardcoded_campaign: skip turn — state=campaign_modal ui=modal
+2026-09-11 12:39:18,878 ERROR comstar_game_ai.game_io.drivers.hardcoded_campaign: circuit breaker — ending run (circuit_breaker: turn_failed turn=7 state_hash=7); previous_key=('turn_failed', 7, '7')
+2026-09-11 12:39:18,993 INFO comstar_game_ai.agent.reach.agent_lifecycle: AO agent_state: battle_director stopping overlay_clear
+2026-09-11 12:39:18,994 INFO comstar_game_ai.agent.reach.agent_lifecycle: AO agent_state: campaign_director stopping overlay_clear
+2026-09-11 12:39:20,996 INFO comstar_game_ai.agent.reach.agent_lifecycle: AO agent_state: consolidator stopping overlay_clear
+2026-09-11 12:39:22,997 INFO comstar_game_ai.agent.reach.agent_lifecycle: AO agent_state: doctrine_ingestor stopping overlay_clear
+2026-09-11 12:39:24,998 INFO comstar_game_ai.agent.reach.agent_lifecycle: AO agent_state: map_target_vision stopping overlay_clear
+2026-09-11 12:39:26,999 INFO comstar_game_ai.agent.reach.agent_lifecycle: AO agent_state: modal_vision stopping overlay_clear
+2026-09-11 12:39:29,001 INFO comstar_game_ai.agent.reach.agent_lifecycle: AO agent_state: narrator stopping overlay_clear
+2026-09-11 12:39:31,002 INFO comstar_game_ai.agent.reach.agent_lifecycle: AO agent_state: opponent_modeler stopping overlay_clear
+2026-09-11 12:39:33,004 INFO comstar_game_ai.agent.reach.agent_lifecycle: AO agent_state: post_mortem stopping overlay_clear
+2026-09-11 12:39:35,006 INFO comstar_game_ai.agent.reach.agent_lifecycle: AO agent_state: battle_director down overlay_clear
+2026-09-11 12:39:37,007 INFO comstar_game_ai.agent.reach.agent_lifecycle: AO agent_state: campaign_director down overlay_clear
+2026-09-11 12:39:39,008 INFO comstar_game_ai.agent.reach.agent_lifecycle: AO agent_state: consolidator down overlay_clear
+2026-09-11 12:39:41,010 INFO comstar_game_ai.agent.reach.agent_lifecycle: AO agent_state: doctrine_ingestor down overlay_clear
+2026-09-11 12:39:43,012 INFO comstar_game_ai.agent.reach.agent_lifecycle: AO agent_state: map_target_vision down overlay_clear
+2026-09-11 12:39:45,014 INFO comstar_game_ai.agent.reach.agent_lifecycle: AO agent_state: modal_vision down overlay_clear
+2026-09-11 12:39:47,016 INFO comstar_game_ai.agent.reach.agent_lifecycle: AO agent_state: narrator down overlay_clear
+2026-09-11 12:39:48,989 ERROR comstar_game_ai.agent.sync_deliberator: sync deliberator stop failed
+Traceback (most recent call last):
+  File "D:\Projects\comstar-game-ai\src\comstar_game_ai\agent\sync_deliberator.py", line 204, in stop
+    fut.result(timeout=timeout_s)
+  File "C:\Users\Zlatko.Lakisic\AppData\Local\Programs\Python\Python312\Lib\concurrent\futures\_base.py", line 458, in result
+    raise TimeoutError()
+TimeoutError
+2026-09-11 12:39:49,017 INFO comstar_game_ai.agent.reach.agent_lifecycle: AO agent_state: opponent_modeler down overlay_clear
+2026-09-11 12:39:51,018 INFO comstar_game_ai.agent.reach.agent_lifecycle: AO agent_state: post_mortem down overlay_clear

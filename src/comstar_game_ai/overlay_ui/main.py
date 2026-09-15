@@ -72,7 +72,14 @@ def run_overlay(*, test_pattern: bool = False) -> int:
         return 1
 
     app = QApplication(sys.argv)
-    surfaces = OverlaySurfaces(game.hwnd, test_pattern=test_pattern)
+    exclude_from_capture = bool(
+        config.get("overlay", {}).get("exclude_from_capture", False)
+    )
+    surfaces = OverlaySurfaces(
+        game.hwnd,
+        test_pattern=test_pattern,
+        exclude_from_capture=exclude_from_capture,
+    )
     router = EventRouter()
     bridge = _EventBridge()
 

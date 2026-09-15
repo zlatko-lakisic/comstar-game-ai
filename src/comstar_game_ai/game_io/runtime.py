@@ -65,6 +65,16 @@ class GameIoRuntime:
             _LOGGER.error("Process A requires Windows")
             return False
 
+        from comstar_game_ai.game_io.preconditions import check_preconditions
+
+        pre = check_preconditions(require_game=self.require_game)
+        if not pre.ok:
+            for failure in pre.failures:
+                _LOGGER.error("precondition failed: %s", failure)
+            return False
+        for warning in pre.warnings:
+            _LOGGER.warning("%s", warning)
+
         cfg = load_config()
         subs = cfg.get("game", {}).get("window_title_substrings") or ["Rome"]
         game = find_game_window(subs)

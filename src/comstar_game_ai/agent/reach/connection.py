@@ -13,6 +13,11 @@ CLIENT_AGENT_IDS = (
     "client.battle_director",
     "client.campaign_director",
     "client.modal_vision",
+    "client.map_target_vision",
+    # Object detection (AO type: object_detection). Stock COCO smoke + RTW overlay.
+    "detect_yolox_nano",
+    "client.detect_yolox_nano",
+    "client.detect_rtw_campaign",
     "client.opponent_modeler",
     "client.narrator",
     "client.consolidator",

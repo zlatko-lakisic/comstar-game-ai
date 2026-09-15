@@ -43,6 +43,22 @@ def count_test_pattern_pixels(
     return int(near.sum())
 
 
+def capture_backend_verdict(backend: str | None) -> CheckOutcome:
+    """Pass only when the agent capture path reports real WGC.
+
+    Outcome-only checks previously accepted MSS + display affinity. Naming the
+    backend is what proves which mechanism is holding.
+    """
+    name = (backend or "").strip().lower()
+    if name == "wgc":
+        return CheckOutcome("capture_backend", True, "backend=wgc (window capture)")
+    return CheckOutcome(
+        "capture_backend",
+        False,
+        f"backend={backend!r} — required wgc; region capture is the Phase 0 defect",
+    )
+
+
 def capture_exclusion_verdict(
     image,
     *,

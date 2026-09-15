@@ -1,0 +1,36 @@
+# Example only — copy to detect_rtw_campaign.yaml after training via
+#   python scripts/detection/publish_rtw_weights.py --onnx path/to/yolox_rtw_nano.onnx
+# Active YAML must not ship until sha256 matches a real ONNX Ada can fetch.
+id: detect_rtw_campaign
+type: object_detection
+role: RTW campaign map object detector
+goal: Return typed pixel boxes for settlement badges, ovals, army stacks, and ships
+backstory: |
+  Custom Megvii YOLOX-nano ONNX fine-tuned on ROME Remastered campaign frames.
+  Not a chat model. Prefer direct_agent with images[]. Localization only —
+  plaque names stay OCR/VL-on-crop if needed.
+weights:
+  uri: "REPLACE_WITH_HTTPS_OR_ARTIFACT_URI"
+  sha256: "REPLACE_WITH_64_HEX_SHA256"
+  format: onnx
+runtime: onnxruntime
+execution_providers: [tensorrt, cuda, cpu]
+input:
+  width: 416
+  height: 416
+confidence_min: 0.3
+iou_threshold: 0.45
+class_names:
+  - settlement_badge
+  - settlement_oval
+  - army_stack
+  - ship
+residency: resident
+hardware:
+  architecture: [cpu, gpu]
+min_vram_gb: 1
+planner_hint: >-
+  Sensing only: RTW campaign boxes. Prefer direct_agent with images[].
+harness_profile: detection
+harness:
+  skip_live: true

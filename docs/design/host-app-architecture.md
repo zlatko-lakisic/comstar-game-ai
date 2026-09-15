@@ -26,7 +26,7 @@ Treat this as a startup precondition the app verifies and refuses to run without
 
 | Approach | Verdict |
 |----------|---------|
-| Windows Graphics Capture, window targeted | **Primary.** Captures the game window's own content, so anything drawn on top is structurally excluded. Windows 10 1803 and later. |
+| Windows Graphics Capture, window targeted | **Primary.** Captures the game window's own content, so anything drawn on top is structurally excluded. Windows 10 1803 and later. Config: `capture.backend: wgc`. MSS region capture is A/B-only and refused at Process A startup. |
 | Desktop Duplication (DXGI) | Superseded as primary. Simplest path and best library support, but it captures everything on the monitor including other applications' overlays. |
 | GDI / BitBlt | Rejected. Slow and unreliable against hardware accelerated rendering. |
 | DirectX hooking or injection | **Rejected on principle.** Fastest option, and how OBS game capture works, but it means injecting into the game process. That contradicts the boundary set in the integration document, which is what keeps this project clear of EULA and anti tamper questions. Not worth it for a single player agent when borderless plus Desktop Duplication is already fast enough. |
