@@ -20,6 +20,7 @@ rather than relying on the provider YAML.
 
 from __future__ import annotations
 
+import inspect
 import json
 import logging
 from typing import Any, Callable
@@ -49,35 +50,99 @@ CAMPAIGN_DIRECTOR = "client.campaign_director"
 OPPONENT_MODELER = "client.opponent_modeler"
 NARRATOR = "client.narrator"
 MODAL_VISION = "client.modal_vision"
+MAP_TARGET_VISION = "client.map_target_vision"
+DETECT_YOLOX_NANO = "detect_yolox_nano"
+DETECT_RTW_CAMPAIGN = "client.detect_rtw_campaign"
 CONSOLIDATOR = "client.consolidator"
 DOCTRINE_INGESTOR = "client.doctrine_ingestor"
 POST_MORTEM = "client.post_mortem"
 
 GAME_QUERY_MCP = "client.game_query"
 
-#: Measured against ada, not chosen for comfort. A cold llama3.1:8b spends most of a
-#: minute loading before it emits a token, and the campaign director's prompt carries
-#: a belief brief and a schema on top of that.
-#:
-#: Timing out short is not the cheap option it looks like. The GPU broker admits a
-#: request on a worker thread, so a client that walks away while its turn is pending
-#: leaves the lease granted and unheld — and the next model to ask queues behind a
-#: slot nobody will release. One impatient 90-second vision call wedged every text
-#: agent on the host until the pod was restarted.
+#: Abort-only safety nets for ``direct_agent`` / ``chat``. Readiness is
+#: ``wait_until_ready`` on AO ``agent_state`` (pulling/starting → ready), not
+#: these numbers. Keep them high so a slow GPU swap does not abandon a lease
+#: mid-flight; Reach cancels the engine run when the client timeout fires.
 DEFAULT_TIMEOUTS: dict[str, float] = {
-    BATTLE_DIRECTOR: 60.0,
-    CAMPAIGN_DIRECTOR: 300.0,
-    MODAL_VISION: 120.0,
-    OPPONENT_MODELER: 300.0,
-    NARRATOR: 60.0,
-    CONSOLIDATOR: 300.0,
-    DOCTRINE_INGESTOR: 300.0,
-    POST_MORTEM: 300.0,
+    BATTLE_DIRECTOR: 600.0,
+    CAMPAIGN_DIRECTOR: 600.0,
+    MODAL_VISION: 600.0,
+    MAP_TARGET_VISION: 600.0,
+    DETECT_YOLOX_NANO: 120.0,
+    DETECT_RTW_CAMPAIGN: 120.0,
+    OPPONENT_MODELER: 600.0,
+    NARRATOR: 300.0,
+    CONSOLIDATOR: 600.0,
+    DOCTRINE_INGESTOR: 600.0,
+    POST_MORTEM: 600.0,
 }
+
+#: How long to wait for ``agent_state=ready`` before even sending the call.
+READY_SAFETY_S = 900.0
+
+#: Logged once when an installed ao_reach drops JSON-mode kwargs.
+_logged_direct_agent_strip: set[str] = set()
 
 
 def _extract_text(result: dict[str, Any]) -> str:
     return str(result.get("text") or "").strip()
+
+
+def _direct_agent_kwargs(bridge: Any, **kwargs: Any) -> dict[str, Any]:
+    """Pass only kwargs the installed ``SessionBridge.direct_agent`` accepts.
+
+    Older ao_reach builds reject ``response_format`` / ``json_schema`` with
+    TypeError before the agent runs; that used to collapse every turn to hold.
+    Newer builds that accept those kwargs still get them.
+    """
+    fn = getattr(bridge, "direct_agent", None)
+    if fn is None:
+        return kwargs
+    try:
+        params = inspect.signature(fn).parameters
+    except (TypeError, ValueError):
+        return kwargs
+    if any(p.kind == inspect.Parameter.VAR_KEYWORD for p in params.values()):
+        return kwargs
+    dropped = [k for k in kwargs if k not in params]
+    if dropped:
+        key = ",".join(sorted(dropped))
+        if key not in _logged_direct_agent_strip:
+            _logged_direct_agent_strip.add(key)
+            _LOGGER.warning(
+                "ao_reach direct_agent does not accept %s — calling without "
+                "(upgrade ao_reach for JSON-mode constraints)",
+                dropped,
+            )
+        return {k: v for k, v in kwargs.items() if k in params}
+    return kwargs
+
+
+async def _bridge_direct_agent(bridge: Any, **kwargs: Any) -> dict[str, Any]:
+    return await bridge.direct_agent(**_direct_agent_kwargs(bridge, **kwargs))
+
+
+async def _wait_ready(session: ReachSession, agent_provider_id: str) -> None:
+    from comstar_game_ai.agent.reach.agent_lifecycle import wait_until_ready
+
+    try:
+        update = await wait_until_ready(
+            session.bridge, agent_provider_id, safety_timeout_s=READY_SAFETY_S
+        )
+        _LOGGER.info(
+            "AO ready: %s state=%s model=%s",
+            agent_provider_id,
+            update.state.value,
+            update.model,
+        )
+    except TimeoutError:
+        _LOGGER.warning(
+            "AO agent %s never reached ready within %.0fs — calling anyway",
+            agent_provider_id,
+            READY_SAFETY_S,
+        )
+    except Exception:  # noqa: BLE001
+        _LOGGER.debug("wait_until_ready failed for %s", agent_provider_id, exc_info=True)
 
 
 async def _abandon(session: ReachSession, question_id: str) -> None:
@@ -143,8 +208,11 @@ async def call_directive_agent(
     effective_timeout = timeout if timeout is not None else DEFAULT_TIMEOUTS.get(agent_provider_id, 60.0)
     mcps = mcp_provider_ids if mcp_provider_ids is not None else _default_mcp_ids(session)
 
+    await _wait_ready(session, agent_provider_id)
+
     try:
-        result = await session.bridge.direct_agent(
+        result = await _bridge_direct_agent(
+            session.bridge,
             agent_provider_id=agent_provider_id,
             text=text,
             context=context,
@@ -157,7 +225,19 @@ async def call_directive_agent(
             json_schema=json_schema,
             on_status=on_status,
         )
-        return parse_directive(_extract_text(result))
+        raw_text = _extract_text(result)
+        directive = parse_directive(raw_text)
+        if (
+            directive.intent.objective == "hold"
+            and directive.commentary.startswith(("malformed", "empty", "not_object"))
+            and raw_text
+        ):
+            _LOGGER.warning(
+                "directive parse failed (%s) raw_preview=%r",
+                directive.commentary,
+                raw_text[:240],
+            )
+        return directive
     except TimeoutError:
         _LOGGER.warning(
             "direct_agent timeout after %.0fs: %s (%s)",
@@ -168,13 +248,22 @@ async def call_directive_agent(
         await _abandon(session, question_id)
         return neutral_directive(f"timeout:{agent_provider_id}")
     except ReachRunError as exc:
+        # AO 2.10+: chat timeouts surface as code=timeout with a detail string
+        # (e.g. "Ollama /api/chat timed out after 600s"). Prefer that over opaque
+        # run_failed so deliberate logs and hold commentary stay actionable.
+        code = (exc.code or "unknown").strip() or "unknown"
+        detail = (exc.detail or exc.message or "").strip()
         _LOGGER.warning(
-            "direct_agent error: %s (%s) code=%s",
+            "direct_agent error: %s (%s) code=%s detail=%s",
             agent_provider_id,
             question_id,
-            exc.code,
+            code,
+            (detail[:200] if detail else "-"),
         )
-        return neutral_directive(f"reach_error:{exc.code or 'unknown'}")
+        if code == "timeout" or "timed out" in detail.lower():
+            await _abandon(session, question_id)
+            return neutral_directive(f"timeout:{agent_provider_id}")
+        return neutral_directive(f"reach_error:{code}")
     except Exception as exc:  # noqa: BLE001
         _LOGGER.exception("direct_agent failed: %s (%s)", agent_provider_id, question_id)
         return neutral_directive(f"error:{type(exc).__name__}")
@@ -375,8 +464,10 @@ async def call_structured_agent(
     meaningful neutral value for an opponent read or a doctrine proposal, and an empty
     dict is the honest way to say the analysis did not happen.
     """
+    await _wait_ready(session, agent_provider_id)
     try:
-        result = await session.bridge.direct_agent(
+        result = await _bridge_direct_agent(
+            session.bridge,
             agent_provider_id=agent_provider_id,
             text=text,
             context=context,
@@ -415,8 +506,10 @@ async def call_prose_agent(
     The prose path is right here: sanitizing an answer that a human will read is what
     the sanitizer is for, and there is no object for it to unwrap.
     """
+    await _wait_ready(session, agent_provider_id)
     try:
-        result = await session.bridge.direct_agent(
+        result = await _bridge_direct_agent(
+            session.bridge,
             agent_provider_id=agent_provider_id,
             text=text,
             context=context,
@@ -517,8 +610,10 @@ async def call_narrator(
     on_status: Callable[[ReachRunStatus], None] | None = None,
 ) -> str:
     """Narrator is cosmetic; empty string on failure."""
+    await _wait_ready(session, NARRATOR)
     try:
-        result = await session.bridge.direct_agent(
+        result = await _bridge_direct_agent(
+            session.bridge,
             agent_provider_id=NARRATOR,
             text=text,
             question_id=question_id,
@@ -563,8 +658,10 @@ async def call_modal_vision(
     effective_text = text
     if vision_model and not text.lstrip().lower().startswith("[model="):
         effective_text = f"[model={vision_model}]\n{text}"
+    await _wait_ready(session, MODAL_VISION)
     try:
-        result = await session.bridge.direct_agent(
+        result = await _bridge_direct_agent(
+            session.bridge,
             agent_provider_id=MODAL_VISION,
             text=effective_text,
             context=context,
@@ -579,6 +676,122 @@ async def call_modal_vision(
         return _extract_text(result)
     except Exception as exc:  # noqa: BLE001
         _LOGGER.warning("modal_vision call failed: %s: %s", type(exc).__name__, exc)
+        if isinstance(exc, TimeoutError):
+            await _abandon(session, question_id)
+        if raise_errors:
+            raise
+        return ""
+
+
+def map_target_vision_schema() -> dict[str, Any]:
+    """Full-window settlement locate — see map_target_vision module."""
+    from comstar_game_ai.game_io.campaign.map_target_vision import map_target_vision_schema as _schema
+
+    return _schema()
+
+
+async def call_map_target_vision(
+    session: ReachSession,
+    *,
+    text: str,
+    question_id: str,
+    images: list[dict[str, Any]],
+    context: str = "",
+    timeout: float | None = None,
+    on_status: Callable[[ReachRunStatus], None] | None = None,
+    raise_errors: bool = False,
+    json_schema: dict[str, Any] | None = None,
+) -> str:
+    """Map-target vision call; empty string on failure."""
+    from comstar_game_ai.shared.config import load_config
+
+    cfg = load_config()
+    vision_model = str((cfg.get("ao") or {}).get("vision_model") or "llava:7b").strip()
+    effective_text = text
+    if vision_model and not text.lstrip().lower().startswith("[model="):
+        effective_text = f"[model={vision_model}]\n{text}"
+    schema = json_schema if json_schema is not None else map_target_vision_schema()
+    await _wait_ready(session, MAP_TARGET_VISION)
+    try:
+        result = await _bridge_direct_agent(
+            session.bridge,
+            agent_provider_id=MAP_TARGET_VISION,
+            text=effective_text,
+            context=context,
+            question_id=question_id,
+            priority="high",
+            timeout=timeout if timeout is not None else DEFAULT_TIMEOUTS[MAP_TARGET_VISION],
+            images=images,
+            response_format=JSON_OBJECT_RESPONSE_FORMAT,
+            json_schema=schema,
+            on_status=on_status,
+        )
+        return _extract_text(result)
+    except Exception as exc:  # noqa: BLE001
+        _LOGGER.warning("map_target_vision call failed: %s: %s", type(exc).__name__, exc)
+        if isinstance(exc, TimeoutError):
+            await _abandon(session, question_id)
+        if raise_errors:
+            raise
+        return ""
+
+
+async def call_map_object_detection(
+    session: ReachSession,
+    *,
+    images: list[dict[str, Any]],
+    question_id: str,
+    agent_provider_id: str | None = None,
+    text: str = "detect",
+    context: str = "",
+    timeout: float | None = None,
+    on_status: Callable[[ReachRunStatus], None] | None = None,
+    raise_errors: bool = False,
+) -> str:
+    """Run AO object_detection; return raw JSON text (empty string on failure).
+
+    Does not request JSON-mode schema constraints — the detection provider
+    already returns structured JSON and prose sanitizers must not rewrite it.
+    """
+    from comstar_game_ai.shared.config import load_config
+
+    cfg = load_config()
+    ao = cfg.get("ao") or {}
+    agent_id = (
+        agent_provider_id
+        or str(ao.get("detection_agent") or DETECT_YOLOX_NANO).strip()
+        or DETECT_YOLOX_NANO
+    )
+    # Catalog detectors are not in the session overlay and never get agent_state
+    # READY frames — wait_until_ready would hang until the safety timeout.
+    registered = {
+        str(x) for x in (getattr(session.bridge, "registered_agent_ids", None) or [])
+    }
+    has_state = session.bridge.agent_state(agent_id) is not None
+    if agent_id in registered or has_state:
+        await _wait_ready(session, agent_id)
+    try:
+        result = await _bridge_direct_agent(
+            session.bridge,
+            agent_provider_id=agent_id,
+            text=text,
+            context=context,
+            question_id=question_id,
+            priority="high",
+            timeout=timeout
+            if timeout is not None
+            else DEFAULT_TIMEOUTS.get(agent_id, 120.0),
+            images=images,
+            on_status=on_status,
+        )
+        return _extract_text(result)
+    except Exception as exc:  # noqa: BLE001
+        _LOGGER.warning(
+            "map_object_detection call failed (%s): %s: %s",
+            agent_id,
+            type(exc).__name__,
+            exc,
+        )
         if isinstance(exc, TimeoutError):
             await _abandon(session, question_id)
         if raise_errors:
