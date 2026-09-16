@@ -193,12 +193,12 @@ class GameIoRuntime:
             ),
             "auto_resolve_battles": bool(combat.get("auto_resolve_battles", True)),
             "attack_enabled": bool(combat.get("attack_enabled", False)),
-            "use_map_vision": bool(march.get("use_map_vision", True)),
+            "use_map_vision": bool(march.get("use_map_vision", False)),
             "map_vision_timeout_s": float(march.get("map_vision_timeout_s", 600)),
             "map_vision_min_confidence": float(march.get("map_vision_min_confidence", 0.55)),
             "use_map_projection": bool(march.get("use_map_projection", True)),
             "allow_legacy_geometry": bool(march.get("allow_legacy_geometry", False)),
-            "use_vision_besiege": bool(march.get("use_vision_besiege", True)),
+            "use_vision_besiege": bool(march.get("use_vision_besiege", False)),
             "allow_region_pan": bool(march.get("allow_region_pan", False)),
         }
         ready_timeout = cfg.get("end_turn_ready_timeout_s")

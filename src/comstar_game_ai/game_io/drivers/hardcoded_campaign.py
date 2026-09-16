@@ -109,13 +109,14 @@ class HardcodedCampaignDriver:
     attack_enabled: bool = False
     army_lists_row_norm: tuple[float, float] | None = None
     attack_targets: tuple[tuple[float, float], ...] = ()
-    use_map_vision: bool = True
+    use_map_vision: bool = False
     map_vision_timeout_s: float = 600.0
     map_vision_min_confidence: float = 0.55
     use_map_projection: bool = True
     allow_legacy_geometry: bool = False
     #: Part B oval-vision besiege path (requires use_map_vision locate).
-    use_vision_besiege: bool = True
+    #: Off by default (Z9) until structured vision output is reliable.
+    use_vision_besiege: bool = False
     allow_region_pan: bool = False
     # Called on every pass of a wait, to tell the safety layer this loop is alive.
     # Waiting for Rome's AI round takes minutes and the deadman allows ten seconds,

@@ -2,15 +2,12 @@
 
 Requires Rome Remastered focused on the Julii campaign map.
 
-Defaults target a short west step from the live Arretium frustum
-(``from≈67.5,88.7`` → ``62,88.7``) — the Z7 landed case.
+Defaults target a short west step from the live Flavius frustum
+(``from≈72.8,87.1`` → ``68,87.1``) — army_anchor near path.
 
-For Segesta from Arretium, pass belief Segesta coords; the director must take
-the **far / radar-frame** path (live dist > 12) or refuse
-``belief_from_mismatch`` if belief Flavius is still stale at (89,82)::
-
-    python scripts/accept_map_projection_march.py \\
-        --from-x 67.5 --from-y 88.7 --to-x 83 --to-y 84 --label Segesta
+Belief ``from`` must match the live radar frustum within
+``ARMY_FRUSTUM_MATCH_MAP`` (12). Stale Arretium (67.5/89) or Segesta-era
+(89,82) coords refuse or take the far radar path.
 
 Usage (from repo root, game running)::
 
@@ -30,12 +27,11 @@ sys.path.insert(0, str(ROOT / "src"))
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    # Live 2026-09-11: Flavius is Faction Leader at Arretium; belief (89,82)/
-    # Segesta near-case is stale. Defaults are the landed Z7 short west march.
-    parser.add_argument("--from-x", type=float, default=67.5)
-    parser.add_argument("--from-y", type=float, default=88.7)
-    parser.add_argument("--to-x", type=float, default=62.0)
-    parser.add_argument("--to-y", type=float, default=88.7)
+    # Live 2026-09-15: Flavius frustum ~ (72.8,87.1); short west near-path.
+    parser.add_argument("--from-x", type=float, default=72.8)
+    parser.add_argument("--from-y", type=float, default=87.1)
+    parser.add_argument("--to-x", type=float, default=68.0)
+    parser.add_argument("--to-y", type=float, default=87.1)
     parser.add_argument("--character", default="Flavius Julius")
     parser.add_argument("--label", default="near-west")
     parser.add_argument(
