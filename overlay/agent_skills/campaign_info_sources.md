@@ -24,4 +24,4 @@ One surface per question. Do not substitute a nearby number.
 - Which agents do we have, and where are they: `lists_scroll` — Ctrl+5, Agents sub-tab; not A SEND-list row only stages the path.
 - How far is a send target, and which one is nearest: `agent_selection_hud` — Select the agent; not A model standing next to the spy on the 3D map is not the distance read.
 - Which armies and fleets do we have: `lists_scroll` — Ctrl+5, Military Forces; not The Settlements footer 3 sets the capital.
-- How do we send an army or agent to a map target: `map_viewport` — Select the character, hover until the cursor glyph changes, then left-click; not 2004 cursor strings say Right click.
+- How do we send an army or agent to a map target: `map_viewport` — Select the character, hover until the cursor glyph changes, then right-click; not Left-click on a nameplate selects the town.

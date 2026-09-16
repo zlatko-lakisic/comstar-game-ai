@@ -6,12 +6,14 @@ import logging
 import time
 from collections.abc import Mapping
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Callable
 
 from comstar_game_ai.agent.belief.entities import Army, ExistenceStatus
 from comstar_game_ai.agent.belief.store import BeliefStore
 from comstar_game_ai.agent.directive import Directive, neutral_directive
 from comstar_game_ai.game_io.campaign.combat import CombatDirector
+from comstar_game_ai.game_io.campaign.march import DEFAULT_LISTS_ROWS, MarchDirector
 from comstar_game_ai.game_io.campaign.modal import ensure_campaign_map, localize_colored_modal_buttons
 from comstar_game_ai.game_io.campaign.orders import CampaignPlanner
 from comstar_game_ai.game_io.campaign.ui_mode import (
@@ -37,6 +39,25 @@ from comstar_game_ai.shared.ipc.publisher import EventPublisher
 from comstar_game_ai.shared.runtime.directive_store import DirectiveStore
 
 _LOGGER = logging.getLogger(__name__)
+
+
+def _march_target_label(order) -> str:
+    """Human settlement name for map-target vision; never a bare set_* id."""
+    label = (getattr(order, "target_label", None) or "").strip()
+    if label.lower().startswith("set_"):
+        label = label[4:].strip()
+    if label:
+        return label
+    # Planner always puts the settlement token after "toward ".
+    cmd = (getattr(order, "command", None) or "").strip()
+    marker = " toward "
+    lower = cmd.lower()
+    if marker in lower:
+        tail = cmd[lower.rfind(marker) + len(marker) :].strip()
+        if tail.lower().startswith("set_"):
+            tail = tail[4:].strip()
+        return tail
+    return ""
 
 
 def phase2_accepted(result: Mapping[str, object], *, turns: int) -> bool:
@@ -88,6 +109,15 @@ class HardcodedCampaignDriver:
     attack_enabled: bool = False
     army_lists_row_norm: tuple[float, float] | None = None
     attack_targets: tuple[tuple[float, float], ...] = ()
+    use_map_vision: bool = False
+    map_vision_timeout_s: float = 600.0
+    map_vision_min_confidence: float = 0.55
+    use_map_projection: bool = True
+    allow_legacy_geometry: bool = False
+    #: Part B oval-vision besiege path (requires use_map_vision locate).
+    #: Off by default (Z9) until structured vision output is reliable.
+    use_vision_besiege: bool = False
+    allow_region_pan: bool = False
     # Called on every pass of a wait, to tell the safety layer this loop is alive.
     # Waiting for Rome's AI round takes minutes and the deadman allows ten seconds,
     # so without this the watchdog kills the run partway through the first turn.
@@ -95,19 +125,29 @@ class HardcodedCampaignDriver:
     # Set to feed the operator overlay (Process C). None means nobody is watching,
     # which is the normal case: the campaign loop must never wait on a spectator.
     publisher: EventPublisher | None = None
-    # Where Process B leaves its directives. None keeps the loop on its own hardcoded
+    # Where AO leaves its directives. None keeps the loop on its own hardcoded
     # policy; set it and AO gets a say, with "hold" whenever it has nothing fresh.
     directive_store: DirectiveStore | None = None
     # Wall-clock ceiling, so a directive left on disk by an earlier session is never
     # adopted. Turn-count expiry alone would still honour a day-old file once.
     directive_max_age_s: float = 900.0
+    # When set, each turn blocks here until AO finishes for the current game turn
+    # before orders are planned. Phase 2 wires SyncCampaignDeliberator.deliberate.
+    deliberate_fn: Callable[[int], None] | None = None
+    # Optional shared map-target locate (same Reach session as deliberate_fn).
+    # When set, marches do not open a second ReachSession.
+    map_target_locate_fn: Callable[..., object] | None = None
+    # Optional shared multi-settlement view scan (same Reach session).
+    settlement_scan_fn: Callable[..., object] | None = None
     last_directive: str = field(default="", init=False)
     _directive_question_id: str = field(default="", init=False)
     _directive_adopted_turn: int = field(default=0, init=False)
     battles_resolved: int = field(default=0, init=False)
     attacks_ordered: int = field(default=0, init=False)
+    marches_ordered: int = field(default=0, init=False)
     _publish_failures: int = field(default=0, init=False)
     _combat: CombatDirector | None = field(default=None, init=False)
+    _march: MarchDirector | None = field(default=None, init=False)
     _turn_advances: int = field(default=0, init=False)
     _last_started_seen: int = field(default=0, init=False)
     _turn_baseline_resets: int = field(default=0, init=False)
@@ -120,6 +160,8 @@ class HardcodedCampaignDriver:
     last_ui_confidence: float = field(default=0.0, init=False)
     last_ui_detail: str = field(default="", init=False)
     last_orders: list[str] = field(default_factory=list, init=False)
+    last_refusal_code: str = field(default="", init=False)
+    _last_failure_key: tuple[str, int, str] | None = field(default=None, init=False)
     _last_debug_capture_ts: float = field(default=0.0, init=False)
     _turn_marker_cache: dict[str, tuple[float, int]] = field(default_factory=dict, init=False)
 
@@ -212,10 +254,11 @@ class HardcodedCampaignDriver:
     def current_directive(self) -> Directive | None:
         """The directive in force this turn, or None when AO is not in the loop.
 
-        Deliberation happens in Process B and lands in a file; this side never waits
-        for it. Everything that is not a fresh, parseable directive becomes the
-        neutral "hold", so an AO that is down, slow, or talking nonsense costs a turn
-        of standing still rather than a guessed move.
+        With ``deliberate_fn`` wired, Process A already blocked on a fresh write
+        for this turn. Without it, deliberation may land asynchronously in the
+        store; everything that is not a fresh, parseable directive becomes the
+        neutral "hold", so an AO that is down, slow, or talking nonsense costs a
+        turn of standing still rather than a guessed move.
         """
         if self.directive_store is None:
             return None
@@ -242,6 +285,66 @@ class HardcodedCampaignDriver:
         self.last_directive = directive.intent.objective
         return directive
 
+    def _align_turn_clock(self) -> int:
+        """Prefer the live campaign turn (newest Start.sav) over a stale bootstrap clock.
+
+        Belief / message_log can leave ``state.turn`` at an older campaign's high
+        number (e.g. 11) while the saves folder's current Start.sav is turn 4.
+        AO must reason about the live turn — otherwise every call freezes on the
+        same brief and holds forever.
+        """
+        known = int(self._known_game_turn() or 0)
+        if known > 0:
+            self.state.turn = known
+        return int(self.state.turn or 0)
+
+    def _block_on_ao(self, *, on_progress: Callable[..., None] | None, index: int, total: int) -> None:
+        """Wait for a fresh director answer for this game turn before planning."""
+        if self.deliberate_fn is None:
+            return
+        turn = self._align_turn_clock()
+        if on_progress:
+            on_progress(
+                index=index,
+                total=total,
+                phase=f"waiting for AO on turn {turn}",
+            )
+        self._publish(
+            EventKind.AO_REQUEST,
+            {"summary": f"blocking director turn {turn}", "turn": turn},
+        )
+        try:
+            self.deliberate_fn(turn)
+        except TimeoutError as exc:
+            _LOGGER.error("AO director timed out on turn %s: %s", turn, exc)
+            if on_progress:
+                on_progress(
+                    index=index,
+                    total=total,
+                    phase=f"AO timeout on turn {turn} — holding",
+                )
+            if self.directive_store is not None:
+                self.directive_store.write_neutral(
+                    f"campaign-{turn}-timeout", reason="ao_director_timeout"
+                )
+            self._directive_question_id = ""
+            return
+        # Force re-adoption of the write that just landed, even if question_id
+        # somehow collided with a prior file on disk.
+        if self.directive_store is not None:
+            self._directive_question_id = ""
+        if on_progress:
+            objective = (
+                self.current_directive().intent.objective
+                if self.directive_store is not None
+                else "none"
+            )
+            on_progress(
+                index=index,
+                total=total,
+                phase=f"AO answered: {objective}",
+            )
+
     def _neutral(self, reason: str) -> Directive:
         _LOGGER.info("campaign directive: neutral (%s)", reason)
         self.last_directive = f"hold ({reason})"
@@ -259,6 +362,198 @@ class HardcodedCampaignDriver:
                 hwnd=hwnd, controller=controller, on_heartbeat=self.on_heartbeat
             )
         return self._combat
+
+    def march_director(self) -> MarchDirector | None:
+        """Mouse march helper bound to the live window, or None in a dry run."""
+        hwnd = self._resolve_hwnd()
+        shell = self.actuator.shell
+        controller = shell.input_controller if shell else None
+        if hwnd is None or controller is None:
+            return None
+        if self._march is None or self._march.hwnd != hwnd:
+            rows = DEFAULT_LISTS_ROWS
+            if self.army_lists_row_norm is not None:
+                rows = (self.army_lists_row_norm, *DEFAULT_LISTS_ROWS)
+            locate = self._map_target_locator() if self.use_map_vision else None
+            scan = self._settlement_scanner() if self.use_map_vision else None
+            self._march = MarchDirector(
+                hwnd=hwnd,
+                controller=controller,
+                on_heartbeat=self.on_heartbeat,
+                lists_rows=rows,
+                locate_target=locate,
+                scan_settlements=scan,
+                map_vision_min_confidence=self.map_vision_min_confidence,
+                use_map_projection=self.use_map_projection,
+                allow_legacy_geometry=self.allow_legacy_geometry,
+                use_vision_besiege=self.use_vision_besiege and self.use_map_vision,
+                allow_region_pan=self.allow_region_pan,
+                belief=self.belief,
+                debug_frame_dir=Path("data/runtime/map_projection_debug"),
+            )
+        return self._march
+
+    def _settlement_scanner(self):
+        """Ada multi-settlement view scan under the Ada yield lock."""
+        from comstar_game_ai.game_io.campaign.map_target_vision import (
+            SettlementViewHit,
+            query_settlement_scan_sync,
+        )
+        from comstar_game_ai.shared.runtime import ada_yield
+
+        timeout_s = self.map_vision_timeout_s
+        heartbeat = self.on_heartbeat
+        shared = self.settlement_scan_fn
+        prefer_holder = self
+
+        def scan(image):
+            prefer = getattr(prefer_holder, "_march_prefer_label", "") or ""
+            with ada_yield.held(holder="march", reason=f"settlement_scan:{prefer or 'view'}"):
+                if shared is not None:
+                    hits = shared(
+                        image,
+                        prefer_label=prefer,
+                        timeout_s=timeout_s,
+                        on_heartbeat=heartbeat,
+                    )
+                else:
+                    hits = query_settlement_scan_sync(
+                        image=image,
+                        prefer_label=prefer,
+                        timeout_s=timeout_s,
+                        on_heartbeat=heartbeat,
+                    )
+                if not isinstance(hits, list):
+                    return []
+                return [h for h in hits if isinstance(h, SettlementViewHit)]
+
+        return scan
+
+    def _map_target_locator(self):
+        """Ada map-target locate under the Ada yield lock."""
+        from comstar_game_ai.game_io.campaign.map_target_vision import (
+            MapTargetHit,
+            query_map_target_sync,
+        )
+        from comstar_game_ai.shared.runtime import ada_yield
+
+        timeout_s = self.map_vision_timeout_s
+        heartbeat = self.on_heartbeat
+        shared = self.map_target_locate_fn
+
+        def locate(image, label: str):
+            hint = getattr(self, "_march_vision_hint", "") or ""
+            with ada_yield.held(holder="march", reason=f"map_target:{label}"):
+                if shared is not None:
+                    hit = shared(
+                        image,
+                        label,
+                        hint_quadrant=hint,
+                        timeout_s=timeout_s,
+                        on_heartbeat=heartbeat,
+                    )
+                else:
+                    hit = query_map_target_sync(
+                        image=image,
+                        label=label,
+                        hint_quadrant=hint,
+                        timeout_s=timeout_s,
+                        on_heartbeat=heartbeat,
+                    )
+                return hit if isinstance(hit, MapTargetHit) or hit is None else None
+
+        return locate
+
+    def _execute_march(self, order) -> bool:
+        """Select the stack and click a destination. Never uses move_character."""
+        director = self.march_director()
+        if director is None or order.from_xy is None or order.to_xy is None:
+            _LOGGER.warning("march skipped — no director or coords (%s)", order.command)
+            return False
+        # Console must be closed: leftover backtick focus eats map clicks.
+        shell = self.actuator.shell
+        if shell is not None and getattr(shell, "console_open", False):
+            shell.close_console()
+            time.sleep(0.3)
+
+        label = _march_target_label(order)
+        self._march_prefer_label = label or ""
+        if self.use_map_vision and not label:
+            print(
+                f"MARCH vision: enabled but no target label on order ({order.command!r})",
+                flush=True,
+            )
+        if self.use_map_vision and label:
+            from comstar_game_ai.game_io.campaign.map_target_vision import bearing_quadrant
+
+            self._march_vision_hint = bearing_quadrant(
+                from_x=order.from_xy[0],
+                from_y=order.from_xy[1],
+                to_x=order.to_xy[0],
+                to_y=order.to_xy[1],
+            )
+
+        outcome = director.march(
+            from_x=order.from_xy[0],
+            from_y=order.from_xy[1],
+            to_x=order.to_xy[0],
+            to_y=order.to_xy[1],
+            lists_row=self.army_lists_row_norm,
+            character_name=order.character_name,
+            # Always pass the label for diagnostics; locate_target is only set when
+            # use_map_vision is on, so vision still stays off when the flag is false.
+            target_label=label,
+            standing=str(getattr(order, "standing", None) or "unknown"),
+            owner_raw=str(getattr(order, "owner_raw", None) or ""),
+        )
+
+        # Live frustum centre refreshes belief when the select was frustum-verified
+        # (or a consistent order) so AO stops inventing one-turn Segesta marches.
+        if (
+            outcome.live_from_xy is not None
+            and order.character_name
+            and (
+                outcome.belief_refresh_ok
+                or (outcome.ordered and outcome.projection_consistent)
+            )
+        ):
+            from comstar_game_ai.agent.belief.orders import record_live_position
+
+            lx, ly = outcome.live_from_xy
+            if record_live_position(
+                self.belief,
+                order.character_name,
+                lx,
+                ly,
+                turn=self.state.turn,
+            ):
+                self._save_belief()
+
+        if not outcome.ordered:
+            reason = str(outcome.reason or "march_failed")
+            self.last_refusal_code = reason
+            _LOGGER.warning("march failed: %s (%s)", order.command, reason)
+            return False
+
+        self.last_refusal_code = ""
+        self.marches_ordered += 1
+        # A settlement click with the sword opens Battle Deployment / siege —
+        # same as CombatDirector.attack. Resolve before the turn continues.
+        self.resolve_pending_battle()
+        # Only step belief when projection used live near/far geometry — never
+        # after a false glyph on local green land with stale from_xy.
+        if (
+            outcome.projection_consistent
+            and outcome.step_to is not None
+            and order.character_name
+        ):
+            from comstar_game_ai.agent.belief.orders import record_own_move
+
+            nx, ny = outcome.step_to
+            cmd = f"move_character {order.character_name} {nx:.0f},{ny:.0f}"
+            if record_own_move(self.belief, cmd, turn=self.state.turn):
+                self._save_belief()
+        return True
 
     def resolve_pending_battle(self) -> bool:
         """Auto-resolve a pending battle. True only when one was there and cleared."""
@@ -827,8 +1122,9 @@ class HardcodedCampaignDriver:
     ) -> bool:
         """Clear modals, observe, optional move, End Turn only on open map."""
         self._refresh_turn_from_message_log()
+        turn = self._align_turn_clock()
         if on_progress:
-            on_progress(index=index, total=total, phase=f"sync UI on turn {self.state.turn}")
+            on_progress(index=index, total=total, phase=f"sync UI on turn {turn}")
         self._sync_ui(handle_modal=True)
 
         if not self.state.allows_campaign_orders():
@@ -840,6 +1136,8 @@ class HardcodedCampaignDriver:
                     phase=f"skip — state={self.state.state.value} ui={self.last_ui_mode}",
                 )
             return False
+
+        self._block_on_ao(on_progress=on_progress, index=index, total=total)
 
         assert self.planner is not None
         directive = self.current_directive()
@@ -880,7 +1178,7 @@ class HardcodedCampaignDriver:
             on_progress(
                 index=index,
                 total=total,
-                phase=f"orders on turn {self.state.turn}: {', '.join(self.last_orders)}",
+                phase=f"orders on turn {self._align_turn_clock()}: {', '.join(self.last_orders)}",
             )
         self._publish(
             EventKind.INTENT_DECLARED,
@@ -889,22 +1187,20 @@ class HardcodedCampaignDriver:
 
         start = time.perf_counter()
         ok = True
-        belief_changed = False
+        self.last_refusal_code = ""
         for order in orders:
+            if order.kind == "march":
+                sent = self._execute_march(order)
+                if not sent:
+                    ok = False
+                continue
             sent = self.actuator.send(order.command, require_campaign=True)
             if not sent:
                 _LOGGER.warning("order failed: %s (%s)", order.command, order.reason)
+                self.last_refusal_code = str(order.reason or "order_failed")
             ok = sent and ok
-            # Belief is the campaign KB. An order we successfully issued is a fact
-            # we know without looking: write it in, so the next brief is still true
-            # and the director never has to infer from screenshots.
-            if sent and order.kind == "move_character":
-                from comstar_game_ai.agent.belief.orders import record_own_move
-
-                if record_own_move(self.belief, order.command, turn=self.state.turn):
-                    belief_changed = True
-        if belief_changed:
-            self._save_belief()
+            # Console move_character is no longer issued by the planner. Do not
+            # invent belief updates from keystroke success on any leftover path.
 
         self._run_combat_step(on_progress=on_progress, index=index, total=total)
 
@@ -1007,6 +1303,7 @@ class HardcodedCampaignDriver:
         self._refresh_turn_from_message_log()
         self._publish(EventKind.CONTROL_STATE, {"state": "agent"})
         turn_at_start = self.turns_ended
+        circuit_breaker = 0
         for i in range(n):
             self.poll_observation()
             idx = i + 1
@@ -1017,12 +1314,41 @@ class HardcodedCampaignDriver:
                 total=n,
             ):
                 ok_count += 1
+                self._last_failure_key = None
                 if on_progress:
                     on_progress(index=idx, total=n, phase="turn cycle complete", ok=True)
             else:
                 fail_count += 1
+                turn = int(self._known_game_turn() or self.state.turn or 0)
+                state_hash = str(self.state.turn or 0)
+                refusal = self.last_refusal_code or "turn_failed"
+                key = (refusal, turn, state_hash)
                 if on_progress:
                     on_progress(index=idx, total=n, phase="turn cycle failed or timed out", ok=False)
+                if self._last_failure_key == key:
+                    # Z8: identical refusal on same turn + state_hash — escalate then end.
+                    summary = (
+                        f"circuit_breaker: {refusal} turn={turn} state_hash={state_hash}"
+                    )
+                    _LOGGER.error(
+                        "circuit breaker — ending run (%s); previous_key=%s",
+                        summary,
+                        self._last_failure_key,
+                    )
+                    self._publish(
+                        EventKind.VERIFICATION,
+                        {"ok": False, "summary": summary},
+                    )
+                    if on_progress:
+                        on_progress(
+                            index=idx,
+                            total=n,
+                            phase=summary,
+                            ok=False,
+                        )
+                    circuit_breaker = 1
+                    break
+                self._last_failure_key = key
                 if require_ok:
                     break
         self._refresh_turn_from_message_log()
@@ -1033,6 +1359,7 @@ class HardcodedCampaignDriver:
             "turns_failed": fail_count,
             "requested": n,
             "desyncs": fail_count,
+            "circuit_breaker": circuit_breaker,
             # Endpoints are reported for context only. They are read from Rome's saves
             # folder, which keeps earlier campaigns, so subtracting them can produce a
             # negative and once scored an 18-turn run as zero.

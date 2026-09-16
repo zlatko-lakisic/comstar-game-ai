@@ -1,0 +1,3 @@
+{"turn": null, "tool": "get_army", "asked": "{\"arguments\": {\"army_id\": \"a1\"}, \"tool\": \"get_army\"}", "changed_directive": false}
+{"turn": null, "tool": "get_history", "asked": "{\"arguments\": {\"n\": 1}, \"tool\": \"get_history\"}", "changed_directive": false}
+{"turn": null, "tool": "explain_unit", "asked": "{\"arguments\": {\"unit_type\": \"principes\"}, \"tool\": \"explain_unit\"}", "changed_directive": false}

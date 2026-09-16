@@ -124,6 +124,8 @@ class FactionStart:
 class StartPosition:
     regions: dict[str, Region] = field(default_factory=dict)
     factions: dict[str, FactionStart] = field(default_factory=dict)
+    #: Opening alliances from ``faction_relationships`` lines (unordered pairs).
+    ally_pairs: list[tuple[str, str]] = field(default_factory=list)
 
     def region_of_settlement(self, settlement: str) -> Region | None:
         for region in self.regions.values():
@@ -254,9 +256,23 @@ def _parse_character(line: str) -> dict[str, object] | None:
     }
 
 
+def _parse_relationship_line(stripped: str) -> tuple[str, str] | None:
+    """``faction_relationships\\ta, b`` → opening alliance pair (lowercase)."""
+    parts = stripped.split(None, 1)
+    if not parts or parts[0].lower() != "faction_relationships":
+        return None
+    if len(parts) < 2:
+        return None
+    names = [n.strip().lower() for n in parts[1].split(",") if n.strip()]
+    if len(names) < 2:
+        return None
+    return names[0], names[1]
+
+
 def parse_start_position(strat_text: str, regions: dict[str, Region]) -> StartPosition:
     """Parse `descr_strat.txt` into per-faction settlements and characters."""
     factions: dict[str, FactionStart] = {}
+    ally_pairs: list[tuple[str, str]] = []
     current: FactionStart | None = None
     last_character: dict[str, object] | None = None
     settlement: dict[str, object] | None = None
@@ -277,6 +293,11 @@ def parse_start_position(strat_text: str, regions: dict[str, Region]) -> StartPo
         # came back with no settlements and no characters, and the parse looked
         # like it had simply found nothing.
         parts = stripped.split(None, 1)
+        if not line[0].isspace() and parts[0].lower() == "faction_relationships":
+            pair = _parse_relationship_line(stripped)
+            if pair is not None:
+                ally_pairs.append(pair)
+            continue
         if not line[0].isspace() and parts[0].lower() == "faction":
             if len(parts) == 2 and "," in parts[1]:
                 name = parts[1].split(",")[0].strip().lower()
@@ -332,7 +353,7 @@ def parse_start_position(strat_text: str, regions: dict[str, Region]) -> StartPo
         if stripped.lower().startswith("unit") and last_character is not None:
             last_character["units"] = int(last_character.get("units", 0)) + 1
 
-    return StartPosition(regions=regions, factions=factions)
+    return StartPosition(regions=regions, factions=factions, ally_pairs=ally_pairs)
 
 
 @lru_cache(maxsize=4)
@@ -375,6 +396,7 @@ def seed_belief(
     *,
     player_faction: str,
     sight: float = DEFAULT_SIGHT,
+    seed_turn: int = 1,
 ) -> int:
     """Write the opening position into belief, without handing over the whole map.
 
@@ -436,7 +458,10 @@ def seed_belief(
                 x=float(region.x if region.x is not None else 0),
                 y=float(region.y if region.y is not None else 0),
                 population=int(population) if isinstance(population, int) else None,
-                attributes={"level": entry.get("level") or ""},
+                attributes={
+                    "level": entry.get("level") or "",
+                    "last_seen_turn": int(seed_turn),
+                },
             )
         )
         written += 1
@@ -465,6 +490,7 @@ def seed_belief(
                 x=float(entry["x"]),
                 y=float(entry["y"]),
                 role=str(entry["role"]),
+                attributes={"last_seen_turn": int(seed_turn)},
             )
         )
         written += 1
@@ -482,9 +508,23 @@ def seed_belief(
                     y=float(entry["y"]),
                     strength=float(units),
                     general=str(entry["name"]),
+                    attributes={"last_seen_turn": int(seed_turn)},
                 )
             )
             written += 1
+
+    # Record the belief clock so Process B's first advance is relative to seed.
+    store.faction_beliefs["_belief_clock"] = {"last_advanced_turn": int(seed_turn)}
+
+    # Opening alliances from descr_strat; everyone else in sight defaults neutral.
+    from comstar_game_ai.agent.belief.diplomacy import seed_standings_from_allies
+
+    seed_standings_from_allies(
+        store,
+        player_faction=strat_name,
+        ally_pairs=list(start.ally_pairs),
+        known_factions=set(start.factions),
+    )
 
     return written
 

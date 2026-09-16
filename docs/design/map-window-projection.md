@@ -100,14 +100,15 @@ x_client = 0.50 + scale * (x_map - x_army)
 y_client = 0.48 + scale * (-1) * (y_map - y_army)
 ```
 
-`DEFAULT_ANCHOR_SCALE` = **client-norms per map unit** at typical post-locate zoom.
+`DEFAULT_ANCHOR_SCALE` = **client-norms per map unit** at the canonical pose.
 
 | Scale | Meaning |
 |---|---|
-| `0.032` (current) | Tuned after live overshoot into the gulf west of Segesta |
-| `0.041` (old) | Too large — destination projected past the town into water |
+| `0.0133` (current, Z7 @ N=14) | `0.74 / 55.6` after landed Flavius march @ 1280×720 |
+| `0.032` (historical) | Closer uncontrolled zoom; Segesta near-case |
+| `0.0092` (void) | Overlay-pose fit — never restore |
 
-**Worked example — Flavius → Segesta**
+**Worked example — historical Flavius → Segesta (pre-Arretium save)**
 
 ```text
 army   = (89, 82)
@@ -145,6 +146,184 @@ Detect the red radar trapezoid → axis-aligned map AABB → linear map to the v
 | After select | **Stay** on army-locate pose | Radar-jump toward destination |
 | Calibrate | `army_anchor` | `dest_anchor` (frustum only if near centre) |
 | Why | Radar jump was the “minimap click” operators noticed; frustum then aimed into the HUD | Destination not on screen after locate |
+
+---
+
+## Canonical camera pose
+
+Every map→window projection is defined against **one** pose and no other.
+`anchor_scale` is only valid here. Zoom and rotation are established by reset
+(saturation against a **clean** engine limit, then a fixed step), never by
+assuming the post-Lists-locate camera is still “typical”.
+
+Written 2026-09-11; **amended same day by
+[`docs/canonical-zoom-surface-handoff.md`](../canonical-zoom-surface-handoff.md)
+(Z series).** P2 / P4 / P7 / P8 stand. P1 / P3 / P5 / P6 are corrected there:
+saturate on **zoom in**, step **out**; surface check before projection; never
+fit AABB/scale until a march lands.
+
+```yaml
+campaign:
+  camera:
+    canonical_pose:
+      rotation: north_up   # map north points up the screen
+      tilt: fixed          # no strat tilt binding; see tilt note below
+      # Fidelity-first vs H_banner=37 @ 1280×720 (2026-09-11):
+      zoom_steps_from_max_in: 14
+    zoom_in_saturate_presses: 40  # hard clamp; verify Z3 still reports 3D map
+    verify:
+      expected_aabb_width_map: 55.6  # Z7 after landed march
+```
+
+`DEFAULT_ANCHOR_SCALE = 0.0133` (`0.74 / 55.6`) — same Z7 commit.
+
+### Why this zoom (Z1 / Z2)
+
+**Saturate on `zoom_in`, then step out.** The zoom-out extreme on Remastered is
+not a clean clamp — it is a soft UI trigger that opens **Map Overlay** (political
+/ factions view). Anchoring to max-out (or a fixed offset from it) drifts into
+that surface whenever the threshold moves. See
+[`docs/map-overlay-zoom-handoff.md`](../map-overlay-zoom-handoff.md).
+
+Canonical zoom sits **between** two measured bounds (same press coordinate:
+presses of `zoom_out` from max-in):
+
+| Bound | Symbol | Meaning |
+|-------|--------|---------|
+| Hazard | `H` | First press count where Z3 reports Map Overlay (banner is secondary only) |
+| Quantization floor | `Q` | Press count where a settlement is ~15–20 px (clickable floor) |
+
+Canonical = inside both, with a **margin from `H` chosen after the gap is known**
+— not a default of 3 or 5 picked in advance. Record `H`, `Q`, window size, and
+chosen steps here when the Z2 sweep completes.
+
+### Z2 sweep 2026-09-11 (observations only — steps not locked)
+
+Window **1280×720**. After Home recover, max-in is clean 3D map.
+
+| Symbol | Observation |
+|--------|-------------|
+| `H` | Two-stage: X-key plateau (~35–50 from max-in) shows *Keep scrolling to toggle the Map Overlay* while still 3D; **mouse wheel** from that plateau opens political Map Overlay by ~press 56. X alone does not open overlay. |
+| `Q` | Not auto-measured; settlements still large at X plateau → Q likely **slack** vs H. |
+| Z3 | Provisional interior stats **missed** Remastered’s translucent political overlay (terrain texture remains). Recalibrate before trusting the gate (left legends / fills). |
+
+Evidence frames under `docs/design/assets/map-overlay-zoom/z2-20260911-*.jpg`. Full write-up: `docs/canonical-zoom-surface-handoff.md` §9.
+
+### Locked after Z7 (2026-09-11)
+
+| Field | Value | Notes |
+|-------|-------|-------|
+| Window | 1280×720 | |
+| `zoom_steps_from_max_in` | **14** | Fidelity-first; `H_banner≈37`, not pushed toward H |
+| `expected_aabb_width_map` | **55.6** | After Flavius order landed |
+| `DEFAULT_ANCHOR_SCALE` | **0.0133** | `viewport_w 0.74 / 55.6` |
+| Landed order | Flavius @ Arretium → short west (`from≈67.5,88.7` → `62,88.7`) | Belief `(89,82)` / Segesta near-case was stale this save |
+
+### Void expectations (do not recover)
+
+These were fitted at the broken max-out / Map Overlay pose on 2026-09-11 and
+**must not** be used as active expectations or as a tuning start:
+
+| Void value | Why |
+|------------|-----|
+| `expected_aabb_width_map: 80.8` | Measured where overlay toggle fires; AABB cannot see surface |
+| `DEFAULT_ANCHOR_SCALE: 0.0092` | Derived as `0.74 / 80.8` from the same bad frame |
+
+A reference fitted to an unvalidated pose does not validate that pose — it
+**ratifies** it. The active 55.6 / 0.0133 pair is valid only because a march
+already landed at N=14.
+
+### Bindings (P2, discovered)
+
+From `data/text/descr_shortcuts.txt`, keyset `moderntw` (live install 2026-09-11):
+
+| Action | Section | Chord | Role |
+|---|---|---|---|
+| `point_to_north` | strat | `pageup` | Dedicated north-up reset |
+| `zoom_in` | strat | `z` | repeating |
+| `zoom_out` | strat | `x` | repeating |
+| `rot_l` / `rot_r` | strat | `q` / `e` | repeating |
+| tilt | — | — | **No strat binding.** `rot_u` / `rot_d` / `cam_up` / `cam_down` are battle-only |
+
+So rotation reset uses `point_to_north`, not mouse drag, as the primary path.
+Drag-unrotate remains a **bounded closed-loop fallback** if PageUp fails
+verification (attempt cap and mouse-button caution in config
+`campaign.camera.drag_unrotate`). Never assume “never rotate”.
+
+### Tilt
+
+No campaign tilt key exists in `descr_shortcuts.txt`. Tilt stays out of the
+canonical pose (`tilt: fixed`) unless a live measure of frustum AABB **width,
+height, and aspect** at max tilt vs default (zoom and rotation held fixed)
+moves past verify tolerance. Record that measurement in this section when
+taken — including a negative result.
+
+### Reset order (P7 — provisional)
+
+**Working hypothesis: locate, then reset** (`campaign.camera.reset_sequence:
+locate_then_reset`). Zoom and rotation usually operate about the view centre and
+should preserve army framing. **Not yet confirmed with a full Lists-locate A/B.**
+Run `python scripts/accept_camera_pose_reset.py --sequence-probe` guidance and
+`accept_map_projection_march.py` under both sequence values; replace this
+paragraph with the winner and the measured frustum-centre distances.
+
+### Verification after reset
+
+After reset and frustum quiesce, refuse with `pose_unverified` unless:
+
+1. `expected_aabb_width_map` is set (post-Z7) and frustum AABB width matches it
+   within tolerance — when unset, width is skipped so learning can proceed,
+2. orientation is north-up (AABB aspect ≥ `north_up_aspect_min`),
+3. frustum centre still near ordered `from_xy` when locate-then-reset
+   (`ARMY_FRUSTUM_MATCH_MAP = 12` — tightened after
+   [`phase2-false-march-20260911`](../phase2-false-march-20260911.md)).
+
+**Surface is a separate gate (Z3)** before projection — not folded into the AABB
+compare. See `map_surface` / `docs/canonical-zoom-surface-handoff.md`.
+
+### Live from / near-far (post false-march)
+
+Segesta’s map XY `(83, 84)` was never the bug. The army-anchor formula needs the
+**live** army map point:
+
+```text
+x_client = 0.50 + scale * (x_map - x_army_live)
+y_client = 0.48 + scale * (-1) * (y_map - y_army_live)
+```
+
+After Lists-locate + canonical pose:
+
+1. Measure radar frustum centre → `live_from_xy`.
+2. Refuse `pose_frustum_drift` if it moved too far from the post-select centre.
+3. Refuse `belief_from_mismatch` if belief `from` is farther than 12 map units
+   from live (driver may `record_live_position` when select was frustum-verified).
+4. Project using **live** from, not stale belief.
+5. Near path only when `dist(live, dest) ≤ 8` **and** army-anchor lands inside
+   the safe viewport and within `NEAR_CLIENT_OFFSET_MAX` of screen centre;
+   otherwise radar-frame (far path).
+6. Write `own_order` steps only when `projection_consistent` is true.
+
+Accept: from Arretium toward Segesta must radar-frame or refuse — never report
+ordered on a local green tile while belief still names Segesta.
+
+### Anchor scale (P6 / Z7)
+
+Active: `DEFAULT_ANCHOR_SCALE = 0.0133` at `zoom_steps_from_max_in: 14`
+(`viewport_width_client / aabb_w` with aabb_w 55.6). Void: `0.0092` (overlay
+pose). Historical closer-zoom: `0.032`.
+
+### Tilt measurement (pending dedicated pass)
+
+No strat tilt binding. Hostile reset live run 2026-09-11 used rotation+zoom only.
+A max-tilt vs default AABB width/height/aspect compare is still outstanding; until
+then `tilt: fixed` stays.
+
+### What this does not remove
+
+Belief coordinate error, affine-vs-3D approximation, and the absence of a
+machine-readable `show_cursorstat` remain. The blend ladder and glyph gate stay
+necessary; a guaranteed pose should make them succeed sooner, not make them
+redundant.
 
 ---
 

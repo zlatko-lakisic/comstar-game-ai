@@ -1,0 +1,4 @@
+{"ts": "2026-09-10T02:07:11.722088+00:00", "level": "info", "component": "engine", "message": "engine direct_agent start", "run_id": "f74d0bd0701c4a38aa33938980069a91", "question_id": "campaign-2-72f20f55"}
+{"ts": "2026-09-10T02:07:11.723136+00:00", "level": "info", "component": "engine", "message": "direct_agent start", "run_id": "f74d0bd0701c4a38aa33938980069a91", "question_id": "campaign-2-72f20f55"}
+{"ts": "2026-09-10T02:07:22.295200+00:00", "level": "info", "component": "engine", "message": "engine direct_agent end", "run_id": "f74d0bd0701c4a38aa33938980069a91", "question_id": "campaign-2-72f20f55"}
+

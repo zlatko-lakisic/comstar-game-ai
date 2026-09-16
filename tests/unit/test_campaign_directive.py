@@ -54,7 +54,7 @@ def _directive(objective: str, **kwargs) -> Directive:
 
 
 def _moves(orders):
-    return [o for o in orders if o.kind == "move_character"]
+    return [o for o in orders if o.kind in {"move_character", "march"}]
 
 
 # --- planner ---------------------------------------------------------------
@@ -84,6 +84,11 @@ def test_an_advancing_objective_moves():
     )
     orders = CampaignPlanner(id_map=id_map).plan(belief, directive)
     assert len(_moves(orders)) == 1
+    move = _moves(orders)[0]
+    assert move.kind == "march"
+    assert move.from_xy == (100.0, 100.0)
+    assert move.to_xy == (110.0, 100.0)
+    assert "Flavius" in move.character_name
 
 
 def test_an_invented_objective_reads_as_hold():

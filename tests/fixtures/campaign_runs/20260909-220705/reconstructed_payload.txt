@@ -1,0 +1,26 @@
+question_id: q-replay
+turn: 2
+state_hash: 90a0b9f8
+
+STANDING DIRECTIVE
+none
+
+THREATS
+none observed
+
+YOU HOLD
+set_ariminum  garrison similar  unrest low  age 0
+set_arretium  garrison stronger  unrest low  age 0
+
+GENERALS FREE
+gen_flavius_julius  near set_arretium, 1 turns out, strength moderate
+gen_lucius_julius  at set_arretium, idle, strength moderate
+gen_quintus_julius  at set_ariminum, idle, strength moderate
+gen_vibius_julius  near set_arretium, 1 turns out, strength moderate
+
+CANDIDATES
+set_segesta  owner fac_slave  1 turns  garrison weaker  confidence 0.6  age 0
+set_capua  owner fac_romans_scipii  2 turns  garrison stronger  confidence 0.6  age 0
+set_mediolanium  owner fac_gauls  2 turns  garrison similar  confidence 0.6  age 0
+set_patavium  owner fac_gauls  2 turns  garrison similar  confidence 0.6  age 0
+set_rome  owner fac_romans_senate  2 turns  garrison stronger  confidence 0.6  age 0

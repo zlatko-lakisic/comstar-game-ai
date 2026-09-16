@@ -84,6 +84,16 @@ If the overlay lacks `WS_EX_NOACTIVATE`, it takes foreground and receives input 
 
 Clicks during a loading screen do nothing or queue and fire unpredictably. Map orders with a modal scroll open land on the scroll. **Every action must assert its expected game state before executing.**
 
+**Camera pose is part of that state for map→window projection.** A measurement taken while the camera is still animating after zoom or rotation is indistinguishable from a good resting frustum. Quiesce (stable frustum AABB across consecutive frames) before verifying the canonical pose; timeout is a refusal (`pose_unverified`), not a warning. See `docs/design/map-window-projection.md` § Canonical camera pose. Map Overlay is a different surface from the 3D campaign map even when the radar frustum still measures cleanly — see `docs/canonical-zoom-surface-handoff.md`.
+
+### 3.4b Verification fitted to an unvalidated reference
+
+Any expected value derived from observing a state you have not independently validated will **certify that state**. On 2026-09-11, `expected_aabb_width_map: 80.8` was measured at Remastered’s zoom-out Map Overlay threshold; pose verify then passed (`aabb_w=82.1`) while march was impossible. The check measured zoom extent only and could not see surface. **Never fit an expectation to a pose that has not produced a working order.** Worked example: `docs/map-overlay-zoom-handoff.md`, amendment: `docs/canonical-zoom-surface-handoff.md`.
+
+### 3.4c Classifier confident label for a missing state
+
+A classifier whose label set excludes a real UI state returns the nearest wrong label with a confidence that looks usable. Map Overlay was reported as `campaign_map` at 0.70 while orders were invalid. Low confidence would have triggered another look; a confident wrong label does not. Add every real surface to the label set (Z4: `map_overlay`); do not treat classifier confidence as a surface gate — use an explicit surface check (Z3).
+
 ### 3.5 `WDA_EXCLUDEFROMCAPTURE` on Windows before 10.0.19041
 
 It degrades silently to `WDA_MONITOR`, which renders the window **blank** in captures rather than absent. A black rectangle over the game corrupts the frame the model reasons over, without looking obviously wrong.

@@ -51,6 +51,12 @@ if sys.platform == "win32":
     MOUSEEVENTF_ABSOLUTE = 0x8000
     MOUSEEVENTF_LEFTDOWN = 0x0002
     MOUSEEVENTF_LEFTUP = 0x0004
+    MOUSEEVENTF_RIGHTDOWN = 0x0008
+    MOUSEEVENTF_RIGHTUP = 0x0010
+    MOUSEEVENTF_MIDDLEDOWN = 0x0020
+    MOUSEEVENTF_MIDDLEUP = 0x0040
+    MOUSEEVENTF_WHEEL = 0x0800
+    WHEEL_DELTA = 120
     #: Without this, absolute coordinates address the primary monitor only, so any
     #: window on a monitor left of or above it is unreachable.
     MOUSEEVENTF_VIRTUALDESK = 0x4000
@@ -228,6 +234,21 @@ if sys.platform == "win32":
             except Exception:
                 return False
 
+        def right_click_client_norm(
+            self, hwnd: int, x_norm: float, y_norm: float, *, dwell_ms: int = 30
+        ) -> bool:
+            try:
+                left, top, right, bottom = win32gui.GetClientRect(hwnd)
+                w = max(right - left, 1)
+                h = max(bottom - top, 1)
+                cx = int(w * max(0.0, min(1.0, x_norm)))
+                cy = int(h * max(0.0, min(1.0, y_norm)))
+                sx, sy = win32gui.ClientToScreen(hwnd, (cx, cy))
+                self.focus_window(hwnd)
+                return self.right_click(sx, sy, dwell_ms=dwell_ms)
+            except Exception:
+                return False
+
         def send_keys(self, keys: Iterable[str], *, dwell_ms: int = 30) -> bool:
             ok = True
             for key in keys:
@@ -273,7 +294,7 @@ if sys.platform == "win32":
             return self._user32.SendInput(1, ctypes.byref(inp), ctypes.sizeof(INPUT)) == 1
 
         def click(self, x: int, y: int, *, dwell_ms: int = 80, settle_ms: int = 120) -> bool:
-            """Click at a screen coordinate, letting the cursor arrive first.
+            """Left-click at a screen coordinate, letting the cursor arrive first.
 
             Rome reads the cursor position on its own frame tick, so a button event
             sent immediately after the move is attributed to wherever the cursor was
@@ -282,13 +303,119 @@ if sys.platform == "win32":
             The move is re-asserted because a single absolute move can be coalesced
             with the button event in the same batch.
             """
+            return self._button_click(
+                x,
+                y,
+                down=MOUSEEVENTF_LEFTDOWN,
+                up=MOUSEEVENTF_LEFTUP,
+                dwell_ms=dwell_ms,
+                settle_ms=settle_ms,
+            )
+
+        def right_click(self, x: int, y: int, *, dwell_ms: int = 80, settle_ms: int = 120) -> bool:
+            """Right-click at a screen coordinate (campaign move / attack / besiege)."""
+            return self._button_click(
+                x,
+                y,
+                down=MOUSEEVENTF_RIGHTDOWN,
+                up=MOUSEEVENTF_RIGHTUP,
+                dwell_ms=dwell_ms,
+                settle_ms=settle_ms,
+            )
+
+        def mouse_wheel(
+            self,
+            x: int,
+            y: int,
+            *,
+            notches: int = -1,
+            settle_ms: int = 40,
+        ) -> bool:
+            """Vertical mouse wheel at a screen point. Negative notches = scroll toward user (zoom out on strat)."""
+            if not self.move_mouse(x, y):
+                return False
+            time.sleep(max(settle_ms, 1) / 1000.0)
+            delta = int(notches) * WHEEL_DELTA
+            # mouseData is DWORD; negative deltas need to be unsigned 32-bit.
+            mouse_data = ctypes.c_uint32(delta).value
+            inp = INPUT()
+            inp.type = INPUT_MOUSE
+            inp.union.mi = MOUSEINPUT(0, 0, mouse_data, MOUSEEVENTF_WHEEL, 0, 0)
+            return self._user32.SendInput(1, ctypes.byref(inp), ctypes.sizeof(INPUT)) == 1
+
+        def drag_client_norm(
+            self,
+            hwnd: int,
+            start: tuple[float, float],
+            end: tuple[float, float],
+            *,
+            button: str = "middle",
+            settle_ms: int = 80,
+            drag_ms: int = 120,
+        ) -> bool:
+            """Drag between two client-norm points. Prefer middle for camera rotate.
+
+            Left drag selects or issues orders on the strat map; right drag can
+            start a march. Middle-button drag is the closed-loop unrotate fallback
+            when ``point_to_north`` is unavailable or failed verification.
+            """
+            flags = {
+                "left": (MOUSEEVENTF_LEFTDOWN, MOUSEEVENTF_LEFTUP),
+                "right": (MOUSEEVENTF_RIGHTDOWN, MOUSEEVENTF_RIGHTUP),
+                "middle": (MOUSEEVENTF_MIDDLEDOWN, MOUSEEVENTF_MIDDLEUP),
+            }.get(button.lower())
+            if flags is None:
+                return False
+            down, up = flags
+            try:
+                left, top, right, bottom = win32gui.GetClientRect(hwnd)
+                w = max(right - left, 1)
+                h = max(bottom - top, 1)
+
+                def to_screen(xn: float, yn: float) -> tuple[int, int]:
+                    cx = int(w * max(0.0, min(1.0, xn)))
+                    cy = int(h * max(0.0, min(1.0, yn)))
+                    return win32gui.ClientToScreen(hwnd, (cx, cy))
+
+                sx0, sy0 = to_screen(*start)
+                sx1, sy1 = to_screen(*end)
+                self.focus_window(hwnd)
+                if not self.move_mouse(sx0, sy0):
+                    return False
+                time.sleep(max(settle_ms, 1) / 1000.0)
+                inp = INPUT()
+                inp.type = INPUT_MOUSE
+                inp.union.mi = MOUSEINPUT(0, 0, 0, down, 0, 0)
+                if self._user32.SendInput(1, ctypes.byref(inp), ctypes.sizeof(INPUT)) != 1:
+                    return False
+                time.sleep(max(drag_ms, 1) / 1000.0)
+                if not self.move_mouse(sx1, sy1):
+                    inp.union.mi = MOUSEINPUT(0, 0, 0, up, 0, 0)
+                    self._user32.SendInput(1, ctypes.byref(inp), ctypes.sizeof(INPUT))
+                    return False
+                time.sleep(max(drag_ms, 1) / 1000.0)
+                inp.union.mi = MOUSEINPUT(0, 0, 0, up, 0, 0)
+                return self._user32.SendInput(1, ctypes.byref(inp), ctypes.sizeof(INPUT)) == 1
+            except Exception:
+                return False
+
+        def _button_click(
+            self,
+            x: int,
+            y: int,
+            *,
+            down: int,
+            up: int,
+            dwell_ms: int = 80,
+            settle_ms: int = 120,
+        ) -> bool:
             if not self.move_mouse(x, y):
                 return False
             time.sleep(max(settle_ms, 1) / 1000.0)
             if not self.move_mouse(x, y):
                 return False
             time.sleep(max(settle_ms, 1) / 1000.0)
-            for flag in (MOUSEEVENTF_LEFTDOWN, MOUSEEVENTF_LEFTUP):
+            for flag in (down, up):
                 inp = INPUT()
                 inp.type = INPUT_MOUSE
                 inp.union.mi = MOUSEINPUT(0, 0, 0, flag, 0, 0)
@@ -343,6 +470,11 @@ else:
         def click_client_norm(self, hwnd: int, x_norm: float, y_norm: float, *, dwell_ms: int = 30) -> bool:
             return False
 
+        def right_click_client_norm(
+            self, hwnd: int, x_norm: float, y_norm: float, *, dwell_ms: int = 30
+        ) -> bool:
+            return False
+
         def chord_scancode(self, modifier: str, key: str, *, dwell_ms: int = 30, hwnd: int | None = None) -> bool:
             return False
 
@@ -350,4 +482,29 @@ else:
             return False
 
         def click(self, x: int, y: int, *, dwell_ms: int = 80, settle_ms: int = 120) -> bool:
+            return False
+
+        def right_click(self, x: int, y: int, *, dwell_ms: int = 80, settle_ms: int = 120) -> bool:
+            return False
+
+        def mouse_wheel(
+            self,
+            x: int,
+            y: int,
+            *,
+            notches: int = -1,
+            settle_ms: int = 40,
+        ) -> bool:
+            return False
+
+        def drag_client_norm(
+            self,
+            hwnd: int,
+            start: tuple[float, float],
+            end: tuple[float, float],
+            *,
+            button: str = "middle",
+            settle_ms: int = 80,
+            drag_ms: int = 120,
+        ) -> bool:
             return False

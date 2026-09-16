@@ -261,8 +261,8 @@ LEARNINGS: tuple[Learning, ...] = (
         action="Left-click Segesta's nameplate with Flavius selected",
         outcome="Selected Enemy SEGESTA Village.",
         valence=Valence.MIXED,
-        lesson="Wait for the sword cursor.",
-        evidence="army_sword_on_segesta.png / army_attack_segesta2.png; operator: left-click after glyph",
+        lesson="Wait for the sword cursor, then right-click (left-click selects the town).",
+        evidence="army_sword_on_segesta.png / army_attack_segesta2.png; operator: right-click after glyph",
     ),
     Learning(
         id="map_click_on_the_general_narrows_the_stack",

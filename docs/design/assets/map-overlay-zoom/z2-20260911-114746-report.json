@@ -1,0 +1,1396 @@
+{
+  "window_client": {
+    "width": 1280,
+    "height": 720
+  },
+  "in_clamp_clean": true,
+  "in_clamp_stats": {
+    "variance": 0.008167,
+    "saturation_mean": 0.6515,
+    "hue_bins_used": 6,
+    "edge_density": 0.0954,
+    "mean_luma": 0.3879,
+    "sample_pixels": 103424,
+    "roi_norms": [
+      0.3,
+      0.2,
+      0.7,
+      0.48
+    ],
+    "is_map_overlay": false,
+    "detail": "textured_map"
+  },
+  "H": null,
+  "Q": null,
+  "H_minus_Q": null,
+  "q_binding": null,
+  "overlay_stats_at_H": null,
+  "tab_overlay_stats": {
+    "variance": 0.00606,
+    "saturation_mean": 0.5581,
+    "hue_bins_used": 5,
+    "edge_density": 0.0653,
+    "mean_luma": 0.299,
+    "sample_pixels": 103424,
+    "roi_norms": [
+      0.3,
+      0.2,
+      0.7,
+      0.48
+    ],
+    "is_map_overlay": false,
+    "detail": "textured_map"
+  },
+  "steps": [
+    {
+      "presses_from_max_in": 0,
+      "zoom_mode": "key_x",
+      "feature_scale_px": 1.0,
+      "variance": 0.008146,
+      "saturation_mean": 0.6515,
+      "hue_bins_used": 6,
+      "edge_density": 0.0956,
+      "mean_luma": 0.3879,
+      "sample_pixels": 103424,
+      "roi_norms": [
+        0.3,
+        0.2,
+        0.7,
+        0.48
+      ],
+      "is_map_overlay": false,
+      "detail": "textured_map"
+    },
+    {
+      "presses_from_max_in": 1,
+      "zoom_mode": "key_x",
+      "feature_scale_px": 1.0,
+      "variance": 0.008113,
+      "saturation_mean": 0.6502,
+      "hue_bins_used": 6,
+      "edge_density": 0.0948,
+      "mean_luma": 0.387,
+      "sample_pixels": 103424,
+      "roi_norms": [
+        0.3,
+        0.2,
+        0.7,
+        0.48
+      ],
+      "is_map_overlay": false,
+      "detail": "textured_map"
+    },
+    {
+      "presses_from_max_in": 2,
+      "zoom_mode": "key_x",
+      "feature_scale_px": 1.0,
+      "variance": 0.008038,
+      "saturation_mean": 0.648,
+      "hue_bins_used": 5,
+      "edge_density": 0.0941,
+      "mean_luma": 0.3856,
+      "sample_pixels": 103424,
+      "roi_norms": [
+        0.3,
+        0.2,
+        0.7,
+        0.48
+      ],
+      "is_map_overlay": false,
+      "detail": "textured_map"
+    },
+    {
+      "presses_from_max_in": 3,
+      "zoom_mode": "key_x",
+      "feature_scale_px": 1.0,
+      "variance": 0.007867,
+      "saturation_mean": 0.6461,
+      "hue_bins_used": 5,
+      "edge_density": 0.0944,
+      "mean_luma": 0.3846,
+      "sample_pixels": 103424,
+      "roi_norms": [
+        0.3,
+        0.2,
+        0.7,
+        0.48
+      ],
+      "is_map_overlay": false,
+      "detail": "textured_map"
+    },
+    {
+      "presses_from_max_in": 4,
+      "zoom_mode": "key_x",
+      "feature_scale_px": 1.0,
+      "variance": 0.00788,
+      "saturation_mean": 0.6447,
+      "hue_bins_used": 5,
+      "edge_density": 0.094,
+      "mean_luma": 0.3848,
+      "sample_pixels": 103424,
+      "roi_norms": [
+        0.3,
+        0.2,
+        0.7,
+        0.48
+      ],
+      "is_map_overlay": false,
+      "detail": "textured_map"
+    },
+    {
+      "presses_from_max_in": 5,
+      "zoom_mode": "key_x",
+      "feature_scale_px": 1.0,
+      "variance": 0.007845,
+      "saturation_mean": 0.6401,
+      "hue_bins_used": 6,
+      "edge_density": 0.0926,
+      "mean_luma": 0.3859,
+      "sample_pixels": 103424,
+      "roi_norms": [
+        0.3,
+        0.2,
+        0.7,
+        0.48
+      ],
+      "is_map_overlay": false,
+      "detail": "textured_map"
+    },
+    {
+      "presses_from_max_in": 6,
+      "zoom_mode": "key_x",
+      "feature_scale_px": 1.0,
+      "variance": 0.007568,
+      "saturation_mean": 0.6369,
+      "hue_bins_used": 6,
+      "edge_density": 0.0917,
+      "mean_luma": 0.3873,
+      "sample_pixels": 103424,
+      "roi_norms": [
+        0.3,
+        0.2,
+        0.7,
+        0.48
+      ],
+      "is_map_overlay": false,
+      "detail": "textured_map"
+    },
+    {
+      "presses_from_max_in": 7,
+      "zoom_mode": "key_x",
+      "feature_scale_px": 1.0,
+      "variance": 0.007903,
+      "saturation_mean": 0.6327,
+      "hue_bins_used": 6,
+      "edge_density": 0.0897,
+      "mean_luma": 0.3883,
+      "sample_pixels": 103424,
+      "roi_norms": [
+        0.3,
+        0.2,
+        0.7,
+        0.48
+      ],
+      "is_map_overlay": false,
+      "detail": "textured_map"
+    },
+    {
+      "presses_from_max_in": 8,
+      "zoom_mode": "key_x",
+      "feature_scale_px": 1.0,
+      "variance": 0.007625,
+      "saturation_mean": 0.63,
+      "hue_bins_used": 6,
+      "edge_density": 0.0875,
+      "mean_luma": 0.3892,
+      "sample_pixels": 103424,
+      "roi_norms": [
+        0.3,
+        0.2,
+        0.7,
+        0.48
+      ],
+      "is_map_overlay": false,
+      "detail": "textured_map"
+    },
+    {
+      "presses_from_max_in": 9,
+      "zoom_mode": "key_x",
+      "feature_scale_px": 1.0,
+      "variance": 0.007584,
+      "saturation_mean": 0.6283,
+      "hue_bins_used": 6,
+      "edge_density": 0.0856,
+      "mean_luma": 0.3893,
+      "sample_pixels": 103424,
+      "roi_norms": [
+        0.3,
+        0.2,
+        0.7,
+        0.48
+      ],
+      "is_map_overlay": false,
+      "detail": "textured_map"
+    },
+    {
+      "presses_from_max_in": 10,
+      "zoom_mode": "key_x",
+      "feature_scale_px": 1.0,
+      "variance": 0.007336,
+      "saturation_mean": 0.6273,
+      "hue_bins_used": 6,
+      "edge_density": 0.0834,
+      "mean_luma": 0.3887,
+      "sample_pixels": 103424,
+      "roi_norms": [
+        0.3,
+        0.2,
+        0.7,
+        0.48
+      ],
+      "is_map_overlay": false,
+      "detail": "textured_map"
+    },
+    {
+      "presses_from_max_in": 11,
+      "zoom_mode": "key_x",
+      "feature_scale_px": 1.0,
+      "variance": 0.007359,
+      "saturation_mean": 0.6259,
+      "hue_bins_used": 6,
+      "edge_density": 0.0819,
+      "mean_luma": 0.3874,
+      "sample_pixels": 103424,
+      "roi_norms": [
+        0.3,
+        0.2,
+        0.7,
+        0.48
+      ],
+      "is_map_overlay": false,
+      "detail": "textured_map"
+    },
+    {
+      "presses_from_max_in": 12,
+      "zoom_mode": "key_x",
+      "feature_scale_px": 1.0,
+      "variance": 0.007208,
+      "saturation_mean": 0.6234,
+      "hue_bins_used": 6,
+      "edge_density": 0.0805,
+      "mean_luma": 0.386,
+      "sample_pixels": 103424,
+      "roi_norms": [
+        0.3,
+        0.2,
+        0.7,
+        0.48
+      ],
+      "is_map_overlay": false,
+      "detail": "textured_map"
+    },
+    {
+      "presses_from_max_in": 13,
+      "zoom_mode": "key_x",
+      "feature_scale_px": 1.0,
+      "variance": 0.007407,
+      "saturation_mean": 0.6212,
+      "hue_bins_used": 6,
+      "edge_density": 0.0799,
+      "mean_luma": 0.3846,
+      "sample_pixels": 103424,
+      "roi_norms": [
+        0.3,
+        0.2,
+        0.7,
+        0.48
+      ],
+      "is_map_overlay": false,
+      "detail": "textured_map"
+    },
+    {
+      "presses_from_max_in": 14,
+      "zoom_mode": "key_x",
+      "feature_scale_px": 1.0,
+      "variance": 0.00722,
+      "saturation_mean": 0.6195,
+      "hue_bins_used": 5,
+      "edge_density": 0.079,
+      "mean_luma": 0.382,
+      "sample_pixels": 103424,
+      "roi_norms": [
+        0.3,
+        0.2,
+        0.7,
+        0.48
+      ],
+      "is_map_overlay": false,
+      "detail": "textured_map"
+    },
+    {
+      "presses_from_max_in": 15,
+      "zoom_mode": "key_x",
+      "feature_scale_px": 1.0,
+      "variance": 0.007145,
+      "saturation_mean": 0.6179,
+      "hue_bins_used": 5,
+      "edge_density": 0.0783,
+      "mean_luma": 0.3799,
+      "sample_pixels": 103424,
+      "roi_norms": [
+        0.3,
+        0.2,
+        0.7,
+        0.48
+      ],
+      "is_map_overlay": false,
+      "detail": "textured_map"
+    },
+    {
+      "presses_from_max_in": 16,
+      "zoom_mode": "key_x",
+      "feature_scale_px": 1.0,
+      "variance": 0.007112,
+      "saturation_mean": 0.6143,
+      "hue_bins_used": 6,
+      "edge_density": 0.0773,
+      "mean_luma": 0.377,
+      "sample_pixels": 103424,
+      "roi_norms": [
+        0.3,
+        0.2,
+        0.7,
+        0.48
+      ],
+      "is_map_overlay": false,
+      "detail": "textured_map"
+    },
+    {
+      "presses_from_max_in": 17,
+      "zoom_mode": "key_x",
+      "feature_scale_px": 1.0,
+      "variance": 0.00706,
+      "saturation_mean": 0.6096,
+      "hue_bins_used": 6,
+      "edge_density": 0.0771,
+      "mean_luma": 0.3738,
+      "sample_pixels": 103424,
+      "roi_norms": [
+        0.3,
+        0.2,
+        0.7,
+        0.48
+      ],
+      "is_map_overlay": false,
+      "detail": "textured_map"
+    },
+    {
+      "presses_from_max_in": 18,
+      "zoom_mode": "key_x",
+      "feature_scale_px": 1.0,
+      "variance": 0.006898,
+      "saturation_mean": 0.6051,
+      "hue_bins_used": 6,
+      "edge_density": 0.0768,
+      "mean_luma": 0.3699,
+      "sample_pixels": 103424,
+      "roi_norms": [
+        0.3,
+        0.2,
+        0.7,
+        0.48
+      ],
+      "is_map_overlay": false,
+      "detail": "textured_map"
+    },
+    {
+      "presses_from_max_in": 19,
+      "zoom_mode": "key_x",
+      "feature_scale_px": 1.0,
+      "variance": 0.006646,
+      "saturation_mean": 0.5997,
+      "hue_bins_used": 6,
+      "edge_density": 0.0762,
+      "mean_luma": 0.3661,
+      "sample_pixels": 103424,
+      "roi_norms": [
+        0.3,
+        0.2,
+        0.7,
+        0.48
+      ],
+      "is_map_overlay": false,
+      "detail": "textured_map"
+    },
+    {
+      "presses_from_max_in": 20,
+      "zoom_mode": "key_x",
+      "feature_scale_px": 1.0,
+      "variance": 0.006718,
+      "saturation_mean": 0.5955,
+      "hue_bins_used": 6,
+      "edge_density": 0.0755,
+      "mean_luma": 0.3637,
+      "sample_pixels": 103424,
+      "roi_norms": [
+        0.3,
+        0.2,
+        0.7,
+        0.48
+      ],
+      "is_map_overlay": false,
+      "detail": "textured_map"
+    },
+    {
+      "presses_from_max_in": 21,
+      "zoom_mode": "key_x",
+      "feature_scale_px": 1.0,
+      "variance": 0.006839,
+      "saturation_mean": 0.5919,
+      "hue_bins_used": 6,
+      "edge_density": 0.0755,
+      "mean_luma": 0.3618,
+      "sample_pixels": 103424,
+      "roi_norms": [
+        0.3,
+        0.2,
+        0.7,
+        0.48
+      ],
+      "is_map_overlay": false,
+      "detail": "textured_map"
+    },
+    {
+      "presses_from_max_in": 22,
+      "zoom_mode": "key_x",
+      "feature_scale_px": 1.0,
+      "variance": 0.006856,
+      "saturation_mean": 0.5883,
+      "hue_bins_used": 6,
+      "edge_density": 0.0744,
+      "mean_luma": 0.3583,
+      "sample_pixels": 103424,
+      "roi_norms": [
+        0.3,
+        0.2,
+        0.7,
+        0.48
+      ],
+      "is_map_overlay": false,
+      "detail": "textured_map"
+    },
+    {
+      "presses_from_max_in": 23,
+      "zoom_mode": "key_x",
+      "feature_scale_px": 1.0,
+      "variance": 0.006817,
+      "saturation_mean": 0.5858,
+      "hue_bins_used": 6,
+      "edge_density": 0.0733,
+      "mean_luma": 0.354,
+      "sample_pixels": 103424,
+      "roi_norms": [
+        0.3,
+        0.2,
+        0.7,
+        0.48
+      ],
+      "is_map_overlay": false,
+      "detail": "textured_map"
+    },
+    {
+      "presses_from_max_in": 24,
+      "zoom_mode": "key_x",
+      "feature_scale_px": 1.0,
+      "variance": 0.006728,
+      "saturation_mean": 0.5834,
+      "hue_bins_used": 6,
+      "edge_density": 0.0724,
+      "mean_luma": 0.3514,
+      "sample_pixels": 103424,
+      "roi_norms": [
+        0.3,
+        0.2,
+        0.7,
+        0.48
+      ],
+      "is_map_overlay": false,
+      "detail": "textured_map"
+    },
+    {
+      "presses_from_max_in": 25,
+      "zoom_mode": "key_x",
+      "feature_scale_px": 1.0,
+      "variance": 0.006877,
+      "saturation_mean": 0.5814,
+      "hue_bins_used": 6,
+      "edge_density": 0.0711,
+      "mean_luma": 0.3488,
+      "sample_pixels": 103424,
+      "roi_norms": [
+        0.3,
+        0.2,
+        0.7,
+        0.48
+      ],
+      "is_map_overlay": false,
+      "detail": "textured_map"
+    },
+    {
+      "presses_from_max_in": 26,
+      "zoom_mode": "key_x",
+      "feature_scale_px": 1.0,
+      "variance": 0.006482,
+      "saturation_mean": 0.5791,
+      "hue_bins_used": 6,
+      "edge_density": 0.0693,
+      "mean_luma": 0.3448,
+      "sample_pixels": 103424,
+      "roi_norms": [
+        0.3,
+        0.2,
+        0.7,
+        0.48
+      ],
+      "is_map_overlay": false,
+      "detail": "textured_map"
+    },
+    {
+      "presses_from_max_in": 27,
+      "zoom_mode": "key_x",
+      "feature_scale_px": 1.0,
+      "variance": 0.006457,
+      "saturation_mean": 0.5768,
+      "hue_bins_used": 6,
+      "edge_density": 0.0678,
+      "mean_luma": 0.3409,
+      "sample_pixels": 103424,
+      "roi_norms": [
+        0.3,
+        0.2,
+        0.7,
+        0.48
+      ],
+      "is_map_overlay": false,
+      "detail": "textured_map"
+    },
+    {
+      "presses_from_max_in": 28,
+      "zoom_mode": "key_x",
+      "feature_scale_px": 1.0,
+      "variance": 0.006396,
+      "saturation_mean": 0.575,
+      "hue_bins_used": 6,
+      "edge_density": 0.0669,
+      "mean_luma": 0.3371,
+      "sample_pixels": 103424,
+      "roi_norms": [
+        0.3,
+        0.2,
+        0.7,
+        0.48
+      ],
+      "is_map_overlay": false,
+      "detail": "textured_map"
+    },
+    {
+      "presses_from_max_in": 29,
+      "zoom_mode": "key_x",
+      "feature_scale_px": 1.0,
+      "variance": 0.006457,
+      "saturation_mean": 0.5706,
+      "hue_bins_used": 6,
+      "edge_density": 0.0659,
+      "mean_luma": 0.3324,
+      "sample_pixels": 103424,
+      "roi_norms": [
+        0.3,
+        0.2,
+        0.7,
+        0.48
+      ],
+      "is_map_overlay": false,
+      "detail": "textured_map"
+    },
+    {
+      "presses_from_max_in": 30,
+      "zoom_mode": "key_x",
+      "feature_scale_px": 1.0,
+      "variance": 0.006487,
+      "saturation_mean": 0.5664,
+      "hue_bins_used": 6,
+      "edge_density": 0.0659,
+      "mean_luma": 0.3269,
+      "sample_pixels": 103424,
+      "roi_norms": [
+        0.3,
+        0.2,
+        0.7,
+        0.48
+      ],
+      "is_map_overlay": false,
+      "detail": "textured_map"
+    },
+    {
+      "presses_from_max_in": 31,
+      "zoom_mode": "key_x",
+      "feature_scale_px": 1.0,
+      "variance": 0.006508,
+      "saturation_mean": 0.5631,
+      "hue_bins_used": 6,
+      "edge_density": 0.0648,
+      "mean_luma": 0.3227,
+      "sample_pixels": 103424,
+      "roi_norms": [
+        0.3,
+        0.2,
+        0.7,
+        0.48
+      ],
+      "is_map_overlay": false,
+      "detail": "textured_map"
+    },
+    {
+      "presses_from_max_in": 32,
+      "zoom_mode": "key_x",
+      "feature_scale_px": 1.0,
+      "variance": 0.006372,
+      "saturation_mean": 0.5598,
+      "hue_bins_used": 5,
+      "edge_density": 0.0644,
+      "mean_luma": 0.3164,
+      "sample_pixels": 103424,
+      "roi_norms": [
+        0.3,
+        0.2,
+        0.7,
+        0.48
+      ],
+      "is_map_overlay": false,
+      "detail": "textured_map"
+    },
+    {
+      "presses_from_max_in": 33,
+      "zoom_mode": "key_x",
+      "feature_scale_px": 1.0,
+      "variance": 0.006044,
+      "saturation_mean": 0.5585,
+      "hue_bins_used": 5,
+      "edge_density": 0.0647,
+      "mean_luma": 0.3113,
+      "sample_pixels": 103424,
+      "roi_norms": [
+        0.3,
+        0.2,
+        0.7,
+        0.48
+      ],
+      "is_map_overlay": false,
+      "detail": "textured_map"
+    },
+    {
+      "presses_from_max_in": 34,
+      "zoom_mode": "key_x",
+      "feature_scale_px": 1.0,
+      "variance": 0.006133,
+      "saturation_mean": 0.5581,
+      "hue_bins_used": 5,
+      "edge_density": 0.0654,
+      "mean_luma": 0.3057,
+      "sample_pixels": 103424,
+      "roi_norms": [
+        0.3,
+        0.2,
+        0.7,
+        0.48
+      ],
+      "is_map_overlay": false,
+      "detail": "textured_map"
+    },
+    {
+      "presses_from_max_in": 35,
+      "zoom_mode": "key_x",
+      "feature_scale_px": 1.0,
+      "variance": 0.005994,
+      "saturation_mean": 0.5586,
+      "hue_bins_used": 5,
+      "edge_density": 0.0655,
+      "mean_luma": 0.3009,
+      "sample_pixels": 103424,
+      "roi_norms": [
+        0.3,
+        0.2,
+        0.7,
+        0.48
+      ],
+      "is_map_overlay": false,
+      "detail": "textured_map"
+    },
+    {
+      "presses_from_max_in": 36,
+      "zoom_mode": "key_x",
+      "feature_scale_px": 1.0,
+      "variance": 0.005944,
+      "saturation_mean": 0.5586,
+      "hue_bins_used": 5,
+      "edge_density": 0.0655,
+      "mean_luma": 0.3005,
+      "sample_pixels": 103424,
+      "roi_norms": [
+        0.3,
+        0.2,
+        0.7,
+        0.48
+      ],
+      "is_map_overlay": false,
+      "detail": "textured_map"
+    },
+    {
+      "presses_from_max_in": 37,
+      "zoom_mode": "key_x",
+      "feature_scale_px": 1.0,
+      "variance": 0.005926,
+      "saturation_mean": 0.5586,
+      "hue_bins_used": 5,
+      "edge_density": 0.0655,
+      "mean_luma": 0.3007,
+      "sample_pixels": 103424,
+      "roi_norms": [
+        0.3,
+        0.2,
+        0.7,
+        0.48
+      ],
+      "is_map_overlay": false,
+      "detail": "textured_map"
+    },
+    {
+      "presses_from_max_in": 38,
+      "zoom_mode": "key_x",
+      "feature_scale_px": 1.0,
+      "variance": 0.005924,
+      "saturation_mean": 0.5586,
+      "hue_bins_used": 5,
+      "edge_density": 0.0656,
+      "mean_luma": 0.3008,
+      "sample_pixels": 103424,
+      "roi_norms": [
+        0.3,
+        0.2,
+        0.7,
+        0.48
+      ],
+      "is_map_overlay": false,
+      "detail": "textured_map"
+    },
+    {
+      "presses_from_max_in": 39,
+      "zoom_mode": "key_x",
+      "feature_scale_px": 1.0,
+      "variance": 0.005905,
+      "saturation_mean": 0.5586,
+      "hue_bins_used": 5,
+      "edge_density": 0.0654,
+      "mean_luma": 0.3008,
+      "sample_pixels": 103424,
+      "roi_norms": [
+        0.3,
+        0.2,
+        0.7,
+        0.48
+      ],
+      "is_map_overlay": false,
+      "detail": "textured_map"
+    },
+    {
+      "presses_from_max_in": 40,
+      "zoom_mode": "key_x",
+      "feature_scale_px": 1.0,
+      "variance": 0.005901,
+      "saturation_mean": 0.5587,
+      "hue_bins_used": 5,
+      "edge_density": 0.0655,
+      "mean_luma": 0.3007,
+      "sample_pixels": 103424,
+      "roi_norms": [
+        0.3,
+        0.2,
+        0.7,
+        0.48
+      ],
+      "is_map_overlay": false,
+      "detail": "textured_map"
+    },
+    {
+      "presses_from_max_in": 41,
+      "zoom_mode": "key_x",
+      "feature_scale_px": 1.0,
+      "variance": 0.005899,
+      "saturation_mean": 0.5586,
+      "hue_bins_used": 5,
+      "edge_density": 0.0654,
+      "mean_luma": 0.3007,
+      "sample_pixels": 103424,
+      "roi_norms": [
+        0.3,
+        0.2,
+        0.7,
+        0.48
+      ],
+      "is_map_overlay": false,
+      "detail": "textured_map"
+    },
+    {
+      "presses_from_max_in": 42,
+      "zoom_mode": "key_x",
+      "feature_scale_px": 1.0,
+      "variance": 0.00594,
+      "saturation_mean": 0.5586,
+      "hue_bins_used": 5,
+      "edge_density": 0.0655,
+      "mean_luma": 0.3008,
+      "sample_pixels": 103424,
+      "roi_norms": [
+        0.3,
+        0.2,
+        0.7,
+        0.48
+      ],
+      "is_map_overlay": false,
+      "detail": "textured_map"
+    },
+    {
+      "presses_from_max_in": 43,
+      "zoom_mode": "key_x",
+      "feature_scale_px": 1.0,
+      "variance": 0.005952,
+      "saturation_mean": 0.5586,
+      "hue_bins_used": 5,
+      "edge_density": 0.0657,
+      "mean_luma": 0.3007,
+      "sample_pixels": 103424,
+      "roi_norms": [
+        0.3,
+        0.2,
+        0.7,
+        0.48
+      ],
+      "is_map_overlay": false,
+      "detail": "textured_map"
+    },
+    {
+      "presses_from_max_in": 44,
+      "zoom_mode": "key_x",
+      "feature_scale_px": 1.0,
+      "variance": 0.005985,
+      "saturation_mean": 0.5585,
+      "hue_bins_used": 5,
+      "edge_density": 0.0657,
+      "mean_luma": 0.3007,
+      "sample_pixels": 103424,
+      "roi_norms": [
+        0.3,
+        0.2,
+        0.7,
+        0.48
+      ],
+      "is_map_overlay": false,
+      "detail": "textured_map"
+    },
+    {
+      "presses_from_max_in": 45,
+      "zoom_mode": "key_x",
+      "feature_scale_px": 1.0,
+      "variance": 0.005994,
+      "saturation_mean": 0.5584,
+      "hue_bins_used": 5,
+      "edge_density": 0.0657,
+      "mean_luma": 0.3006,
+      "sample_pixels": 103424,
+      "roi_norms": [
+        0.3,
+        0.2,
+        0.7,
+        0.48
+      ],
+      "is_map_overlay": false,
+      "detail": "textured_map"
+    },
+    {
+      "presses_from_max_in": 46,
+      "zoom_mode": "key_x",
+      "feature_scale_px": 1.0,
+      "variance": 0.006013,
+      "saturation_mean": 0.5584,
+      "hue_bins_used": 5,
+      "edge_density": 0.0657,
+      "mean_luma": 0.3005,
+      "sample_pixels": 103424,
+      "roi_norms": [
+        0.3,
+        0.2,
+        0.7,
+        0.48
+      ],
+      "is_map_overlay": false,
+      "detail": "textured_map"
+    },
+    {
+      "presses_from_max_in": 47,
+      "zoom_mode": "key_x",
+      "feature_scale_px": 1.0,
+      "variance": 0.006007,
+      "saturation_mean": 0.5584,
+      "hue_bins_used": 5,
+      "edge_density": 0.0656,
+      "mean_luma": 0.3002,
+      "sample_pixels": 103424,
+      "roi_norms": [
+        0.3,
+        0.2,
+        0.7,
+        0.48
+      ],
+      "is_map_overlay": false,
+      "detail": "textured_map"
+    },
+    {
+      "presses_from_max_in": 48,
+      "zoom_mode": "key_x",
+      "feature_scale_px": 1.0,
+      "variance": 0.006013,
+      "saturation_mean": 0.5584,
+      "hue_bins_used": 5,
+      "edge_density": 0.0656,
+      "mean_luma": 0.3002,
+      "sample_pixels": 103424,
+      "roi_norms": [
+        0.3,
+        0.2,
+        0.7,
+        0.48
+      ],
+      "is_map_overlay": false,
+      "detail": "textured_map"
+    },
+    {
+      "presses_from_max_in": 49,
+      "zoom_mode": "key_x",
+      "feature_scale_px": 1.0,
+      "variance": 0.006009,
+      "saturation_mean": 0.5583,
+      "hue_bins_used": 5,
+      "edge_density": 0.0654,
+      "mean_luma": 0.3001,
+      "sample_pixels": 103424,
+      "roi_norms": [
+        0.3,
+        0.2,
+        0.7,
+        0.48
+      ],
+      "is_map_overlay": false,
+      "detail": "textured_map"
+    },
+    {
+      "presses_from_max_in": 50,
+      "zoom_mode": "key_x",
+      "feature_scale_px": 1.0,
+      "variance": 0.006017,
+      "saturation_mean": 0.5583,
+      "hue_bins_used": 5,
+      "edge_density": 0.0654,
+      "mean_luma": 0.3,
+      "sample_pixels": 103424,
+      "roi_norms": [
+        0.3,
+        0.2,
+        0.7,
+        0.48
+      ],
+      "is_map_overlay": false,
+      "detail": "textured_map"
+    },
+    {
+      "presses_from_max_in": 51,
+      "zoom_mode": "wheel",
+      "feature_scale_px": 1.0,
+      "variance": 0.006004,
+      "saturation_mean": 0.5583,
+      "hue_bins_used": 5,
+      "edge_density": 0.0655,
+      "mean_luma": 0.3001,
+      "sample_pixels": 103424,
+      "roi_norms": [
+        0.3,
+        0.2,
+        0.7,
+        0.48
+      ],
+      "is_map_overlay": false,
+      "detail": "textured_map"
+    },
+    {
+      "presses_from_max_in": 52,
+      "zoom_mode": "wheel",
+      "feature_scale_px": 1.0,
+      "variance": 0.005997,
+      "saturation_mean": 0.5584,
+      "hue_bins_used": 5,
+      "edge_density": 0.0655,
+      "mean_luma": 0.3001,
+      "sample_pixels": 103424,
+      "roi_norms": [
+        0.3,
+        0.2,
+        0.7,
+        0.48
+      ],
+      "is_map_overlay": false,
+      "detail": "textured_map"
+    },
+    {
+      "presses_from_max_in": 53,
+      "zoom_mode": "wheel",
+      "feature_scale_px": 1.0,
+      "variance": 0.00601,
+      "saturation_mean": 0.5582,
+      "hue_bins_used": 5,
+      "edge_density": 0.0655,
+      "mean_luma": 0.3004,
+      "sample_pixels": 103424,
+      "roi_norms": [
+        0.3,
+        0.2,
+        0.7,
+        0.48
+      ],
+      "is_map_overlay": false,
+      "detail": "textured_map"
+    },
+    {
+      "presses_from_max_in": 54,
+      "zoom_mode": "wheel",
+      "feature_scale_px": 1.0,
+      "variance": 0.006273,
+      "saturation_mean": 0.5603,
+      "hue_bins_used": 5,
+      "edge_density": 0.0656,
+      "mean_luma": 0.3089,
+      "sample_pixels": 103424,
+      "roi_norms": [
+        0.3,
+        0.2,
+        0.7,
+        0.48
+      ],
+      "is_map_overlay": false,
+      "detail": "textured_map"
+    },
+    {
+      "presses_from_max_in": 55,
+      "zoom_mode": "wheel",
+      "feature_scale_px": 1.0,
+      "variance": 0.006616,
+      "saturation_mean": 0.5773,
+      "hue_bins_used": 7,
+      "edge_density": 0.064,
+      "mean_luma": 0.342,
+      "sample_pixels": 103424,
+      "roi_norms": [
+        0.3,
+        0.2,
+        0.7,
+        0.48
+      ],
+      "is_map_overlay": false,
+      "detail": "textured_map"
+    },
+    {
+      "presses_from_max_in": 56,
+      "zoom_mode": "wheel",
+      "feature_scale_px": 1.0,
+      "variance": 0.005878,
+      "saturation_mean": 0.4751,
+      "hue_bins_used": 7,
+      "edge_density": 0.0453,
+      "mean_luma": 0.311,
+      "sample_pixels": 103424,
+      "roi_norms": [
+        0.3,
+        0.2,
+        0.7,
+        0.48
+      ],
+      "is_map_overlay": false,
+      "detail": "textured_map"
+    },
+    {
+      "presses_from_max_in": 57,
+      "zoom_mode": "wheel",
+      "feature_scale_px": 1.0,
+      "variance": 0.009327,
+      "saturation_mean": 0.4283,
+      "hue_bins_used": 8,
+      "edge_density": 0.0503,
+      "mean_luma": 0.2795,
+      "sample_pixels": 103424,
+      "roi_norms": [
+        0.3,
+        0.2,
+        0.7,
+        0.48
+      ],
+      "is_map_overlay": false,
+      "detail": "textured_map"
+    },
+    {
+      "presses_from_max_in": 58,
+      "zoom_mode": "wheel",
+      "feature_scale_px": 1.0,
+      "variance": 0.009421,
+      "saturation_mean": 0.4337,
+      "hue_bins_used": 8,
+      "edge_density": 0.0472,
+      "mean_luma": 0.2527,
+      "sample_pixels": 103424,
+      "roi_norms": [
+        0.3,
+        0.2,
+        0.7,
+        0.48
+      ],
+      "is_map_overlay": false,
+      "detail": "textured_map"
+    },
+    {
+      "presses_from_max_in": 59,
+      "zoom_mode": "wheel",
+      "feature_scale_px": 1.0,
+      "variance": 0.008135,
+      "saturation_mean": 0.4363,
+      "hue_bins_used": 8,
+      "edge_density": 0.0449,
+      "mean_luma": 0.2313,
+      "sample_pixels": 103424,
+      "roi_norms": [
+        0.3,
+        0.2,
+        0.7,
+        0.48
+      ],
+      "is_map_overlay": false,
+      "detail": "textured_map"
+    },
+    {
+      "presses_from_max_in": 60,
+      "zoom_mode": "wheel",
+      "feature_scale_px": 2.0,
+      "variance": 0.008021,
+      "saturation_mean": 0.437,
+      "hue_bins_used": 8,
+      "edge_density": 0.0439,
+      "mean_luma": 0.2165,
+      "sample_pixels": 103424,
+      "roi_norms": [
+        0.3,
+        0.2,
+        0.7,
+        0.48
+      ],
+      "is_map_overlay": false,
+      "detail": "textured_map"
+    },
+    {
+      "presses_from_max_in": 61,
+      "zoom_mode": "wheel",
+      "feature_scale_px": 2.0,
+      "variance": 0.007068,
+      "saturation_mean": 0.4389,
+      "hue_bins_used": 8,
+      "edge_density": 0.0427,
+      "mean_luma": 0.2045,
+      "sample_pixels": 103424,
+      "roi_norms": [
+        0.3,
+        0.2,
+        0.7,
+        0.48
+      ],
+      "is_map_overlay": false,
+      "detail": "textured_map"
+    },
+    {
+      "presses_from_max_in": 62,
+      "zoom_mode": "wheel",
+      "feature_scale_px": 2.0,
+      "variance": 0.007093,
+      "saturation_mean": 0.4455,
+      "hue_bins_used": 8,
+      "edge_density": 0.0415,
+      "mean_luma": 0.1936,
+      "sample_pixels": 103424,
+      "roi_norms": [
+        0.3,
+        0.2,
+        0.7,
+        0.48
+      ],
+      "is_map_overlay": false,
+      "detail": "textured_map"
+    },
+    {
+      "presses_from_max_in": 63,
+      "zoom_mode": "wheel",
+      "feature_scale_px": 2.0,
+      "variance": 0.00674,
+      "saturation_mean": 0.455,
+      "hue_bins_used": 8,
+      "edge_density": 0.0399,
+      "mean_luma": 0.1816,
+      "sample_pixels": 103424,
+      "roi_norms": [
+        0.3,
+        0.2,
+        0.7,
+        0.48
+      ],
+      "is_map_overlay": false,
+      "detail": "textured_map"
+    },
+    {
+      "presses_from_max_in": 64,
+      "zoom_mode": "wheel",
+      "feature_scale_px": 2.0,
+      "variance": 0.006339,
+      "saturation_mean": 0.4639,
+      "hue_bins_used": 8,
+      "edge_density": 0.0374,
+      "mean_luma": 0.1696,
+      "sample_pixels": 103424,
+      "roi_norms": [
+        0.3,
+        0.2,
+        0.7,
+        0.48
+      ],
+      "is_map_overlay": false,
+      "detail": "textured_map"
+    },
+    {
+      "presses_from_max_in": 65,
+      "zoom_mode": "wheel",
+      "feature_scale_px": 2.0,
+      "variance": 0.005997,
+      "saturation_mean": 0.4619,
+      "hue_bins_used": 7,
+      "edge_density": 0.035,
+      "mean_luma": 0.1574,
+      "sample_pixels": 103424,
+      "roi_norms": [
+        0.3,
+        0.2,
+        0.7,
+        0.48
+      ],
+      "is_map_overlay": false,
+      "detail": "textured_map"
+    },
+    {
+      "presses_from_max_in": 66,
+      "zoom_mode": "wheel",
+      "feature_scale_px": 2.0,
+      "variance": 0.005434,
+      "saturation_mean": 0.4573,
+      "hue_bins_used": 6,
+      "edge_density": 0.0325,
+      "mean_luma": 0.1443,
+      "sample_pixels": 103424,
+      "roi_norms": [
+        0.3,
+        0.2,
+        0.7,
+        0.48
+      ],
+      "is_map_overlay": false,
+      "detail": "textured_map"
+    },
+    {
+      "presses_from_max_in": 67,
+      "zoom_mode": "wheel",
+      "feature_scale_px": 2.0,
+      "variance": 0.005338,
+      "saturation_mean": 0.4495,
+      "hue_bins_used": 4,
+      "edge_density": 0.0318,
+      "mean_luma": 0.1335,
+      "sample_pixels": 103424,
+      "roi_norms": [
+        0.3,
+        0.2,
+        0.7,
+        0.48
+      ],
+      "is_map_overlay": false,
+      "detail": "textured_map"
+    },
+    {
+      "presses_from_max_in": 68,
+      "zoom_mode": "wheel",
+      "feature_scale_px": 2.0,
+      "variance": 0.005449,
+      "saturation_mean": 0.4488,
+      "hue_bins_used": 4,
+      "edge_density": 0.0296,
+      "mean_luma": 0.1255,
+      "sample_pixels": 103424,
+      "roi_norms": [
+        0.3,
+        0.2,
+        0.7,
+        0.48
+      ],
+      "is_map_overlay": false,
+      "detail": "textured_map"
+    },
+    {
+      "presses_from_max_in": 69,
+      "zoom_mode": "wheel",
+      "feature_scale_px": 2.0,
+      "variance": 0.005653,
+      "saturation_mean": 0.4479,
+      "hue_bins_used": 5,
+      "edge_density": 0.028,
+      "mean_luma": 0.1293,
+      "sample_pixels": 103424,
+      "roi_norms": [
+        0.3,
+        0.2,
+        0.7,
+        0.48
+      ],
+      "is_map_overlay": false,
+      "detail": "textured_map"
+    },
+    {
+      "presses_from_max_in": 70,
+      "zoom_mode": "wheel",
+      "feature_scale_px": 2.0,
+      "variance": 0.005835,
+      "saturation_mean": 0.4463,
+      "hue_bins_used": 4,
+      "edge_density": 0.031,
+      "mean_luma": 0.1457,
+      "sample_pixels": 103424,
+      "roi_norms": [
+        0.3,
+        0.2,
+        0.7,
+        0.48
+      ],
+      "is_map_overlay": false,
+      "detail": "textured_map"
+    }
+  ],
+  "note": "Do not lock zoom_steps_from_max_in or re-derive anchor_scale from this report. Choose margin against H\u2212Q; Q from feature_scale_px is a proxy \u2014 confirm on frames. If H is null, keyboard X clamped without Map Overlay; see wheel/tab notes."
+}

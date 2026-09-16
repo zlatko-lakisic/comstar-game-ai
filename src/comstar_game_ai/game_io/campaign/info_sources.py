@@ -279,11 +279,11 @@ SOURCES: tuple[InfoSource, ...] = (
         id="map_order",
         question="How do we send an army or agent to a map target?",
         surface="map_viewport",
-        how="Select the character, hover until the cursor glyph changes, then left-click.",
+        how="Select the character, hover until the cursor glyph changes, then right-click.",
         reads="Sword cursor is an army attack. Town attack is a siege; a field army is Battle Deployment.",
         trap=(
-            "2004 cursor strings say Right click. A nameplate click before the "
-            "sword selects the town. Do not click a Gallic stack."
+            "Left-click on a nameplate selects the town instead of ordering a march. "
+            "Do not click a Gallic stack."
         ),
     ),
 )

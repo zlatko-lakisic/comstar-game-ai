@@ -99,7 +99,8 @@ def test_vocab_is_exactly_three():
 
 
 def test_stable_backstory_is_verbatim():
-    assert "You are the campaign director for the Julii" in STABLE_DIRECTOR_BACKSTORY
+    assert "You are the campaign director for the player's faction" in STABLE_DIRECTOR_BACKSTORY
+    assert "EXPANSION preferred" in STABLE_DIRECTOR_BACKSTORY
     assert "expand" not in STABLE_DIRECTOR_BACKSTORY
     assert "take_settlement" not in STABLE_DIRECTOR_BACKSTORY
     assert "fortify" not in STABLE_DIRECTOR_BACKSTORY

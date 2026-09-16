@@ -24,6 +24,8 @@ from comstar_game_ai.agent.predictors.campaign_board import (
     build_candidates,
     build_threats,
     estimate_garrison,
+    owned_settlement_centroid,
+    preferred_expansion_target,
     turns_to_reach,
 )
 
@@ -65,14 +67,20 @@ class CampaignPayload:
     candidates: list[Candidate]
     treasury: int | None
     income: int | None
+    preferred: Candidate | None = None
     allowed_ids: set[str] = field(default_factory=set)
     id_map: CampaignIdMap = field(default_factory=CampaignIdMap)
     text: str = ""
+    belief_hash: str = ""
+    payload_hash: str = ""
 
     def belief_block_for_hash(self) -> str:
-        """The belief portion that state_hash covers."""
+        """The belief portion that belief_hash / state_hash covers."""
         threat_lines = [th.to_payload_line() for th in self.threats] or ["none observed"]
         candidate_lines = [c.to_payload_line() for c in self.candidates] or ["(none)"]
+        preferred_line = (
+            self.preferred.to_payload_line() if self.preferred is not None else "none"
+        )
         return "\n".join(
             [
                 "THREATS",
@@ -83,6 +91,9 @@ class CampaignPayload:
                 "",
                 "GENERALS FREE",
                 *self.generals_free,
+                "",
+                "EXPANSION preferred",
+                preferred_line,
                 "",
                 "CANDIDATES",
                 *candidate_lines,
@@ -96,7 +107,24 @@ def _own_faction(player_faction: str) -> set[str]:
 
 
 def compute_state_hash(belief_block: str) -> str:
+    """Alias for belief_hash — kept for call sites and fixture continuity."""
+    return compute_belief_hash(belief_block)
+
+
+def compute_belief_hash(belief_block: str) -> str:
+    """Semantic board state. Excludes turn and question_id (F2 / former C7 hash)."""
     return hashlib.sha256(belief_block.encode("utf-8")).hexdigest()[:8]
+
+
+def compute_payload_hash(payload_text: str) -> str:
+    """Entire rendered prompt minus question_id only (F2 staleness signal)."""
+    lines = [
+        line
+        for line in payload_text.splitlines()
+        if not line.startswith("question_id:")
+    ]
+    body = "\n".join(lines)
+    return hashlib.sha256(body.encode("utf-8")).hexdigest()[:8]
 
 
 def assert_no_proper_nouns(payload_text: str, id_map: CampaignIdMap) -> None:
@@ -139,6 +167,8 @@ def compose_campaign_payload(
     candidates = build_candidates(
         belief, id_map, player_faction=player_faction, current_turn=turn
     )
+    centroid = owned_settlement_centroid(belief, player_faction=player_faction)
+    preferred = preferred_expansion_target(candidates, centroid=centroid)
 
     you_hold: list[str] = []
     for s in belief.get_settlements():
@@ -147,8 +177,14 @@ def compose_campaign_payload(
         sid = id_map.settlement_id(s)
         garrison, _ = estimate_garrison(s)
         unrest = (s.attributes or {}).get("unrest", "low")
-        age = int((s.attributes or {}).get("last_seen_turn", turn) or turn)
-        age_turns = max(0, turn - age) if isinstance(age, int) else 0
+        # Missing last_seen_turn must not default to `turn` — that froze every
+        # age at 0 in the 20260909-220705 run (F1 / F3).
+        raw_seen = (s.attributes or {}).get("last_seen_turn")
+        try:
+            seen = int(raw_seen) if raw_seen is not None else 0
+        except (TypeError, ValueError):
+            seen = 0
+        age_turns = max(0, int(turn) - seen)
         you_hold.append(
             f"{sid}  garrison {garrison}  unrest {unrest}  age {age_turns}"
         )
@@ -191,6 +227,7 @@ def compose_campaign_payload(
     general_lines = generals_free or ["(none)"]
     threat_lines = [th.to_payload_line() for th in threats] or ["none observed"]
     candidate_lines = [c.to_payload_line() for c in candidates] or ["(none)"]
+    preferred_line = preferred.to_payload_line() if preferred is not None else "none"
     belief_block = "\n".join(
         [
             "THREATS",
@@ -202,11 +239,16 @@ def compose_campaign_payload(
             "GENERALS FREE",
             *general_lines,
             "",
+            "EXPANSION preferred",
+            preferred_line,
+            "",
             "CANDIDATES",
             *candidate_lines,
         ]
     )
-    state_hash = compute_state_hash(belief_block)
+    belief_hash = compute_belief_hash(belief_block)
+    # state_hash remains the belief hash so existing logs/fixtures keep working.
+    state_hash = belief_hash
 
     standing_block = (
         standing.to_payload_block() if standing is not None else "none"
@@ -220,6 +262,7 @@ def compose_campaign_payload(
     text = (
         f"question_id: {question_id}\n"
         f"turn: {turn}\n"
+        f"belief_hash: {belief_hash}\n"
         f"state_hash: {state_hash}\n"
         f"\n"
         f"STANDING DIRECTIVE\n"
@@ -228,6 +271,9 @@ def compose_campaign_payload(
         f"{belief_block}"
         f"{treasury_line}\n"
     )
+    # F2: payload_hash is logged, not embedded — embedding would make the hash
+    # depend on itself. Covers the full model-facing text minus question_id.
+    payload_hash = compute_payload_hash(text)
 
     # C0: round-trip through JSON so a date never reaches Reach.
     assert_json_round_trip({"payload": text, "turn": turn, "question_id": question_id})
@@ -251,9 +297,12 @@ def compose_campaign_payload(
         candidates=candidates,
         treasury=treasury,
         income=income,
+        preferred=preferred,
         allowed_ids=allowed,
         id_map=id_map,
         text=text,
+        belief_hash=belief_hash,
+        payload_hash=payload_hash,
     )
 
 

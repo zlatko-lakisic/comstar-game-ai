@@ -14,8 +14,10 @@ from comstar_game_ai.agent.belief.entities import (
     ExistenceStatus,
 )
 from comstar_game_ai.agent.belief.orders import (
+    FRUSTUM_LOCATE_PROVENANCE,
     OWN_ORDER_PROVENANCE,
     parse_move_character,
+    record_live_position,
     record_own_move,
 )
 from comstar_game_ai.agent.belief.store import BeliefStore
@@ -116,3 +118,21 @@ def test_the_brief_sees_the_new_position():
 
     assert '"at":[91,83]' in brief.replace(" ", "")
     assert '"from":[89.0,82.0]' in brief.replace(" ", "") or '"from": [89.0, 82.0]' in brief
+
+
+def test_recording_live_frustum_position_refreshes_stale_belief():
+    store = _store_with_flavius()
+    entry = record_live_position(
+        store, "Flavius Julius", 67.5, 87.1, turn=6, now=1_700_000_100.0
+    )
+    assert entry is not None
+    assert entry["source"] == FRUSTUM_LOCATE_PROVENANCE
+    assert entry["from"] == [89.0, 82.0]
+    assert entry["to"] == [67.5, 87.1]
+    character = store.get_character_entity("flavius_julius")
+    assert character is not None
+    assert (character.x, character.y) == (67.5, 87.1)
+    assert character.provenance == FRUSTUM_LOCATE_PROVENANCE
+    army = store.get_army_entity("flavius_julius_army")
+    assert army is not None
+    assert (army.x, army.y) == (67.5, 87.1)

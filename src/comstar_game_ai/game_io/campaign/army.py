@@ -18,10 +18,11 @@ general, not named, sea, enemy land, invalid tile, not enough money, sieging).
 The Mercenaries grid sits under that dock; it was empty in Etruria this turn.
 
 Map orders: select the character, park on the target until the cursor glyph
-changes (sword for an army attack), then left-click. The 2004
-`cursor_action_tooltips` still say 'Right click to …'; Remastered issues the
-order on that left-click. A nameplate click before the sword appears selects
-the settlement — Enemy SEGESTA Village this turn — instead of attacking.
+changes (sword for an army attack), then right-click. The 2004
+`cursor_action_tooltips` already say 'Right click to …'; Remastered issues the
+move / attack / besiege order on that right-click. A left-click on a nameplate
+before the sword appears selects the settlement — Enemy SEGESTA Village this
+turn — instead of attacking.
 Town attack is a siege. A field-army click is Battle Deployment (Phase 5).
 Do not click a Gallic stack: that would declare war.
 
@@ -61,8 +62,8 @@ WATCHTOWER_CARD = (0.865, 0.605)
 FORT_CARD = (0.925, 0.605)
 FIELD_CONSTRUCTION_CLOSE_X = (0.830, 0.419)
 
-#: Shipped strings. Live Remastered spends on left-click once the glyph shows.
-MAP_ORDER_BUTTON = "left"
+#: Remastered map orders spend on right-click once the glyph shows.
+MAP_ORDER_BUTTON = "right"
 MAP_ORDER_TELL = "cursor_glyph"
 ATTACK_CURSOR = "sword"
 MIN_SAFE_ATTACK_UNITS = 2

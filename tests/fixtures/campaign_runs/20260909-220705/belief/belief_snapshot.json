@@ -1,0 +1,420 @@
+{
+  "armies": {
+    "flavius_julius_army": {
+      "entity_id": "flavius_julius_army",
+      "provenance": "campaign_setup",
+      "observed_at": 1789006026.0666413,
+      "confidence": 0.25976466681916044,
+      "existence": "believed_present",
+      "attributes": {},
+      "entity_type": "army",
+      "faction": "romans_julii",
+      "x": 89.0,
+      "y": 82.0,
+      "strength": 5.0,
+      "general": "Flavius Julius"
+    },
+    "lucius_julius_army": {
+      "entity_id": "lucius_julius_army",
+      "provenance": "campaign_setup",
+      "observed_at": 1789006026.0666413,
+      "confidence": 0.25976466681916044,
+      "existence": "believed_present",
+      "attributes": {},
+      "entity_type": "army",
+      "faction": "romans_julii",
+      "x": 91.0,
+      "y": 80.0,
+      "strength": 3.0,
+      "general": "Lucius Julius"
+    },
+    "quintus_julius_army": {
+      "entity_id": "quintus_julius_army",
+      "provenance": "campaign_setup",
+      "observed_at": 1789006026.0666413,
+      "confidence": 0.25976466681916044,
+      "existence": "believed_present",
+      "attributes": {},
+      "entity_type": "army",
+      "faction": "romans_julii",
+      "x": 96.0,
+      "y": 82.0,
+      "strength": 3.0,
+      "general": "Quintus Julius"
+    },
+    "oppius_clausus_army": {
+      "entity_id": "oppius_clausus_army",
+      "provenance": "campaign_setup",
+      "observed_at": 1789006026.0666413,
+      "confidence": 0.25976466681916044,
+      "existence": "believed_present",
+      "attributes": {},
+      "entity_type": "army",
+      "faction": "romans_julii",
+      "x": 86.0,
+      "y": 78.0,
+      "strength": 2.0,
+      "general": "Oppius Clausus"
+    },
+    "vibius_julius_army": {
+      "entity_id": "vibius_julius_army",
+      "provenance": "campaign_setup",
+      "observed_at": 1789006026.0666413,
+      "confidence": 0.25976466681916044,
+      "existence": "believed_present",
+      "attributes": {},
+      "entity_type": "army",
+      "faction": "romans_julii",
+      "x": 88.0,
+      "y": 81.0,
+      "strength": 4.0,
+      "general": "Vibius Julius"
+    }
+  },
+  "settlements": {
+    "arretium": {
+      "entity_id": "arretium",
+      "provenance": "campaign_setup",
+      "observed_at": 1789006026.0666413,
+      "confidence": 0.25976466681916044,
+      "existence": "believed_present",
+      "attributes": {
+        "level": "large_town"
+      },
+      "entity_type": "settlement",
+      "region": "Etruria",
+      "owner": "romans_julii",
+      "x": 91.0,
+      "y": 80.0,
+      "population": 4000
+    },
+    "ariminum": {
+      "entity_id": "ariminum",
+      "provenance": "campaign_setup",
+      "observed_at": 1789006026.0666413,
+      "confidence": 0.25976466681916044,
+      "existence": "believed_present",
+      "attributes": {
+        "level": "large_town"
+      },
+      "entity_type": "settlement",
+      "region": "Umbria",
+      "owner": "romans_julii",
+      "x": 96.0,
+      "y": 82.0,
+      "population": 3500
+    },
+    "capua": {
+      "entity_id": "capua",
+      "provenance": "campaign_setup",
+      "observed_at": 1789006026.0666413,
+      "confidence": 0.25976466681916044,
+      "existence": "believed_present",
+      "attributes": {
+        "level": "large_town"
+      },
+      "entity_type": "settlement",
+      "region": "Campania",
+      "owner": "romans_scipii",
+      "x": 102.0,
+      "y": 68.0,
+      "population": 4800
+    },
+    "rome": {
+      "entity_id": "rome",
+      "provenance": "campaign_setup",
+      "observed_at": 1789006026.0666413,
+      "confidence": 0.25976466681916044,
+      "existence": "believed_present",
+      "attributes": {
+        "level": "city"
+      },
+      "entity_type": "settlement",
+      "region": "Latium",
+      "owner": "romans_senate",
+      "x": 95.0,
+      "y": 71.0,
+      "population": 7500
+    },
+    "patavium": {
+      "entity_id": "patavium",
+      "provenance": "campaign_setup",
+      "observed_at": 1789006026.0666413,
+      "confidence": 0.25976466681916044,
+      "existence": "believed_present",
+      "attributes": {
+        "level": "large_town"
+      },
+      "entity_type": "settlement",
+      "region": "Venetia",
+      "owner": "gauls",
+      "x": 94.0,
+      "y": 90.0,
+      "population": 2500
+    },
+    "mediolanium": {
+      "entity_id": "mediolanium",
+      "provenance": "campaign_setup",
+      "observed_at": 1789006026.0666413,
+      "confidence": 0.25976466681916044,
+      "existence": "believed_present",
+      "attributes": {
+        "level": "large_town"
+      },
+      "entity_type": "settlement",
+      "region": "Cisalpine_Gaul",
+      "owner": "gauls",
+      "x": 84.0,
+      "y": 92.0,
+      "population": 2477
+    },
+    "segestica": {
+      "entity_id": "segestica",
+      "provenance": "campaign_setup",
+      "observed_at": 1789006026.0666413,
+      "confidence": 0.25976466681916044,
+      "existence": "believed_present",
+      "attributes": {
+        "level": "town"
+      },
+      "entity_type": "settlement",
+      "region": "Illyria",
+      "owner": "slave",
+      "x": 105.0,
+      "y": 90.0,
+      "population": 1400
+    },
+    "segesta": {
+      "entity_id": "segesta",
+      "provenance": "campaign_setup",
+      "observed_at": 1789006026.0666413,
+      "confidence": 0.25976466681916044,
+      "existence": "believed_present",
+      "attributes": {
+        "level": "village"
+      },
+      "entity_type": "settlement",
+      "region": "Liguria",
+      "owner": "slave",
+      "x": 83.0,
+      "y": 84.0,
+      "population": 900
+    }
+  },
+  "characters": {
+    "flavius_julius": {
+      "entity_id": "flavius_julius",
+      "provenance": "campaign_setup",
+      "observed_at": 1789006026.0666413,
+      "confidence": 0.25976466681916044,
+      "existence": "believed_present",
+      "attributes": {},
+      "entity_type": "character",
+      "name": "Flavius Julius",
+      "faction": "romans_julii",
+      "x": 89.0,
+      "y": 82.0,
+      "role": "leader"
+    },
+    "lucius_julius": {
+      "entity_id": "lucius_julius",
+      "provenance": "campaign_setup",
+      "observed_at": 1789006026.0666413,
+      "confidence": 0.25976466681916044,
+      "existence": "believed_present",
+      "attributes": {},
+      "entity_type": "character",
+      "name": "Lucius Julius",
+      "faction": "romans_julii",
+      "x": 91.0,
+      "y": 80.0,
+      "role": "heir"
+    },
+    "quintus_julius": {
+      "entity_id": "quintus_julius",
+      "provenance": "campaign_setup",
+      "observed_at": 1789006026.0666413,
+      "confidence": 0.25976466681916044,
+      "existence": "believed_present",
+      "attributes": {},
+      "entity_type": "character",
+      "name": "Quintus Julius",
+      "faction": "romans_julii",
+      "x": 96.0,
+      "y": 82.0,
+      "role": "general"
+    },
+    "sextus_antio": {
+      "entity_id": "sextus_antio",
+      "provenance": "campaign_setup",
+      "observed_at": 1789006026.0666413,
+      "confidence": 0.25976466681916044,
+      "existence": "believed_present",
+      "attributes": {},
+      "entity_type": "character",
+      "name": "Sextus Antio",
+      "faction": "romans_julii",
+      "x": 93.0,
+      "y": 78.0,
+      "role": "diplomat"
+    },
+    "decius_curtius": {
+      "entity_id": "decius_curtius",
+      "provenance": "campaign_setup",
+      "observed_at": 1789006026.0666413,
+      "confidence": 0.25976466681916044,
+      "existence": "believed_present",
+      "attributes": {},
+      "entity_type": "character",
+      "name": "Decius Curtius",
+      "faction": "romans_julii",
+      "x": 95.0,
+      "y": 83.0,
+      "role": "spy"
+    },
+    "oppius_clausus": {
+      "entity_id": "oppius_clausus",
+      "provenance": "campaign_setup",
+      "observed_at": 1789006026.0666413,
+      "confidence": 0.25976466681916044,
+      "existence": "believed_present",
+      "attributes": {},
+      "entity_type": "character",
+      "name": "Oppius Clausus",
+      "faction": "romans_julii",
+      "x": 86.0,
+      "y": 78.0,
+      "role": "admiral"
+    },
+    "vibius_julius": {
+      "entity_id": "vibius_julius",
+      "provenance": "campaign_setup",
+      "observed_at": 1789006026.0666413,
+      "confidence": 0.25976466681916044,
+      "existence": "believed_present",
+      "attributes": {},
+      "entity_type": "character",
+      "name": "Vibius Julius",
+      "faction": "romans_julii",
+      "x": 88.0,
+      "y": 81.0,
+      "role": "general"
+    }
+  },
+  "faction_beliefs": {},
+  "history": [
+    {
+      "event": "CampaignMapReady",
+      "source": "message_log_infer",
+      "turn": ""
+    },
+    {
+      "event": "NewTurnStart",
+      "source": "message_log",
+      "turn": "2",
+      "faction": "julii"
+    },
+    {
+      "event": "NewTurnStart",
+      "source": "message_log",
+      "turn": "2",
+      "faction": "julii"
+    },
+    {
+      "event": "NewTurnStart",
+      "source": "verbose_script_log",
+      "script_line": "1763"
+    },
+    {
+      "event": "NewTurnStart",
+      "source": "message_log",
+      "turn": "3",
+      "faction": "julii"
+    },
+    {
+      "event": "NewTurnStart",
+      "source": "message_log",
+      "turn": "3",
+      "faction": "julii"
+    },
+    {
+      "event": "NewTurnStart",
+      "source": "verbose_script_log",
+      "script_line": "1763"
+    },
+    {
+      "event": "NewTurnStart",
+      "source": "message_log",
+      "turn": "4",
+      "faction": "julii"
+    },
+    {
+      "event": "NewTurnStart",
+      "source": "verbose_script_log",
+      "script_line": "1763"
+    },
+    {
+      "event": "NewTurnStart",
+      "source": "message_log",
+      "turn": "4",
+      "faction": "julii"
+    },
+    {
+      "event": "NewTurnStart",
+      "source": "message_log",
+      "turn": "5",
+      "faction": "julii"
+    },
+    {
+      "event": "NewTurnStart",
+      "source": "message_log",
+      "turn": "5",
+      "faction": "julii"
+    },
+    {
+      "event": "NewTurnStart",
+      "source": "verbose_script_log",
+      "script_line": "1763"
+    },
+    {
+      "event": "NewTurnStart",
+      "source": "message_log",
+      "turn": "6",
+      "faction": "julii"
+    },
+    {
+      "event": "NewTurnStart",
+      "source": "message_log",
+      "turn": "6",
+      "faction": "julii"
+    },
+    {
+      "event": "NewTurnStart",
+      "source": "verbose_script_log",
+      "script_line": "1763"
+    },
+    {
+      "event": "full_dump",
+      "source": "verbose_script_log",
+      "script_line": "1766"
+    },
+    {
+      "event": "NewTurnStart",
+      "source": "message_log",
+      "turn": "7",
+      "faction": "julii"
+    },
+    {
+      "event": "NewTurnStart",
+      "source": "message_log",
+      "turn": "7",
+      "faction": "julii"
+    },
+    {
+      "event": "NewTurnStart",
+      "source": "verbose_script_log",
+      "script_line": "1763"
+    }
+  ],
+  "unit_types": {}
+}

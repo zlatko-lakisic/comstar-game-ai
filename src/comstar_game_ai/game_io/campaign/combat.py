@@ -128,6 +128,17 @@ def read_cursor_handle() -> int:
         return 0
 
 
+def client_size(hwnd: int) -> tuple[int, int] | None:
+    """Live client width×height from GetClientRect — never assume 1920×1080."""
+    try:
+        import win32gui
+
+        left, top, right, bottom = win32gui.GetClientRect(hwnd)
+        return (max(right - left, 0), max(bottom - top, 0))
+    except Exception:
+        return None
+
+
 def client_norm_to_screen(hwnd: int, x_norm: float, y_norm: float) -> tuple[int, int] | None:
     try:
         import win32gui

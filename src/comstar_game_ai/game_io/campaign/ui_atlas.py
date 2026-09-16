@@ -434,9 +434,9 @@ ATLAS: tuple[PanelEntry, ...] = (
             "card (200), fort the right (500). A card click spends. Official "
             "reject strings are TMT_FIELD_CONSTRUCTION_TEST_*. The same disc "
             "opens the town construction dock when a settlement is selected. "
-            "Map orders are a left-click on the target once the cursor glyph "
-            "changes (sword for an army); the 2004 cursor strings still say "
-            "Right click."
+            "Map orders are a right-click on the target once the cursor glyph "
+            "changes (sword for an army). A left-click on a nameplate selects "
+            "the town instead."
         ),
     ),
     PanelEntry(

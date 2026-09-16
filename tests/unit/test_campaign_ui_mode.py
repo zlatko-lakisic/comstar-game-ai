@@ -153,7 +153,7 @@ def test_planner_no_coords_is_observe_only():
     assert cmds[0].startswith("halt_ai")
     assert "list_characters" in cmds
     assert cmds[-1] == "run_ai"
-    assert not any(o.kind == "move_character" for o in orders)
+    assert not any(o.kind in {"move_character", "march"} for o in orders)
 
 
 def test_planner_moves_one_tile_when_coords_known():
@@ -181,7 +181,9 @@ def test_planner_moves_one_tile_when_coords_known():
         )
     )
     planner = CampaignPlanner()
-    moves = [o for o in planner.plan(store) if o.kind == "move_character"]
+    moves = [o for o in planner.plan(store) if o.kind in {"move_character", "march"}]
     assert len(moves) == 1
+    assert moves[0].kind == "march"
     assert "Flavius Julius" in moves[0].command
-    assert "11,11" in moves[0].command
+    assert moves[0].from_xy == (10.0, 10.0)
+    assert moves[0].to_xy == (12.0, 11.0)
