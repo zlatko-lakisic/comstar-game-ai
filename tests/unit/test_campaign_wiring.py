@@ -20,6 +20,7 @@ CONFIG = {
         "end_turn_ready_timeout_s": 30,
         "modal": {"use_ada_vision": True},
         "combat": {"auto_resolve_battles": True, "attack_enabled": False},
+        "march": {"use_map_vision": True, "map_vision_timeout_s": 25},
     }
 }
 
@@ -41,14 +42,39 @@ def test_the_loop_is_given_eyes_to_clear_a_panel(runtime):
     assert wiring["end_turn_ready_timeout_s"] == 30.0
 
 
-def test_an_empty_config_leaves_the_loop_passive(monkeypatch):
-    """Absent settings must not invent an agent that plays the game."""
+def test_use_vision_does_not_require_ada(monkeypatch):
+    """Pixel UI sync stays on when Ada modal vision is off."""
+    monkeypatch.setattr(
+        "comstar_game_ai.game_io.runtime.load_config",
+        lambda: {"campaign": {"modal": {"use_ada_vision": False}}},
+    )
+
+    wiring = GameIoRuntime()._campaign_wiring()
+    assert wiring["use_vision"] is True
+
+
+def test_use_ui_sync_false_disables_panel_clearing(monkeypatch):
+    monkeypatch.setattr(
+        "comstar_game_ai.game_io.runtime.load_config",
+        lambda: {"campaign": {"modal": {"use_ui_sync": False, "use_ada_vision": True}}},
+    )
+
+    wiring = GameIoRuntime()._campaign_wiring()
+    assert wiring["use_vision"] is False
+
+
+def test_an_empty_config_does_not_end_turns_alone(monkeypatch):
+    """Absent auto_end_turn must not invent an agent that plays the game.
+
+    use_vision defaults on so panels can still be cleared with pixels; that is
+    independent of ending turns.
+    """
     monkeypatch.setattr("comstar_game_ai.game_io.runtime.load_config", lambda: {})
 
     wiring = GameIoRuntime()._campaign_wiring()
 
     assert wiring["auto_end_turn"] is False
-    assert wiring["use_vision"] is False
+    assert wiring["use_vision"] is True
 
 
 def test_the_wiring_is_what_the_driver_accepts(runtime):
@@ -59,7 +85,15 @@ def test_the_wiring_is_what_the_driver_accepts(runtime):
 
     assert driver.auto_end_turn is True
     assert driver.use_vision is True
+    assert driver.use_map_vision is True
     assert driver.end_turn_ready_timeout_s == 30.0
+
+
+def test_use_map_vision_defaults_on_when_march_section_absent(monkeypatch):
+    monkeypatch.setattr("comstar_game_ai.game_io.runtime.load_config", lambda: {})
+    wiring = GameIoRuntime()._campaign_wiring()
+    assert wiring["use_map_vision"] is True
+    assert wiring["use_vision_besiege"] is True
 
 
 def test_a_driver_that_ends_turns_does_not_wait_for_a_human(runtime):

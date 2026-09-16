@@ -69,7 +69,7 @@ REGIONS: tuple[Region, ...] = (
         kind=RegionKind.VIEWPORT,
         bounds=(0.0, 0.055, 1.0, 0.94),
         purpose=(
-            "The campaign world. Select a character, then left-click a target "
+            "The campaign world. Select a character, then right-click a target "
             "once the cursor glyph changes (sword for an army attack)."
         ),
         note=(

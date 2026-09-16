@@ -42,6 +42,8 @@ class CampaignOrder:
     from_xy: tuple[float, float] | None = None
     to_xy: tuple[float, float] | None = None
     character_name: str = ""
+    #: Human settlement name for map-target vision (never a set_* id).
+    target_label: str = ""
 
 
 @dataclass
@@ -189,6 +191,16 @@ class CampaignPlanner:
         name = (char.name or char.entity_id).strip()
         if not name:
             return []
+        self.id_map = sync_id_map_from_belief(belief, self.id_map)
+        label = ""
+        if self.id_map is not None:
+            label = self.id_map.name_for(self.id_map.settlement_id(target)).strip()
+        if not label:
+            label = (target.entity_id or "").strip()
+            if label.lower().startswith("set_"):
+                label = label[4:]
+        if not label:
+            label = (target.region or "").strip()
         reason = f"step toward {target.entity_id or target.region}"
         if objective:
             reason = f"{objective}: {reason}"
@@ -200,5 +212,6 @@ class CampaignPlanner:
                 from_xy=(float(char.x), float(char.y)),
                 to_xy=(float(target.x), float(target.y)),
                 character_name=name,
+                target_label=label,
             )
         ]

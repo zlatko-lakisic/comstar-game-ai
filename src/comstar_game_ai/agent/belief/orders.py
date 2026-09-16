@@ -15,6 +15,7 @@ we saw. Both paths land here, in the store, not in the director's prompt.
 from __future__ import annotations
 
 import logging
+import math
 import re
 import time
 from typing import Any
@@ -29,6 +30,9 @@ _LOGGER = logging.getLogger(__name__)
 #: (what a log claimed to observe).
 OWN_ORDER_PROVENANCE = "own_order"
 
+#: Provenance when Lists-locate + radar frustum measured the army on the map.
+FRUSTUM_LOCATE_PROVENANCE = "frustum_locate"
+
 _MOVE_RE = re.compile(
     r"^move_character\s+(.+?)\s+(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*$",
     re.IGNORECASE,
@@ -42,6 +46,93 @@ def parse_move_character(command: str) -> tuple[str, float, float] | None:
         return None
     name, x_raw, y_raw = match.groups()
     return name.strip(), float(x_raw), float(y_raw)
+
+
+def record_live_position(
+    store: BeliefStore,
+    name: str,
+    x: float,
+    y: float,
+    *,
+    turn: int | None = None,
+    now: float | None = None,
+    provenance: str = FRUSTUM_LOCATE_PROVENANCE,
+) -> dict[str, Any] | None:
+    """Refresh a character (and following army) from a live frustum measure.
+
+    Used when march refuses ``belief_from_mismatch`` or after a consistent order
+    so AO ``turns_to_reach`` stops inventing one-turn Segesta marches from Arretium.
+    """
+    character = _find_character(store, name)
+    if character is None:
+        _LOGGER.warning("live position for unknown character %r — belief unchanged", name)
+        return None
+
+    observed_at = now if now is not None else time.time()
+    from_xy = (float(character.x), float(character.y))
+    nx, ny = float(x), float(y)
+    if math.isclose(from_xy[0], nx, abs_tol=1e-3) and math.isclose(
+        from_xy[1], ny, abs_tol=1e-3
+    ):
+        return None
+
+    updated = Character(
+        entity_id=character.entity_id,
+        provenance=provenance,
+        observed_at=observed_at,
+        confidence=0.85,
+        existence=ExistenceStatus.OBSERVED_PRESENT,
+        attributes=dict(character.attributes),
+        name=character.name,
+        faction=character.faction,
+        x=nx,
+        y=ny,
+        role=character.role,
+    )
+    if turn is not None:
+        attrs = dict(updated.attributes)
+        attrs["last_seen_turn"] = int(turn)
+        updated.attributes = attrs
+    store.update(updated)
+
+    army_id = f"{character.entity_id}_army"
+    army = store.get_army_entity(army_id)
+    if army is not None:
+        from comstar_game_ai.agent.belief.entities import Army
+
+        army_attrs = dict(army.attributes)
+        if turn is not None:
+            army_attrs["last_seen_turn"] = int(turn)
+        store.update(
+            Army(
+                entity_id=army.entity_id,
+                provenance=provenance,
+                observed_at=observed_at,
+                confidence=0.85,
+                existence=ExistenceStatus.OBSERVED_PRESENT,
+                attributes=army_attrs,
+                faction=army.faction,
+                x=nx,
+                y=ny,
+                strength=army.strength,
+                general=army.general or character.name,
+            )
+        )
+
+    entry: dict[str, Any] = {
+        "event": "live_position",
+        "source": provenance,
+        "id": character.entity_id,
+        "name": character.name,
+        "from": [from_xy[0], from_xy[1]],
+        "to": [nx, ny],
+    }
+    if turn is not None:
+        entry["turn"] = int(turn)
+    store.history.append(entry)
+    if len(store.history) > 100:
+        store.history = store.history[-100:]
+    return entry
 
 
 def record_own_move(

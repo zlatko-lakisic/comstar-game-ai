@@ -42,6 +42,16 @@ def test_every_provider_declares_what_the_engine_demands(path: Path):
         assert str(doc.get(field) or "").strip(), f"{path.stem} is missing {field}"
 
 
+def test_object_detection_is_not_in_default_overlay_pack():
+    """Detection YAML lives under optional/ — packing it has closed the Reach WS on Ada."""
+    pack = OverlayPacker().pack(overlay_root())
+    assert not any(
+        str(a.get("type") or "").lower() == "object_detection" for a in pack.agents
+    )
+    optional = overlay_root() / "agent_providers" / "optional" / "detect_yolox_nano.yaml"
+    assert optional.is_file()
+
+
 @pytest.mark.parametrize("path", _skill_paths(), ids=lambda p: p.stem)
 def test_every_skill_can_be_resolved_to_a_body(path: Path):
     """A skill file may exist without a body, but then no agent may name it."""

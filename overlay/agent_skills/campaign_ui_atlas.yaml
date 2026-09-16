@@ -202,7 +202,7 @@ information:
 - id: map_order
   question: How do we send an army or agent to a map target?
   surface: map_viewport
-  how: Select the character, hover until the cursor glyph changes, then left-click.
+  how: Select the character, hover until the cursor glyph changes, then right-click.
   reads: Sword cursor is an army attack. Town attack is a siege; a field army is Battle Deployment.
   trap: 2004 cursor strings say Right click. A nameplate click before the sword selects the town. Do not
     click a Gallic stack.
@@ -385,7 +385,7 @@ learnings:
   outcome: Selected Enemy SEGESTA Village.
   valence: mixed
   lesson: Wait for the sword cursor.
-  evidence: 'army_sword_on_segesta.png / army_attack_segesta2.png; operator: left-click after glyph'
+  evidence: 'army_sword_on_segesta.png / army_attack_segesta2.png; operator: right-click after glyph'
   durable: true
 - id: map_click_on_the_general_narrows_the_stack
   action: Reselect Flavius with a map click, then attack
@@ -474,7 +474,7 @@ regions:
   centre:
   - 0.5
   - 0.4975
-  purpose: The campaign world. Select a character, then left-click a target once the cursor glyph changes
+  purpose: The campaign world. Select a character, then right-click a target once the cursor glyph changes
     (sword for an army attack).
   precision: measured
   note: 'This is the base layer, not an exclusive area: the radar and other HUD furniture are drawn on
@@ -1130,7 +1130,7 @@ panels:
   requires: a named general on own land, not in a town or at sea
   note: Right-edge dock titled FIELD CONSTRUCTION. Watchtower is the left card (200), fort the right (500).
     A card click spends. Official reject strings are TMT_FIELD_CONSTRUCTION_TEST_*. The same disc opens
-    the town construction dock when a settlement is selected. Map orders are a left-click on the target
+    the town construction dock when a settlement is selected. Map orders are a right-click on the target
     once the cursor glyph changes (sword for an army); the 2004 cursor strings still say Right click.
   evidence:
   - 'live Julii turn 1: data/runtime/sweep/army_construct_click.png, crop_field_con_zoom.png after Construction

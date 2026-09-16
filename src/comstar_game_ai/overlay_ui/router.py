@@ -53,9 +53,26 @@ def _summarise(kind: EventKind, payload: dict[str, Any]) -> str:
     """One readable line per event, favouring the fields an operator watches."""
     if kind is EventKind.AO_STATUS:
         bits = []
+        # Prefer agent lifecycle summary when Process B publishes agent_state.
+        summary = payload.get("summary")
+        if summary and (
+            payload.get("agent") or payload.get("state") in {
+                "down", "starting", "pulling", "loading", "ready", "busy", "stopping",
+            }
+        ):
+            return f"ao: {summary}"
         phase = payload.get("phase") or payload.get("status")
         if phase:
             bits.append(str(phase))
+        agent = payload.get("agent")
+        if agent:
+            bits.append(str(agent).removeprefix("client."))
+        model = payload.get("model")
+        if model:
+            bits.append(str(model))
+        progress = payload.get("progress")
+        if isinstance(progress, (int, float)):
+            bits.append(f"{int(round(float(progress) * 100))}%")
         queue = payload.get("queue_position", payload.get("queuePosition"))
         if queue not in (None, ""):
             bits.append(f"queue #{queue}")

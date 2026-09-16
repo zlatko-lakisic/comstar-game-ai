@@ -49,8 +49,12 @@ def test_f1_fixture_still_surfaces_segesta(fixture_belief_payload):
     segesta = next(c for c in payload.candidates if c.settlement_id == "set_segesta")
     assert segesta.turns_to_reach == 1
     assert segesta.garrison == "weaker"
-    assert top_reachable_weaker(payload) is not None
-    assert top_reachable_weaker(payload).settlement_id == "set_segesta"
+    weaker = top_reachable_weaker(payload)
+    assert weaker is not None
+    assert weaker.garrison == "weaker"
+    # Expansion rank may prefer a farther same-standing town (e.g. Segestica).
+    assert payload.preferred is not None
+    assert weaker.settlement_id == payload.preferred.settlement_id
 
 
 def test_f2_both_hashes_move_when_turn_advances(fixture_belief_payload):
@@ -125,6 +129,7 @@ def test_f4_provider_pins_and_budget_assert():
 
 def test_f7_hold_floor_upgrades_fixture_hold(fixture_belief_payload):
     _, _, payload = fixture_belief_payload
+    assert payload.preferred is not None
     hold = json.dumps(
         {
             "question_id": payload.question_id,
@@ -136,10 +141,13 @@ def test_f7_hold_floor_upgrades_fixture_hold(fixture_belief_payload):
         hold, payload=payload, current_turn=2, hold_floor="upgrade"
     )
     assert accepted.objective == "besiege"
-    assert accepted.target == "set_segesta"
+    assert accepted.target == payload.preferred.settlement_id
     assert accepted.actor
     assert "hold_floor" in (accepted.raw or {})
-    assert accepted.raw["hold_floor"]["predictor"]["settlement_id"] == "set_segesta"
+    assert (
+        accepted.raw["hold_floor"]["predictor"]["settlement_id"]
+        == payload.preferred.settlement_id
+    )
 
 
 def test_f7_log_mode_keeps_hold_but_records(fixture_belief_payload):
@@ -172,4 +180,5 @@ def test_f7_reask_tags_for_second_call(fixture_belief_payload):
     )
     assert accepted.objective == "hold"
     assert accepted.raw.get("hold_floor_reask") is True
-    assert "set_segesta" in accepted.because
+    assert payload.preferred is not None
+    assert payload.preferred.settlement_id in accepted.because

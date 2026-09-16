@@ -315,9 +315,18 @@ belief advanced turn=3 …
 
 **Stale Flavius/Segesta belief + a 22-map-unit frustum gate let the wrong (or right-but-misaimed) army click green land and report success; belief then “arrived” at Segesta; the run stopped later on repeated End-Turn/modal failure, not on pose/scale.**
 
-## Ask for next agent (not done here)
+## Fix landed (map XY → click hardening)
 
-- Refresh character coords from live `list_characters` / HUD before march; do not trust `own_order` steps alone when frustum disagrees by tens of map units.
-- Tighten or replace frustum identity (OCR name, smaller radius, or require centre ≈ post-locate measure of the *same* row).
-- Treat glyph+belief-step as insufficient proof of destination when projected click stays near army centre.
-- Separate Z8 `turn_failed` (UI) from march refusals in operator messaging.
+Implemented after this investigation (see [`design/map-window-projection.md`](design/map-window-projection.md) § Live from / near-far):
+
+- `ARMY_FRUSTUM_MATCH_MAP` tightened to **12**; `NEAR_SETTLEMENT_MAP_DIST` to **8**
+  (+ `NEAR_CLIENT_OFFSET_MAX` for on-viewport but off-centre projects)
+- After locate+pose, project from **measured frustum centre**; refuse `belief_from_mismatch` / `pose_frustum_drift` when belief or select centre disagree
+- Dest outside near range or outside army-anchor viewport → **far / radar-frame** path
+- `own_order` belief steps only when `projection_consistent`; live frustum refreshes belief via `record_live_position` (`frustum_locate`)
+
+## Still open
+
+- Separate Z8 `turn_failed` (UI) from march refusals in operator messaging
+- Optional HUD OCR for army name (frustum identity is geometric only)
+- Console `list_characters` parse into belief (complements frustum refresh)

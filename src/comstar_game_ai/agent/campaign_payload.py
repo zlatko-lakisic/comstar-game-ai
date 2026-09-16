@@ -24,6 +24,8 @@ from comstar_game_ai.agent.predictors.campaign_board import (
     build_candidates,
     build_threats,
     estimate_garrison,
+    owned_settlement_centroid,
+    preferred_expansion_target,
     turns_to_reach,
 )
 
@@ -65,6 +67,7 @@ class CampaignPayload:
     candidates: list[Candidate]
     treasury: int | None
     income: int | None
+    preferred: Candidate | None = None
     allowed_ids: set[str] = field(default_factory=set)
     id_map: CampaignIdMap = field(default_factory=CampaignIdMap)
     text: str = ""
@@ -75,6 +78,9 @@ class CampaignPayload:
         """The belief portion that belief_hash / state_hash covers."""
         threat_lines = [th.to_payload_line() for th in self.threats] or ["none observed"]
         candidate_lines = [c.to_payload_line() for c in self.candidates] or ["(none)"]
+        preferred_line = (
+            self.preferred.to_payload_line() if self.preferred is not None else "none"
+        )
         return "\n".join(
             [
                 "THREATS",
@@ -85,6 +91,9 @@ class CampaignPayload:
                 "",
                 "GENERALS FREE",
                 *self.generals_free,
+                "",
+                "EXPANSION preferred",
+                preferred_line,
                 "",
                 "CANDIDATES",
                 *candidate_lines,
@@ -158,6 +167,8 @@ def compose_campaign_payload(
     candidates = build_candidates(
         belief, id_map, player_faction=player_faction, current_turn=turn
     )
+    centroid = owned_settlement_centroid(belief, player_faction=player_faction)
+    preferred = preferred_expansion_target(candidates, centroid=centroid)
 
     you_hold: list[str] = []
     for s in belief.get_settlements():
@@ -216,6 +227,7 @@ def compose_campaign_payload(
     general_lines = generals_free or ["(none)"]
     threat_lines = [th.to_payload_line() for th in threats] or ["none observed"]
     candidate_lines = [c.to_payload_line() for c in candidates] or ["(none)"]
+    preferred_line = preferred.to_payload_line() if preferred is not None else "none"
     belief_block = "\n".join(
         [
             "THREATS",
@@ -226,6 +238,9 @@ def compose_campaign_payload(
             "",
             "GENERALS FREE",
             *general_lines,
+            "",
+            "EXPANSION preferred",
+            preferred_line,
             "",
             "CANDIDATES",
             *candidate_lines,
@@ -282,6 +297,7 @@ def compose_campaign_payload(
         candidates=candidates,
         treasury=treasury,
         income=income,
+        preferred=preferred,
         allowed_ids=allowed,
         id_map=id_map,
         text=text,

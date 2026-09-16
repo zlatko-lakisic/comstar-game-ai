@@ -1,0 +1,26 @@
+{
+  "army_sword_on_segesta.jpg": {
+    "source": "data/runtime/sweep/army_sword_on_segesta.png",
+    "label": "Segesta",
+    "x_norm": 0.237,
+    "y_norm": 0.5,
+    "radius": 0.06,
+    "note": "Flavius selected; Segesta tooltip/nameplate west of army; click settlement or nameplate"
+  },
+  "army_flavius_near_segesta.jpg": {
+    "source": "data/runtime/sweep/army_flavius_near_segesta.png",
+    "label": "Segesta",
+    "x_norm": 0.215,
+    "y_norm": 0.54,
+    "radius": 0.07,
+    "note": "Flavius near Segesta; red SEGESTA nameplate left of selected army"
+  },
+  "army_hover_segesta.jpg": {
+    "source": "data/runtime/sweep/army_hover_segesta.png",
+    "label": "Segesta",
+    "x_norm": 0.295,
+    "y_norm": 0.455,
+    "radius": 0.07,
+    "note": "Closer hover; red SEGESTA banner near coast"
+  }
+}

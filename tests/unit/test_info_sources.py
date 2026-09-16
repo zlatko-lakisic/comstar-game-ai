@@ -76,8 +76,8 @@ def test_build_and_unlock_reads_do_not_click_to_spend():
     assert "capital" in roster.trap.lower()
     order = BY_ID["map_order"]
     assert "glyph" in order.how.lower()
-    assert "left-click" in order.how.lower()
-    assert "right click" in order.trap.lower()
+    assert "right-click" in order.how.lower()
+    assert "nameplate" in order.trap.lower() or "town" in order.trap.lower()
 
 
 def test_event_log_reads_use_the_games_own_empty_states():

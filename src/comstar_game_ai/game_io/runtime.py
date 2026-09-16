@@ -172,17 +172,34 @@ class GameIoRuntime:
         no turn had advanced.
 
         `use_vision` is what lets the loop see a panel sitting over the map and
-        clear it before End Turn, rather than clicking into whatever is there.
+        clear it before End Turn (pixel localizers). It is independent of
+        `campaign.modal.use_ada_vision`, which only escalates hard panels to Ada
+        under the ada_yield lock.
         """
         cfg = load_config().get("campaign") or {}
         modal = cfg.get("modal") or {}
         combat = cfg.get("combat") or {}
+        march = cfg.get("march") or {}
 
         wiring: dict[str, object] = {
             "auto_end_turn": bool(cfg.get("auto_end_turn", False)),
-            "use_vision": bool(modal.get("use_ada_vision", False)),
+            # Pixel UI sync / ensure_campaign_map — independent of Ada. Default on
+            # so panels still clear when use_ada_vision is false. Set
+            # campaign.modal.use_ui_sync: false to disable deliberately.
+            "use_vision": (
+                bool(modal["use_ui_sync"])
+                if "use_ui_sync" in modal
+                else True
+            ),
             "auto_resolve_battles": bool(combat.get("auto_resolve_battles", True)),
             "attack_enabled": bool(combat.get("attack_enabled", False)),
+            "use_map_vision": bool(march.get("use_map_vision", True)),
+            "map_vision_timeout_s": float(march.get("map_vision_timeout_s", 600)),
+            "map_vision_min_confidence": float(march.get("map_vision_min_confidence", 0.55)),
+            "use_map_projection": bool(march.get("use_map_projection", True)),
+            "allow_legacy_geometry": bool(march.get("allow_legacy_geometry", False)),
+            "use_vision_besiege": bool(march.get("use_vision_besiege", True)),
+            "allow_region_pan": bool(march.get("allow_region_pan", False)),
         }
         ready_timeout = cfg.get("end_turn_ready_timeout_s")
         if ready_timeout is not None:

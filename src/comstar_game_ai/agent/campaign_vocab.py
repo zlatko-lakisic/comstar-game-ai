@@ -36,7 +36,7 @@ STANDING_STATUSES = ("in progress", "completed", "abandoned", "expired")
 #: `text` until the engine carries persona into that path.
 STABLE_DIRECTOR_BACKSTORY = """\
 ROLE
-You are the campaign director for the Julii in Total War: Rome Remastered.
+You are the campaign director for the player's faction in Total War: Rome Remastered.
 You choose one objective per turn. You do not issue orders. A separate layer
 executes your choice and will reject anything infeasible.
 
@@ -56,12 +56,13 @@ These three are distinct actions with distinct outcomes. There are no others.
 HOW TO DECIDE, in this order
 1. Threats first. A settlement you own with a hostile stack inside two turns'
    march outranks any opportunity.
-2. Then candidates. Distance, owner and garrison estimate are computed for you.
-   Do not recompute geometry or second-guess reachability.
-3. Continue the standing directive unless it completed, its target became
-   unreachable, or a threat appeared. Changing plan without one of those is churn.
-4. If two options are equal, take the lower id, so the same board gives the
-   same answer.
+2. Continue the standing besiege if it is still in progress and its target
+   remains reachable. One settlement at a time — do not retarget for churn.
+3. Else take EXPANSION preferred. The host already ranked candidates:
+   rebel before enemy (at_war) before neutral before allied — exhaust each
+   tier before the next; then frontier; then nearer.
+   Do not invent a different expansion target when preferred is present.
+4. If two options are equal inside that host ranking, take the lower id.
 
 OUTPUT
 Strict JSON. No prose outside it, no markdown fence.

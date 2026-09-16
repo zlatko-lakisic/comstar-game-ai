@@ -55,7 +55,12 @@ _LOGGER = logging.getLogger(__name__)
 
 @dataclass
 class AgentRuntime:
-    """Non-blocking AO integration for campaign and battle loops."""
+    """AO deliberation, directive store, and KB ingest.
+
+    Live Phase 2 owns one of these via ``SyncCampaignDeliberator`` and blocks
+    each turn on ``deliberate_campaign_turn`` before orders. The legacy
+    ``run_deliberation_loop`` path still writes on a timer without driving Rome.
+    """
 
     turns: int = 20
     player_faction: str = "julii"
@@ -76,7 +81,15 @@ class AgentRuntime:
         assert_num_ctx_sufficient(
             composed_prompt=sample, num_ctx=read_provider_num_ctx()
         )
-        self.session = ReachSession()
+        from comstar_game_ai.agent.reach.agent_lifecycle import (
+            AgentStateUpdate,
+            agent_state_payload,
+        )
+
+        def _on_agent_state(update: AgentStateUpdate) -> None:
+            self.publisher.publish(EventKind.AO_STATUS, agent_state_payload(update))
+
+        self.session = ReachSession(on_agent_state=_on_agent_state)
         await self.session.start()
 
     async def stop(self) -> None:
@@ -107,6 +120,19 @@ class AgentRuntime:
     async def deliberate_campaign_turn(self, turn: int, belief_summary: str = "") -> None:
         assert self.session is not None
         qid = f"campaign-{turn}-{uuid.uuid4().hex[:8]}"
+        # Process A holds Ada during map-target / modal vision. Wait for release
+        # rather than skipping: every director turn must produce a directive.
+        from comstar_game_ai.shared.runtime import ada_yield
+
+        if ada_yield.is_held():
+            released = await asyncio.to_thread(
+                lambda: ada_yield.wait_until_released(timeout_s=600.0)
+            )
+            if not released:
+                self._hold_without_asking(
+                    turn, qid, "ada_yield_held_timeout"
+                )
+                return
         belief = self._fresh_belief()
         if not (belief.get_characters() or belief.get_armies() or belief.get_settlements()):
             # An empty map is not a strategic question, and asking one anyway went
@@ -239,13 +265,24 @@ class AgentRuntime:
                 raw_directive = await _ask(reask_text)
                 raw_text2 = _raw_text_from(raw_directive)
                 if raw_text2:
-                    # Second pass uses log so we do not loop forever.
+                    # Reask already rejected hold once. If the model still holds
+                    # (or returns missing_actor_or_target), substitute the
+                    # predictor's top weaker target rather than burning the turn.
                     accepted = accept_campaign_answer(
                         raw_text2,
                         payload=payload,
                         current_turn=turn,
                         prediction_log=prediction_log,
-                        hold_floor="log",
+                        hold_floor="upgrade",
+                    )
+                else:
+                    from comstar_game_ai.agent.hold_floor import apply_hold_floor
+
+                    accepted = apply_hold_floor(
+                        accepted,
+                        payload=payload,
+                        current_turn=turn,
+                        action="upgrade",
                     )
             directive = accepted.to_legacy_directive(issued_turn=turn)
             pred_id = (accepted.raw or {}).get("prediction_entry_id")
@@ -347,9 +384,9 @@ class AgentRuntime:
     ) -> dict[str, object]:
         """Write directives on a cadence without driving the game.
 
-        The companion to a live Process A run: that process owns the game and reads
-        whatever directive is current, this one thinks about the next turn while it
-        plays. Keeping them apart is what stops a slow model from stalling a turn.
+        Legacy async companion. Live Phase 2 with ``--directives`` now blocks each
+        turn on ``SyncCampaignDeliberator`` inside Process A instead. Prefer that
+        path so End Turn never races ahead of AO.
 
         The turn stamped on each directive comes from Rome's own autosave marker, so
         a directive is tied to the turn it was reasoned about rather than to a count

@@ -1018,7 +1018,9 @@ class ModalHandler:
     diplomacy_action: str = "reject"
     allow_coordinate_fallback: bool = False
     allow_visual_button_fallback: bool = True
-    use_ada_vision: bool = True
+    # Shipped default is off (config). Constructor matches so ensure_campaign_map
+    # does not ask Ada unless config or the caller turns it on.
+    use_ada_vision: bool = False
     # Called while a vision request is in flight. Without it the safety deadman gets
     # no pet for the length of the call and kills the run mid-turn.
     on_heartbeat: Callable[[], None] | None = None
@@ -1096,7 +1098,15 @@ class ModalHandler:
             time.sleep(self.settle_s)
             return grab_and_classify(hwnd)
 
-        # Ada vision decides what the panel is and where its buttons are.
+        # Pixel localization first — free, no Ada slot. Usually enough for report
+        # ticks, floating notices, diplomacy footers, and close X glyphs.
+        if self.allow_visual_button_fallback:
+            clicked = self._click_visual_dismiss(hwnd, image)
+            if clicked is not None:
+                return clicked
+
+        # Ada only when pixels miss. Hold ada_yield so the campaign director waits
+        # for release rather than sharing Ada's one GPU slot with llava.
         if self.use_ada_vision:
             self._save_unresolved_frame(image, f"{request_id}-raw")
             print(
@@ -1114,12 +1124,6 @@ class ModalHandler:
                 acted = self._act_on_vision_result(hwnd, result)
                 if acted is not None:
                     return acted
-
-        # Pixel localization backs Ada up when the model sees nothing usable.
-        if self.allow_visual_button_fallback:
-            clicked = self._click_visual_dismiss(hwnd, image)
-            if clicked is not None:
-                return clicked
 
         if self.allow_coordinate_fallback:
             decline = _norm_list(cfg.get("decline_click_norms"), DEFAULT_DECLINE_NORMS)
@@ -1431,6 +1435,8 @@ class ModalHandler:
         turn: int | None,
         ui_mode: str,
     ) -> ModalVisionResult | None:
+        from comstar_game_ai.shared.runtime import ada_yield
+
         try:
             # Always off-thread, and always waited for in slices. Waiting for the
             # whole timeout in one call is what killed a run: a shared GPU took
@@ -1441,37 +1447,40 @@ class ModalHandler:
             # part that made it look like a vision bug rather than a stalled pet.
             import concurrent.futures
 
-            # Not a `with` block, deliberately. Leaving one calls
-            # `shutdown(wait=True)`, so on the path that matters — the request that
-            # overran and has to be given up on — we would block on the very call
-            # we just stopped waiting for, outside the loop that does the petting.
-            # That is where the deadman fired: not during the wait, but on the way
-            # out of it. `wait=False` leaves the daemon thread to finish alone.
-            ex = concurrent.futures.ThreadPoolExecutor(max_workers=1)
-            try:
-                future = ex.submit(
-                    asyncio.run,
-                    _query_modal_vision_async(
-                        image,
-                        request_id=request_id,
-                        turn=turn,
-                        ui_mode=ui_mode,
-                        timeout_s=self.model_timeout_s,
-                    ),
-                )
-                deadline = time.time() + self.model_timeout_s + 5.0
-                while True:
-                    self._heartbeat()
-                    remaining = deadline - time.time()
-                    if remaining <= 0:
-                        future.cancel()
-                        return None
-                    try:
-                        return future.result(timeout=min(2.0, remaining))
-                    except concurrent.futures.TimeoutError:
-                        continue
-            finally:
-                ex.shutdown(wait=False)
+            # Hold Ada's slot for Process A only. The campaign director waits on
+            # ada_yield until this releases, so it does not share Ada with llava.
+            with ada_yield.held(holder="modal", reason=request_id):
+                # Not a `with` block on the executor, deliberately. Leaving one calls
+                # `shutdown(wait=True)`, so on the path that matters — the request that
+                # overran and has to be given up on — we would block on the very call
+                # we just stopped waiting for, outside the loop that does the petting.
+                # That is where the deadman fired: not during the wait, but on the way
+                # out of it. `wait=False` leaves the daemon thread to finish alone.
+                ex = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+                try:
+                    future = ex.submit(
+                        asyncio.run,
+                        _query_modal_vision_async(
+                            image,
+                            request_id=request_id,
+                            turn=turn,
+                            ui_mode=ui_mode,
+                            timeout_s=self.model_timeout_s,
+                        ),
+                    )
+                    deadline = time.time() + self.model_timeout_s + 5.0
+                    while True:
+                        self._heartbeat()
+                        remaining = deadline - time.time()
+                        if remaining <= 0:
+                            future.cancel()
+                            return None
+                        try:
+                            return future.result(timeout=min(2.0, remaining))
+                        except concurrent.futures.TimeoutError:
+                            continue
+                finally:
+                    ex.shutdown(wait=False)
         except Exception as exc:
             print(
                 f"MODAL Ada vision: FAILED request_id={request_id} error={type(exc).__name__}: {exc}",

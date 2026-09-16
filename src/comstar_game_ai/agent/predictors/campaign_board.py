@@ -1,6 +1,6 @@
 """Deterministic campaign candidates and threats for the director payload.
 
-The model never derives these. Distance and reachability live here.
+The model never derives these. Distance, reachability, and expansion rank live here.
 """
 
 from __future__ import annotations
@@ -9,6 +9,11 @@ import math
 from dataclasses import dataclass
 from typing import Any, Literal
 
+from comstar_game_ai.agent.belief.diplomacy import (
+    DiplomaticStanding,
+    attack_tier_rank,
+    get_standing,
+)
 from comstar_game_ai.agent.belief.entities import Character, Settlement
 from comstar_game_ai.agent.belief.store import BeliefStore
 from comstar_game_ai.agent.campaign_ids import CampaignIdMap
@@ -29,10 +34,15 @@ class Candidate:
     garrison: GarrisonBand
     confidence: float
     age_turns: int
+    standing: DiplomaticStanding = "unknown"
+    map_x: float = 0.0
+    map_y: float = 0.0
+    owner_raw: str = ""
 
     def to_payload_line(self) -> str:
         return (
-            f"{self.settlement_id}  owner {self.owner_id}  {self.turns_to_reach} turns  "
+            f"{self.settlement_id}  owner {self.owner_id}  standing {self.standing}  "
+            f"{self.turns_to_reach} turns  "
             f"garrison {self.garrison}  confidence {self.confidence:.1f}  age {self.age_turns}"
         )
 
@@ -108,6 +118,69 @@ def estimate_garrison(settlement: Settlement, *, against_strength: float | None 
     return band, 0.6
 
 
+def owned_settlement_centroid(
+    belief: BeliefStore, *, player_faction: str
+) -> tuple[float, float] | None:
+    """Mean map XY of owned settlements — frontier distance is measured from here."""
+    mine = _own_faction_names(player_faction)
+    points = [
+        (s.x, s.y)
+        for s in belief.get_settlements()
+        if any(m in (s.owner or "").lower() for m in mine) and (s.x or s.y)
+    ]
+    if not points:
+        return None
+    return (
+        sum(p[0] for p in points) / len(points),
+        sum(p[1] for p in points) / len(points),
+    )
+
+
+def frontier_distance(
+    candidate: Candidate, *, centroid: tuple[float, float] | None
+) -> float:
+    if centroid is None:
+        return 0.0
+    return _distance(candidate.map_x, candidate.map_y, centroid[0], centroid[1])
+
+
+def _garrison_rank(garrison: str) -> int:
+    """Prefer weaker targets when standing ties."""
+    order = {"weaker": 0, "similar": 1, "unknown": 2, "stronger": 3}
+    return order.get((garrison or "").lower(), 2)
+
+
+def expansion_sort_key(
+    candidate: Candidate, *, centroid: tuple[float, float] | None
+) -> tuple[int, int, int, float, str]:
+    """rebel → enemy → neutral → ally (exhaust each tier); then weaker; nearer; id."""
+    return (
+        attack_tier_rank(faction=candidate.owner_raw, standing=candidate.standing),
+        _garrison_rank(candidate.garrison),
+        int(candidate.turns_to_reach),
+        -frontier_distance(candidate, centroid=centroid),
+        candidate.settlement_id,
+    )
+
+
+def rank_expansion_targets(
+    candidates: list[Candidate],
+    *,
+    centroid: tuple[float, float] | None,
+) -> list[Candidate]:
+    """Stable expansion order; first entry is the preferred besiege target."""
+    return sorted(candidates, key=lambda c: expansion_sort_key(c, centroid=centroid))
+
+
+def preferred_expansion_target(
+    candidates: list[Candidate],
+    *,
+    centroid: tuple[float, float] | None,
+) -> Candidate | None:
+    ranked = rank_expansion_targets(candidates, centroid=centroid)
+    return ranked[0] if ranked else None
+
+
 def build_candidates(
     belief: BeliefStore,
     id_map: CampaignIdMap,
@@ -117,7 +190,7 @@ def build_candidates(
     max_candidates: int = 5,
     max_turns: int = 8,
 ) -> list[Candidate]:
-    """Enemy/unowned settlements reachable within the commitment horizon."""
+    """Non-owned settlements reachable within the commitment horizon, expansion-ranked."""
     mine = _own_faction_names(player_faction)
     generals = [
         c
@@ -153,6 +226,7 @@ def build_candidates(
         if nearest is None or best_turns > max_turns:
             continue
         garrison, conf = estimate_garrison(s)
+        standing = get_standing(belief, owner)
         out.append(
             Candidate(
                 settlement_id=id_map.settlement_id(s),
@@ -162,11 +236,16 @@ def build_candidates(
                 garrison=garrison,
                 confidence=conf,
                 age_turns=_age_turns(s, current_turn=current_turn),
+                standing=standing,
+                map_x=float(s.x),
+                map_y=float(s.y),
+                owner_raw=owner,
             )
         )
 
-    out.sort(key=lambda c: (c.turns_to_reach, c.settlement_id))
-    return out[:max_candidates]
+    centroid = owned_settlement_centroid(belief, player_faction=player_faction)
+    ranked = rank_expansion_targets(out, centroid=centroid)
+    return ranked[:max_candidates]
 
 
 def build_threats(

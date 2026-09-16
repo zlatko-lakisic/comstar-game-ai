@@ -42,7 +42,7 @@ def _hold_floor_action(config: dict | None = None) -> HoldFloorAction:
         raw = "reask"
     if raw in ("log", "upgrade", "reask"):
         return raw  # type: ignore[return-value]
-    return "reask"
+    return "upgrade"
 
 
 def accept_campaign_answer(

@@ -258,6 +258,55 @@ async def test_the_vision_agent_answers_in_the_shape_the_parser_expects(live_ses
     print(f"\nmodal_vision: kind={parsed.modal_kind} candidates={len(parsed.candidates)}")
 
 
+async def test_map_target_vision_finds_segesta_on_a_real_campaign_frame(live_session):
+    """Whole-screen Julii fixture: model must put Segesta near the annotated click."""
+    import json
+    from pathlib import Path
+
+    from comstar_game_ai.agent.compositor.views import ViewBudget, compose_reach_images
+    from comstar_game_ai.game_io.campaign.map_target_vision import (
+        build_map_target_prompt,
+        parse_map_target_result,
+    )
+    from PIL import Image
+
+    fixtures = Path(__file__).resolve().parents[1] / "fixtures" / "frames" / "map_targets"
+    manifest = json.loads((fixtures / "manifest.json").read_text(encoding="utf-8"))
+    fixture_name = "army_sword_on_segesta.jpg"
+    entry = manifest[fixture_name]
+    image = Image.open(fixtures / fixture_name)
+    images, _ = compose_reach_images(
+        [image], budget=ViewBudget(max_images=1, width=1280, height=720, jpeg_quality=85)
+    )
+    assert images
+
+    text = await agent_director.call_map_target_vision(
+        live_session,
+        text=build_map_target_prompt(label="Segesta", hint_quadrant="left"),
+        context="turn=5. Independently inspect the pixels.",
+        question_id="e2e-map-target-segesta",
+        images=images,
+        timeout=90.0,
+        raise_errors=True,
+    )
+    assert text.strip(), "map_target_vision returned nothing"
+    hit = parse_map_target_result(text, expected_label="Segesta")
+    assert hit is not None, f"unparseable map-target answer: {text[:400]!r}"
+    assert hit.found, f"Segesta not found: {hit.reason} raw={text[:400]!r}"
+    assert hit.click_norm is not None
+    radius = float(entry["radius"])
+    assert abs(hit.x_norm - float(entry["x_norm"])) <= radius, (
+        f"x {hit.x_norm:.3f} vs annotated {entry['x_norm']} (±{radius})"
+    )
+    assert abs(hit.y_norm - float(entry["y_norm"])) <= radius, (
+        f"y {hit.y_norm:.3f} vs annotated {entry['y_norm']} (±{radius})"
+    )
+    print(
+        f"\nmap_target_vision: Segesta at ({hit.x_norm:.3f},{hit.y_norm:.3f}) "
+        f"conf={hit.confidence:.2f} — {hit.reason}"
+    )
+
+
 def _diplomacy_scroll():
     """A parchment panel with a green check and a red X, drawn rather than captured.
 

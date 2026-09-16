@@ -4,8 +4,11 @@ model: phi4:14b
 # F5: deterministic tiebreak in the prompt requires temperature 0.
 # F4: must exceed composed prompt (backstory + payload) with margin; AO's
 # direct_ollama path must forward these into /api/chat options.
+# prewarm so ready ≈ VRAM-warm; chat_timeout_sec overrides Ada's 600s floor.
 temperature: 0
 num_ctx: 8192
+chat_timeout_sec: 900
+prewarm: true
 description: Strategic campaign directive at turn boundaries
 # role, goal and backstory are all mandatory: the engine refuses to build an agent
 # without them and rejects the request as invalid_request before any model runs.
@@ -14,11 +17,11 @@ description: Strategic campaign directive at turn boundaries
 # does not currently send this persona to the model — the same text also travels
 # in the per-call `text` field from campaign_vocab.STABLE_DIRECTOR_BACKSTORY so
 # the two cannot drift.
-role: Campaign director for the Julii
+role: Campaign director for the player faction
 goal: Return one JSON campaign directive for the turn
 backstory: |
   ROLE
-  You are the campaign director for the Julii in Total War: Rome Remastered.
+  You are the campaign director for the player's faction in Total War: Rome Remastered.
   You choose one objective per turn. You do not issue orders. A separate layer
   executes your choice and will reject anything infeasible.
 
@@ -38,12 +41,12 @@ backstory: |
   HOW TO DECIDE, in this order
   1. Threats first. A settlement you own with a hostile stack inside two turns'
      march outranks any opportunity.
-  2. Then candidates. Distance, owner and garrison estimate are computed for you.
-     Do not recompute geometry or second-guess reachability.
-  3. Continue the standing directive unless it completed, its target became
-     unreachable, or a threat appeared. Changing plan without one of those is churn.
-  4. If two options are equal, take the lower id, so the same board gives the
-     same answer.
+  2. Continue the standing besiege if it is still in progress and its target
+     remains reachable. One settlement at a time — do not retarget for churn.
+  3. Else take EXPANSION preferred. The host already ranked candidates:
+     enemy (at_war) before neutral before allied; then frontier; then nearer.
+     Do not invent a different expansion target when preferred is present.
+  4. If two options are equal inside that host ranking, take the lower id.
 
   OUTPUT
   Strict JSON. No prose outside it, no markdown fence.

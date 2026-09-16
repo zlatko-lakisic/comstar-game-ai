@@ -47,7 +47,7 @@ def test_family_tree_is_named_as_a_succession_hazard():
 
 
 def test_map_orders_wait_for_the_cursor_glyph():
-    assert MAP_ORDER_BUTTON == "left"
+    assert MAP_ORDER_BUTTON == "right"
     assert MAP_ORDER_TELL == "cursor_glyph"
     assert ATTACK_CURSOR == "sword"
 
@@ -94,7 +94,9 @@ def test_lists_military_is_not_the_capital_button():
 def test_atlas_field_construction_is_the_select_string():
     entry = BY_ID["field_construction"]
     assert entry.name_key == "SMT_SELECT_FORT_OR_WATCHTOWER"
-    assert "left-click" in entry.note.lower() or "left click" in entry.note.lower()
+    note = entry.note.lower()
+    assert "field construction" in note
+    assert "right-click" in note or "card click" in note
 
 
 def test_every_army_hazard_is_listed():

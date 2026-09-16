@@ -412,15 +412,54 @@ def test_modal_vision_prompt_names_rome_panels():
     assert parsed[-1].candidates[0].action == "close"
 
 
-def test_handle_prefers_ada_over_pixel_localization(monkeypatch):
-    """Ada recognizes the panel; the pixel localizer is only a fallback.
+def test_handle_prefers_pixels_before_ada(monkeypatch):
+    """Pixels clear the panel; Ada must not be called.
 
-    `handle` re-reads config on every call and lets it override the constructor, so
-    the setting under test has to be the one in force. The shipped default is now
-    off — a hung llava run held the resource broker's only slot for nine minutes
-    and starved the director — but the preference itself still has to hold for
-    anyone who turns vision back on.
+    Pipeline order: free localizers first, Ada only when they miss — so turning
+    use_ada_vision on does not spend the GPU slot on every parchment.
     """
+    from comstar_game_ai.game_io.campaign import modal as modal_mod
+    from comstar_game_ai.game_io.campaign.ui_mode import CampaignUiMode, UiClassification
+
+    monkeypatch.setattr(
+        modal_mod, "load_config", lambda: {"campaign": {"modal": {"use_ada_vision": True}}}
+    )
+
+    class FakeInput:
+        def click_client_norm(self, hwnd, x_norm, y_norm, dwell_ms=40):
+            return True
+
+        def tap_key(self, *args, **kwargs):
+            return True
+
+    monkeypatch.setattr(modal_mod, "grab_rgb_image", lambda _hwnd: Image.new("RGB", (100, 60)))
+    monkeypatch.setattr(modal_mod, "pause_menu_present", lambda _im: False)
+    monkeypatch.setattr(modal_mod, "left_overlay_parchment_ratio", lambda _im: 0.0)
+    monkeypatch.setattr(modal_mod, "centre_parchment_ratio", lambda _im: 0.0)
+    monkeypatch.setattr(modal_mod, "localize_diplomacy_footer_buttons", lambda _im: None)
+    monkeypatch.setattr(modal_mod, "localize_left_panel_decision_buttons", lambda _im: None)
+
+    cleared = UiClassification(mode=CampaignUiMode.CAMPAIGN_MAP, confidence=0.9)
+
+    handler = ModalHandler(
+        input_controller=FakeInput(),
+        settle_s=0.0,
+        use_ada_vision=True,
+        allow_visual_button_fallback=True,
+    )
+
+    def boom(*_a, **_k):
+        raise AssertionError("Ada ran though pixels already cleared the panel")
+
+    monkeypatch.setattr(handler, "_query_modal_vision_sync", boom)
+    monkeypatch.setattr(handler, "_click_visual_dismiss", lambda *_a, **_k: cleared)
+
+    result = handler.handle(1, UiClassification(mode=CampaignUiMode.MODAL, confidence=0.8))
+    assert result.mode == CampaignUiMode.CAMPAIGN_MAP
+
+
+def test_handle_uses_ada_when_pixels_miss(monkeypatch):
+    """Ada is the escalation path after pixel dismiss returns nothing."""
     from comstar_game_ai.game_io.campaign import modal as modal_mod
     from comstar_game_ai.game_io.campaign.ui_mode import CampaignUiMode, UiClassification
 
@@ -438,18 +477,17 @@ def test_handle_prefers_ada_over_pixel_localization(monkeypatch):
         def tap_key(self, *args, **kwargs):
             return True
 
-    def fail_pixel(_image):
-        raise AssertionError("pixel localization ran before Ada")
-
     monkeypatch.setattr(modal_mod, "grab_rgb_image", lambda _hwnd: Image.new("RGB", (100, 60)))
     monkeypatch.setattr(
         modal_mod,
         "grab_and_classify",
         lambda _hwnd: UiClassification(mode=CampaignUiMode.CAMPAIGN_MAP, confidence=0.8),
     )
+    monkeypatch.setattr(modal_mod, "pause_menu_present", lambda _im: False)
     monkeypatch.setattr(modal_mod, "left_overlay_parchment_ratio", lambda _im: 0.0)
-    monkeypatch.setattr(modal_mod, "localize_diplomacy_footer_buttons", fail_pixel)
-    monkeypatch.setattr(modal_mod, "localize_left_panel_decision_buttons", fail_pixel)
+    monkeypatch.setattr(modal_mod, "centre_parchment_ratio", lambda _im: 0.0)
+    monkeypatch.setattr(modal_mod, "localize_diplomacy_footer_buttons", lambda _im: None)
+    monkeypatch.setattr(modal_mod, "localize_left_panel_decision_buttons", lambda _im: None)
 
     handler = ModalHandler(
         input_controller=FakeInput(),
@@ -457,7 +495,9 @@ def test_handle_prefers_ada_over_pixel_localization(monkeypatch):
         use_ada_vision=True,
         min_confidence=0.70,
         min_margin=0.10,
+        allow_visual_button_fallback=True,
     )
+    monkeypatch.setattr(handler, "_click_visual_dismiss", lambda *_a, **_k: None)
     monkeypatch.setattr(
         handler,
         "_query_modal_vision_sync",
@@ -471,4 +511,34 @@ def test_handle_prefers_ada_over_pixel_localization(monkeypatch):
 
     handler.handle(1, UiClassification(mode=CampaignUiMode.MODAL, confidence=0.8))
     assert clicks == [(0.31, 0.66)]
+
+
+def test_modal_vision_sync_holds_ada_yield_lock(monkeypatch, tmp_path):
+    """While Ada runs, Process B must see the yield lock."""
+    from pathlib import Path
+
+    from comstar_game_ai.shared.runtime import ada_yield
+
+    lock = tmp_path / "ada_yield.lock"
+    monkeypatch.setattr(ada_yield, "DEFAULT_LOCK_PATH", lock)
+
+    held_during: list[bool] = []
+
+    async def slow(*_args, **_kwargs):
+        import asyncio
+
+        held_during.append(ada_yield.is_held())
+        await asyncio.sleep(0.3)
+        held_during.append(ada_yield.is_held())
+        return None
+
+    monkeypatch.setattr(
+        "comstar_game_ai.game_io.campaign.modal._query_modal_vision_async", slow
+    )
+    handler = ModalHandler(model_timeout_s=5.0, on_heartbeat=lambda: None)
+    handler._query_modal_vision_sync(object(), request_id="modal-lock", turn=1, ui_mode="modal")
+
+    assert held_during and all(held_during)
+    assert not ada_yield.is_held()
+    assert not Path(lock).is_file()
 
