@@ -1,0 +1,439 @@
+"""Capture a new show_cursorstat test session. Does not label the frames.
+
+The camera is driven to each target. After every pan the cursor is placed
+on the center of the 44-point cross and show_cursorstat is read. Those
+reads steer the camera only. They are not the ground truth. Ground truth
+is filled later from the glyphs, then locked, then scored once.
+
+One countdown, then the script keeps the game focused. Console closed,
+campaign map, no army selected. D pans east, A west, W north, S south.
+
+    python scripts/capture_cursorstat_gate.py --session 20261003-gate2 --countdown 5
+
+The old split (20261003-heldout) stays shut. A session directory that
+already exists is refused.
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import sys
+import time
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "src"))
+
+SESSIONS = ROOT / "data" / "runtime" / "cursorstat_sessions"
+
+# Same cross as the digit sweep. 23 points along x and 21 along y.
+_MAP_X = (0.30, 0.70)
+_MAP_Y = (0.26, 0.62)
+_STEP = 0.018
+# Where the two arms meet. The seek puts this client point on the target tile.
+_CENTER = (0.50, 0.45)
+
+# Centers the lock asks for. Neighbour digits come from the cross around each.
+# 44 and 84 and 100 and 141 are exact components. x=44 is hundreds digit 0,
+# y=100 and y=141 are hundreds digit 1, x=200 is hundreds digit 2.
+_TARGETS = (
+    (44, 44),
+    (84, 84),
+    (100, 100),
+    (141, 141),
+    (200, 55),
+)
+
+_MAX_STEPS = 80
+_SETTLE_S = 0.35
+
+
+def _bind_focus(shell, hwnd: int) -> None:
+    import win32gui
+
+    def focus_game() -> bool:
+        for _ in range(8):
+            try:
+                win32gui.SetForegroundWindow(hwnd)
+            except Exception as exc:
+                print(f"focus: {exc}", flush=True)
+                return False
+            time.sleep(0.05)
+            if win32gui.GetForegroundWindow() == hwnd:
+                return True
+        return False
+
+    shell.focus_game = focus_game
+
+
+def _sweep_points() -> list[tuple[float, float]]:
+    points: list[tuple[float, float]] = []
+    x = _MAP_X[0]
+    while x <= _MAP_X[1] + 1e-9:
+        points.append((round(x, 4), _CENTER[1]))
+        x += _STEP
+    y = _MAP_Y[0]
+    while y <= _MAP_Y[1] + 1e-9:
+        points.append((_CENTER[0], round(y, 4)))
+        y += _STEP
+    return points
+
+
+def _client_screen(hwnd: int, client: tuple[float, float]) -> tuple[int, int] | None:
+    from comstar_game_ai.game_io.campaign.combat import client_norm_to_screen
+
+    return client_norm_to_screen(hwnd, client[0], client[1])
+
+
+def _release_pan_keys(shell) -> None:
+    controller = shell.input_controller
+    if controller is None:
+        return
+    for key in ("a", "d", "w", "s"):
+        controller._release_key(key)
+
+
+def _console_is_open(image) -> bool:
+    """The open console is a dark band darker than the map just below it.
+
+    A flat brightness cutoff failed both ways. Dark forest with the
+    console closed is about 26, and an open console over Cilicia is
+    about 23, so one threshold cannot separate them. The open band is
+    about 40 levels darker than the map under it. A nearly black band
+    is open even when the map below is also dark.
+    """
+    gray = image.convert("L")
+    px = gray.load()
+
+    def band(y0: int, y1: int) -> float:
+        vals = [px[x, y] for y in range(y0, y1, 3) for x in range(250, 700, 6)]
+        return sum(vals) / len(vals)
+
+    top = band(100, 135)
+    below = band(170, 210)
+    return top < 12 or below - top > 18
+
+
+def _sync_console(shell, hwnd: int, want_open: bool) -> None:
+    """Make the backtick toggle match the picture, then open or close."""
+    from comstar_game_ai.game_io.campaign.ui_mode import grab_rgb_image
+    from comstar_game_ai.game_io.input.game_focus import game_input_session
+
+    _release_pan_keys(shell)
+    with game_input_session(hwnd):
+        frame = grab_rgb_image(hwnd)
+    if frame is None:
+        return
+    shell.console_open = _console_is_open(frame)
+    if shell.console_open == want_open:
+        return
+    with game_input_session(hwnd):
+        if want_open:
+            shell.open_console()
+        else:
+            shell.close_console()
+    time.sleep(0.25)
+
+
+def _save_abstain(frame, dest: Path | None) -> None:
+    if dest is None or frame is None:
+        return
+    dest.mkdir(parents=True, exist_ok=True)
+    name = f"abstain_{len(list(dest.glob('abstain_*.png'))):02d}.png"
+    frame.save(dest / name)
+
+
+def _read_center(shell, hwnd: int, dump: Path | None = None) -> tuple[int, int] | None:
+    """Map coordinate under the cross center, or None when the reader abstains."""
+    from comstar_game_ai.game_io.campaign.console_cursorstat import read_console_cursorstat
+    from comstar_game_ai.game_io.campaign.ui_mode import grab_rgb_image
+    from comstar_game_ai.game_io.input.game_focus import game_input_session
+
+    screen = _client_screen(hwnd, _CENTER)
+    if screen is None or shell.input_controller is None:
+        print("FAIL: could not aim the cross center", flush=True)
+        return None
+    for attempt in range(3):
+        _release_pan_keys(shell)
+        _sync_console(shell, hwnd, True)
+        with game_input_session(hwnd):
+            if not shell.input_controller.move_mouse(*screen):
+                print("FAIL: mouse move to cross center", flush=True)
+                return None
+            time.sleep(0.5)
+            if not shell.send_command("show_cursorstat", open_console=True):
+                print("FAIL: show_cursorstat at cross center", flush=True)
+                return None
+            frame = None
+            reading = None
+            for _ in range(8):
+                time.sleep(0.2)
+                frame = grab_rgb_image(hwnd)
+                if frame is None:
+                    continue
+                reading = read_console_cursorstat(frame)
+                if "glyph height" not in (reading.reason or ""):
+                    break
+        if frame is None or reading is None:
+            print("FAIL: no frame at cross center", flush=True)
+            return None
+        _sync_console(shell, hwnd, False)
+        if reading.xy is not None:
+            print(f"center {reading.xy[0]}, {reading.xy[1]}", flush=True)
+            return reading.xy
+        print(f"center abstain: {reading.reason}", flush=True)
+        _save_abstain(frame, dump)
+        shell.console_open = False
+        if attempt == 2:
+            break
+    return None
+
+
+def _pan(shell, hwnd: int, key: str, hold_s: float) -> bool:
+    from comstar_game_ai.game_io.input.game_focus import game_input_session
+
+    if shell.input_controller is None:
+        return False
+    _sync_console(shell, hwnd, False)
+    _release_pan_keys(shell)
+    dwell_ms = max(1, int(round(hold_s * 1000)))
+    with game_input_session(hwnd):
+        return bool(shell.input_controller.tap_key(key, dwell_ms=dwell_ms, hwnd=hwnd))
+
+
+def _seek(
+    shell, hwnd: int, target: tuple[int, int], dump: Path | None = None
+) -> tuple[tuple[int, int] | None, list[dict[str, object]]]:
+    from comstar_game_ai.game_io.campaign.camera_seek import choose_move, record_rate
+
+    print(f"seek {target[0]}, {target[1]}", flush=True)
+    rates: dict[str, tuple[float, float]] = {}
+    measured: set[str] = set()
+    boost: dict[str, float] = {}
+    abstained = 0
+    current = _read_center(shell, hwnd, dump)
+    trace: list[dict[str, object]] = []
+    for step in range(_MAX_STEPS):
+        if current is None:
+            abstained += 1
+            if abstained > 5:
+                print(f"seek {target[0]}, {target[1]} step {step}: no center read", flush=True)
+                return None, trace
+            current = _read_center(shell, hwnd, dump)
+            if current is None:
+                continue
+        decision = choose_move(current, target, rates)
+        trace.append(
+            {
+                "step": step,
+                "xy": [current[0], current[1]],
+                "kind": decision.kind,
+                "key": decision.key,
+                "hold_s": round(decision.hold_s, 3),
+            }
+        )
+        if decision.kind == "done":
+            print(
+                f"seek {target[0]}, {target[1]} reached {current[0]}, {current[1]}",
+                flush=True,
+            )
+            return current, trace
+        if decision.kind == "stuck":
+            print(f"seek {target[0]}, {target[1]} stuck at {current[0]}, {current[1]}", flush=True)
+            return None, trace
+        hold = decision.hold_s
+        if decision.key in boost:
+            hold = max(hold, boost.pop(decision.key))
+        before = current
+        print(
+            f"seek {target[0]}, {target[1]} at {current[0]}, {current[1]} "
+            f"key={decision.key} hold={hold:.2f}s",
+            flush=True,
+        )
+        if not _pan(shell, hwnd, decision.key, hold):
+            print(f"FAIL: pan {decision.key}", flush=True)
+            return None, trace
+        time.sleep(_SETTLE_S)
+        after = _read_center(shell, hwnd, dump)
+        if after is None:
+            from comstar_game_ai.game_io.campaign.camera_seek import estimate_after
+
+            est_x, est_y = estimate_after(decision.key, before, hold, rates)
+            est_x = min(254, max(0, est_x))
+            est_y = min(155, max(0, est_y))
+            print(
+                f"seek {target[0]}, {target[1]} estimated {est_x}, {est_y}",
+                flush=True,
+            )
+            current = (est_x, est_y)
+            continue
+        jump = max(abs(after[0] - before[0]), abs(after[1] - before[1]))
+        # A truncated digit (81 read as 8) looks like a huge jump. Keep the
+        # measured rate's estimate and do not pan again from the old spot.
+        if jump > hold * 70 + 4:
+            from comstar_game_ai.game_io.campaign.camera_seek import estimate_after
+
+            est_x, est_y = estimate_after(decision.key, before, hold, rates)
+            est_x = min(254, max(0, est_x))
+            est_y = min(155, max(0, est_y))
+            print(
+                f"seek {target[0]}, {target[1]} ignored jump "
+                f"{before[0]}, {before[1]} -> {after[0]}, {after[1]}; "
+                f"estimated {est_x}, {est_y}",
+                flush=True,
+            )
+            current = (est_x, est_y)
+            continue
+        abstained = 0
+        if not record_rate(rates, measured, decision.key, before, after, hold):
+            if hold >= 1.2:
+                rates[decision.key] = (0.0, 0.0)
+            else:
+                boost[decision.key] = min(1.2, hold * 2)
+        current = after
+    print(f"seek {target[0]}, {target[1]} did not arrive in {_MAX_STEPS} steps", flush=True)
+    return None, trace
+
+
+def _grab(shell, hwnd: int, client: tuple[float, float], dest: Path) -> bool:
+    from comstar_game_ai.game_io.campaign.console_cursorstat import read_console_cursorstat
+    from comstar_game_ai.game_io.campaign.ui_mode import grab_rgb_image
+    from comstar_game_ai.game_io.input.game_focus import game_input_session
+
+    screen = _client_screen(hwnd, client)
+    if screen is None or shell.input_controller is None:
+        print(f"FAIL: could not aim {dest.name}", flush=True)
+        return False
+    _sync_console(shell, hwnd, True)
+    with game_input_session(hwnd):
+        if not shell.input_controller.move_mouse(*screen):
+            print(f"FAIL: mouse move {dest.name}", flush=True)
+            return False
+        time.sleep(0.5)
+        if not shell.send_command("show_cursorstat", open_console=True):
+            print(f"FAIL: show_cursorstat {dest.name}", flush=True)
+            return False
+        frame = None
+        for _ in range(8):
+            time.sleep(0.2)
+            frame = grab_rgb_image(hwnd)
+            if frame is None:
+                continue
+            if "glyph height" not in (read_console_cursorstat(frame).reason or ""):
+                break
+        shell.close_console()
+    if frame is None:
+        print(f"FAIL: no frame {dest.name}", flush=True)
+        return False
+    frame.save(dest)
+    print(f"saved {dest.name} size={frame.size}", flush=True)
+    return True
+
+
+def _countdown(seconds: int, wait_for_enter: bool) -> None:
+    print(
+        "campaign map, console closed, nothing selected. "
+        "Press Enter here, then click the game. The script pans from there.",
+        flush=True,
+    )
+    if wait_for_enter:
+        input("Press Enter here, then click the game.")
+    for i in range(seconds, 0, -1):
+        print(f"  {i}...", flush=True)
+        time.sleep(1)
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--session", required=True)
+    parser.add_argument("--countdown", type=int, default=5)
+    parser.add_argument(
+        "--now",
+        action="store_true",
+        help="start without waiting for Enter; the game is already focused",
+    )
+    args = parser.parse_args(argv)
+
+    from comstar_game_ai.game_io.console.romeshell import RomeShell
+    from comstar_game_ai.game_io.window import find_game_window
+    from comstar_game_ai.shared.config import load_config
+
+    if sys.platform != "win32":
+        print("FAIL: Windows required", flush=True)
+        return 1
+    out = SESSIONS / args.session
+    if out.exists():
+        print(f"FAIL: {out} already exists; sessions are not overwritten", flush=True)
+        return 1
+
+    cfg = load_config()
+    subs = cfg.get("game", {}).get("window_title_substrings") or ["Rome"]
+    game = find_game_window(subs)
+    if game is None:
+        print("FAIL: Rome window not found", flush=True)
+        return 1
+
+    points = _sweep_points()
+    if len(points) != 44:
+        print(f"FAIL: sample has {len(points)} points, expected 44", flush=True)
+        return 1
+    print(
+        f"targets={list(_TARGETS)} sample={len(points)} step={_STEP}",
+        flush=True,
+    )
+    shell = RomeShell(hwnd=game.hwnd)
+    _bind_focus(shell, game.hwnd)
+    out.mkdir(parents=True)
+    _countdown(args.countdown, wait_for_enter=not args.now)
+
+    labels: list[dict[str, object]] = []
+    approaches: list[dict[str, object]] = []
+    missed: list[list[int]] = []
+    ok = True
+    for sweep, target in enumerate(_TARGETS):
+        found, trace = _seek(shell, game.hwnd, target, out)
+        approaches.append(
+            {
+                "target": [target[0], target[1]],
+                "center": list(found) if found is not None else None,
+                "steps": trace,
+            }
+        )
+        if found is None:
+            missed.append([target[0], target[1]])
+            continue
+        for index, client in enumerate(points):
+            name = f"sweep{sweep}_{index:02d}.png"
+            dest = out / name
+            if not _grab(shell, game.hwnd, client, dest):
+                ok = False
+                break
+            labels.append(
+                {
+                    "file": name,
+                    "client": [client[0], client[1]],
+                    "target": [target[0], target[1]],
+                    "xy": None,
+                    "label_source": "unlabeled",
+                }
+            )
+            time.sleep(0.25)
+        if not ok:
+            break
+
+    (out / "labels.json").write_text(json.dumps(labels, indent=2), encoding="utf-8")
+    (out / "approach.json").write_text(json.dumps(approaches, indent=2), encoding="utf-8")
+    print(
+        f"session {out} frames={len(labels)} labeled=0 missed={missed}",
+        flush=True,
+    )
+    if not ok:
+        return 1
+    if missed:
+        return 3
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
