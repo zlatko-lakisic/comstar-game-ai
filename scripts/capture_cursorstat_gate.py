@@ -98,10 +98,9 @@ def _console_is_open(image) -> bool:
     """The open console is a dark band darker than the map just below it.
 
     A flat brightness cutoff failed both ways. Dark forest with the
-    console closed is about 26, and an open console over Cilicia is
-    about 23, so one threshold cannot separate them. The open band is
-    about 40 levels darker than the map under it. A nearly black band
-    is open even when the map below is also dark.
+    console closed is about 26, and an open console is about 10 to 19.
+    Over northern forest the land under the console is only about 17
+    levels lighter. A closed map stays at 26 or higher in that band.
     """
     gray = image.convert("L")
     px = gray.load()
@@ -112,11 +111,18 @@ def _console_is_open(image) -> bool:
 
     top = band(100, 135)
     below = band(170, 210)
-    return top < 12 or below - top > 18
+    # An open console is a dark band (about 10 to 19) over lighter land.
+    # Over the northern forest that land is only about 17 levels lighter,
+    # so a 20-level gap misses a console that is actually open. A closed
+    # map keeps this band around 26 or higher (Italy was 43), and the
+    # black border is dark in both bands, so the gap stays near zero.
+    if top < 22 and below - top > 12:
+        return True
+    return top < 12 and below - top > 8
 
 
-def _sync_console(shell, hwnd: int, want_open: bool) -> None:
-    """Make the backtick toggle match the picture, then open or close."""
+def _sync_console(shell, hwnd: int, want_open: bool) -> bool:
+    """Toggle until the picture matches. A pan key is not sent if this fails."""
     from comstar_game_ai.game_io.campaign.ui_mode import grab_rgb_image
     from comstar_game_ai.game_io.input.game_focus import game_input_session
 
@@ -124,16 +130,22 @@ def _sync_console(shell, hwnd: int, want_open: bool) -> None:
     with game_input_session(hwnd):
         frame = grab_rgb_image(hwnd)
     if frame is None:
-        return
+        return False
     shell.console_open = _console_is_open(frame)
     if shell.console_open == want_open:
-        return
+        return True
     with game_input_session(hwnd):
         if want_open:
             shell.open_console()
         else:
             shell.close_console()
     time.sleep(0.25)
+    with game_input_session(hwnd):
+        frame = grab_rgb_image(hwnd)
+    if frame is None:
+        return False
+    shell.console_open = _console_is_open(frame)
+    return shell.console_open == want_open
 
 
 def _save_abstain(frame, dest: Path | None) -> None:
@@ -156,7 +168,9 @@ def _read_center(shell, hwnd: int, dump: Path | None = None) -> tuple[int, int] 
         return None
     for attempt in range(3):
         _release_pan_keys(shell)
-        _sync_console(shell, hwnd, True)
+        if not _sync_console(shell, hwnd, True):
+            print("FAIL: console did not open for the cross center", flush=True)
+            return None
         with game_input_session(hwnd):
             if not shell.input_controller.move_mouse(*screen):
                 print("FAIL: mouse move to cross center", flush=True)
@@ -178,13 +192,14 @@ def _read_center(shell, hwnd: int, dump: Path | None = None) -> tuple[int, int] 
         if frame is None or reading is None:
             print("FAIL: no frame at cross center", flush=True)
             return None
-        _sync_console(shell, hwnd, False)
+        if not _sync_console(shell, hwnd, False):
+            print("FAIL: console stayed open after the cross center read", flush=True)
+            return None
         if reading.xy is not None:
             print(f"center {reading.xy[0]}, {reading.xy[1]}", flush=True)
             return reading.xy
         print(f"center abstain: {reading.reason}", flush=True)
         _save_abstain(frame, dump)
-        shell.console_open = False
         if attempt == 2:
             break
     return None
@@ -195,7 +210,9 @@ def _pan(shell, hwnd: int, key: str, hold_s: float) -> bool:
 
     if shell.input_controller is None:
         return False
-    _sync_console(shell, hwnd, False)
+    if not _sync_console(shell, hwnd, False):
+        print(f"FAIL: console still open, pan key {key} not sent", flush=True)
+        return False
     _release_pan_keys(shell)
     dwell_ms = max(1, int(round(hold_s * 1000)))
     with game_input_session(hwnd):
@@ -212,6 +229,7 @@ def _seek(
     measured: set[str] = set()
     boost: dict[str, float] = {}
     abstained = 0
+    rejected: tuple[int, int] | None = None
     current = _read_center(shell, hwnd, dump)
     trace: list[dict[str, object]] = []
     for step in range(_MAX_STEPS):
@@ -257,21 +275,38 @@ def _seek(
         time.sleep(_SETTLE_S)
         after = _read_center(shell, hwnd, dump)
         if after is None:
-            from comstar_game_ai.game_io.campaign.camera_seek import estimate_after
-
-            est_x, est_y = estimate_after(decision.key, before, hold, rates)
-            est_x = min(254, max(0, est_x))
-            est_y = min(155, max(0, est_y))
-            print(
-                f"seek {target[0]}, {target[1]} estimated {est_x}, {est_y}",
-                flush=True,
-            )
-            current = (est_x, est_y)
+            # A missed read is not a position. Guessing one and panning
+            # again walked off the east edge, and a guess inside the
+            # close radius was reported as arrival. Stay on the last
+            # real read and try the picture again.
+            abstained += 1
+            if abstained > 3:
+                print(
+                    f"seek {target[0]}, {target[1]} step {step}: no center read",
+                    flush=True,
+                )
+                return None, trace
+            current = before
             continue
         jump = max(abs(after[0] - before[0]), abs(after[1] - before[1]))
-        # A truncated digit (81 read as 8) looks like a huge jump. Keep the
-        # measured rate's estimate and do not pan again from the old spot.
-        if jump > hold * 70 + 4:
+        # A truncated digit (163 read as 63) looks like a huge jump. One
+        # such read is replaced by the estimate. If the next read is a
+        # normal step from that rejected value, the camera really is there:
+        # trust it. Chaining estimates and holding D walked off the east
+        # edge into the black border.
+        limit = hold * 70 + 4
+        if jump > limit:
+            if rejected is not None:
+                step = max(abs(after[0] - rejected[0]), abs(after[1] - rejected[1]))
+                if step <= limit:
+                    print(
+                        f"seek {target[0]}, {target[1]} trusted {after[0]}, {after[1]}",
+                        flush=True,
+                    )
+                    rejected = None
+                    current = after
+                    abstained = 0
+                    continue
             from comstar_game_ai.game_io.campaign.camera_seek import estimate_after
 
             est_x, est_y = estimate_after(decision.key, before, hold, rates)
@@ -283,8 +318,10 @@ def _seek(
                 f"estimated {est_x}, {est_y}",
                 flush=True,
             )
+            rejected = after
             current = (est_x, est_y)
             continue
+        rejected = None
         abstained = 0
         if not record_rate(rates, measured, decision.key, before, after, hold):
             if hold >= 1.2:
@@ -305,7 +342,9 @@ def _grab(shell, hwnd: int, client: tuple[float, float], dest: Path) -> bool:
     if screen is None or shell.input_controller is None:
         print(f"FAIL: could not aim {dest.name}", flush=True)
         return False
-    _sync_console(shell, hwnd, True)
+    if not _sync_console(shell, hwnd, True):
+        print(f"FAIL: console did not open for {dest.name}", flush=True)
+        return False
     with game_input_session(hwnd):
         if not shell.input_controller.move_mouse(*screen):
             print(f"FAIL: mouse move {dest.name}", flush=True)
@@ -322,7 +361,9 @@ def _grab(shell, hwnd: int, client: tuple[float, float], dest: Path) -> bool:
                 continue
             if "glyph height" not in (read_console_cursorstat(frame).reason or ""):
                 break
-        shell.close_console()
+    if not _sync_console(shell, hwnd, False):
+        print(f"FAIL: console stayed open after {dest.name}", flush=True)
+        return False
     if frame is None:
         print(f"FAIL: no frame {dest.name}", flush=True)
         return False

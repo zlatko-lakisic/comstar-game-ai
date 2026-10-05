@@ -24,7 +24,8 @@ ROOT = Path(__file__).resolve().parents[1]
 SESSIONS = ROOT / "data" / "runtime" / "cursorstat_sessions"
 
 # Fixed band on a 1280x720 frame. Not chosen by the reader.
-_CROP = (20, 90, 780, 162)
+# Covers the reader search rows y=80..149, plus y=150. PIL's bottom is exclusive.
+_CROP = (20, 80, 780, 151)
 _SCALE = 3
 _PAIR = re.compile(r"^(\d+)\s+(\d+)$")
 

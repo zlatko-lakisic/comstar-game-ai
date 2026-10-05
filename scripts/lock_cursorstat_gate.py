@@ -56,6 +56,16 @@ def _missing(labels: list[tuple[int, int]]) -> list[str]:
     return missing
 
 
+def _reviewed(row: dict) -> bool:
+    """True when the operator typed a pair or marked the frame unreadable."""
+    if row.get("label_source") != "operator":
+        return False
+    if row.get("operator_mark") == "unreadable":
+        return row.get("xy") is None
+    xy = row.get("xy")
+    return isinstance(xy, list) and len(xy) == 2
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--test", nargs="+", required=True)
@@ -71,13 +81,15 @@ def main(argv: list[str] | None = None) -> int:
             print(f"FAIL: missing {path}", flush=True)
             return 2
         rows = json.loads(path.read_text(encoding="utf-8"))
-        if any(row.get("xy") is None for row in rows):
+        if any(not _reviewed(row) for row in rows):
             print(f"FAIL: {session_id} still has unlabeled frames", flush=True)
             return 2
         if session_id in _TRAIN:
             print(f"FAIL: {session_id} supplied templates and cannot be a test session", flush=True)
             return 2
         for row in rows:
+            if row.get("operator_mark") == "unreadable":
+                continue
             labels.append((int(row["xy"][0]), int(row["xy"][1])))
     missing = _missing(labels)
     if missing:
