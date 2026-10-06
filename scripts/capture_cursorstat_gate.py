@@ -187,76 +187,92 @@ def _console_bands(image) -> tuple[float, float]:
     return band(100, 135), band(170, 210)
 
 
-def _console_is_open(image) -> bool:
-    """The open console is a dark band darker than the map just below it.
+# Every measured opening leaves the top band at about 0.3 of its closed
+# brightness: Cilicia 0.30, northern forest 0.29, dark forest 0.31, and
+# the gate20 failure 0.28. Half and double sit clear of that cluster.
+# The map below moved by at most 9.6 on the pairs where it was measured.
+_TOP_OPEN_RATIO = 0.5
+_TOP_CLOSED_RATIO = 2.0
+_TOP_TOO_DARK = 10.0
+_BELOW_HOLD = 12.0
 
-    A flat brightness cutoff failed both ways. Dark forest with the
-    console closed is about 26, and an open console is about 10 to 19.
-    Over northern forest the land under the console is only about 17
-    levels lighter. A closed map stays at 26 or higher in that band.
+
+def _toggle_verdict(
+    before: tuple[float, float], after: tuple[float, float]
+) -> str:
+    """How one backtick changed the console.
+
+    ``too_dark`` and ``ambiguous`` both stop the capture.
     """
-    top, below = _console_bands(image)
-    # An open console is a dark band (about 10 to 19) over lighter land.
-    # Over the northern forest that land is only about 17 levels lighter,
-    # so a 20-level gap misses a console that is actually open. A closed
-    # map keeps this band around 26 or higher (Italy was 43), and the
-    # black border is dark in both bands, so the gap stays near zero.
-    if top < 22 and below - top > 12:
-        return True
-    return top < 12 and below - top > 8
+    if before[0] <= _TOP_TOO_DARK:
+        return "too_dark"
+    below_change = abs(after[1] - before[1])
+    if below_change > _BELOW_HOLD:
+        return "ambiguous"
+    ratio = after[0] / before[0]
+    if ratio < _TOP_OPEN_RATIO:
+        return "open"
+    if ratio > _TOP_CLOSED_RATIO:
+        return "closed"
+    return "ambiguous"
 
 
 def _sync_console(shell, hwnd: int, want_open: bool, dump: Path | None = None) -> bool:
-    """Toggle until the picture matches. A failed open stops the capture."""
+    """Press backtick and judge the console from the change, not the level.
+
+    A clear change the wrong way gets one more backtick. A top band of
+    10 or less, or any other ambiguous change, saves both frames and
+    stops the capture.
+    """
     from comstar_game_ai.game_io.campaign.ui_mode import grab_rgb_image
     from comstar_game_ai.game_io.input.game_focus import game_input_session
 
-    def fail(before, after) -> None:
-        frame = after if after is not None else before
-        if frame is not None and dump is not None:
+    def bands_text(image) -> str:
+        if image is None:
+            return "no frame"
+        top, below = _console_bands(image)
+        return f"top {top:.1f}, below {below:.1f}"
+
+    def stop(before_image, after_image, reason: str) -> None:
+        if dump is not None:
             dump.mkdir(parents=True, exist_ok=True)
-            frame.save(dump / "console_open_fail.png")
-        def text(shot) -> str:
-            if shot is None:
-                return "no frame"
-            top, below = _console_bands(shot)
-            return f"top {top:.1f}, below {below:.1f}"
+            if before_image is not None:
+                before_image.save(dump / "console_toggle_before.png")
+            if after_image is not None:
+                after_image.save(dump / "console_toggle_after.png")
         raise ConsoleOpenError(
-            "console did not open "
-            f"(before {text(before)}; after {text(after)}); "
-            "saved console_open_fail.png"
+            f"{reason} (before {bands_text(before_image)}; "
+            f"after {bands_text(after_image)}); "
+            "saved console_toggle_before.png and console_toggle_after.png"
         )
 
+    wanted = "open" if want_open else "closed"
     _release_pan_keys(shell)
     with game_input_session(hwnd):
-        frame = grab_rgb_image(hwnd)
-    if frame is None:
-        if want_open:
-            fail(None, None)
-        return False
-    shell.console_open = _console_is_open(frame)
-    if shell.console_open == want_open:
-        return True
-    _require_focus(shell, hwnd, dump)
-    before = frame
-    with game_input_session(hwnd):
-        if want_open:
+        before = grab_rgb_image(hwnd)
+    if before is None:
+        stop(None, None, "console toggle had no frame")
+    after = None
+    for _ in range(2):
+        _require_focus(shell, hwnd, dump)
+        with game_input_session(hwnd):
             shell.open_console()
-        else:
-            shell.close_console()
-    time.sleep(0.25)
-    with game_input_session(hwnd):
-        frame = grab_rgb_image(hwnd)
-    if frame is None:
-        if want_open:
-            fail(before, None)
-        return False
-    shell.console_open = _console_is_open(frame)
-    if shell.console_open == want_open:
-        return True
-    if want_open:
-        fail(before, frame)
-    return False
+        time.sleep(0.25)
+        with game_input_session(hwnd):
+            after = grab_rgb_image(hwnd)
+        if after is None:
+            stop(before, None, "console toggle had no frame after the backtick")
+        verdict = _toggle_verdict(_console_bands(before), _console_bands(after))
+        if verdict == "too_dark":
+            stop(before, after, "console band was too dark to judge")
+        if verdict == "ambiguous":
+            stop(before, after, "console toggle was ambiguous")
+        shell.console_open = verdict == "open"
+        if verdict == wanted:
+            return True
+        pair = (before, after)
+        before = after
+    stop(pair[0], pair[1], f"console toggle did not reach {wanted}")
 
 
 def _save_abstain(frame, dest: Path | None) -> None:
