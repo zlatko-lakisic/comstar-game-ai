@@ -15,6 +15,9 @@ A label fix is a row in label_corrections.json. labels.json is not
 edited. The row is refused unless that frame is on the current
 wrong-read list. The sealed report lists every correction and keeps
 the corrected count apart from the wrong count.
+
+``--regression`` scores a split whose ``gates_reader`` is false. It
+prints read, miss, and wrong counts and does not write a gate report.
 """
 
 from __future__ import annotations
@@ -128,6 +131,72 @@ def _utc_now() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
+def _read_xy(path: Path) -> tuple[tuple[int, int] | None, float | None, str]:
+    from comstar_game_ai.game_io.campaign.console_cursorstat import (
+        read_console_cursorstat,
+    )
+
+    reading = read_console_cursorstat(Image.open(path))
+    return reading.xy, reading.confidence, reading.reason or ""
+
+
+def _classify(
+    item: dict, got: tuple[int, int] | None, corrections: list[dict]
+) -> tuple[str, list[int] | None]:
+    if item.get("operator_mark") == "unreadable":
+        kind = "reader_on_unreadable" if got is not None else "unreadable"
+        return kind, None
+    expected = effective_xy(item, corrections)
+    expected_xy = (expected[0], expected[1])
+    if got is None:
+        return "miss", expected
+    if got == expected_xy:
+        return "read", expected
+    return "wrong", expected
+
+
+def run_regression(split: dict, sessions: Path, report: Path) -> int:
+    """Score a regression split. Never writes ``report`` or review crops."""
+    if split.get("gates_reader") is not False:
+        print("FAIL: regression mode is only for a split that does not gate a reader", flush=True)
+        return 2
+    session_ids = [str(item) for item in split.get("regression") or []]
+    if not session_ids:
+        print("FAIL: regression split has no sessions", flush=True)
+        return 2
+    before = report.read_bytes() if report.is_file() else None
+    counts = {"read": 0, "miss": 0, "wrong": 0}
+    frames = 0
+    for session_id in session_ids:
+        session = sessions / session_id
+        labels_path = session / "labels.json"
+        if not labels_path.is_file():
+            print(f"FAIL: missing {labels_path}", flush=True)
+            return 2
+        labels = json.loads(labels_path.read_text(encoding="utf-8"))
+        if any(not _reviewed(item) for item in labels):
+            print(f"FAIL: {session_id} still has unlabeled frames", flush=True)
+            return 2
+        corrections = load_corrections(session)
+        for item in labels:
+            got, _confidence, _reason = _read_xy(session / item["file"])
+            kind, _expected = _classify(item, got, corrections)
+            frames += 1
+            if kind in counts:
+                counts[kind] += 1
+    if report.is_file():
+        if report.read_bytes() != before:
+            raise RuntimeError("regression mode wrote the gate report")
+    elif report.exists():
+        raise RuntimeError("regression mode created the gate report")
+    print(
+        f"regression frames={frames} read={counts['read']} "
+        f"miss={counts['miss']} wrong={counts['wrong']}",
+        flush=True,
+    )
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -142,7 +211,15 @@ def main(argv: list[str] | None = None) -> int:
         help="Record a label correction for one frame on the current wrong-read list",
     )
     parser.add_argument("--reason", default="", help="Why the operator changed the label")
+    parser.add_argument(
+        "--regression",
+        action="store_true",
+        help="Score a gates_reader false split and do not write a gate report",
+    )
     args = parser.parse_args(argv)
+    if args.regression and (args.seal or args.correct):
+        print("FAIL: regression mode does not seal or correct", flush=True)
+        return 2
     if args.correct and args.seal:
         print("FAIL: record the correction before sealing", flush=True)
         return 2
@@ -154,6 +231,16 @@ def main(argv: list[str] | None = None) -> int:
         read_console_cursorstat,
     )
 
+    if args.regression:
+        if not SPLIT.is_file():
+            print(f"FAIL: missing {SPLIT}. Gate not opened.", flush=True)
+            return 2
+        return run_regression(
+            json.loads(SPLIT.read_text(encoding="utf-8")),
+            SESSIONS,
+            REPORT,
+        )
+
     if REPORT.is_file():
         print(f"FAIL: {REPORT} already exists; the test split stays shut", flush=True)
         return 1
@@ -161,6 +248,9 @@ def main(argv: list[str] | None = None) -> int:
         print(f"FAIL: missing {SPLIT}. Gate not opened.", flush=True)
         return 2
     split = json.loads(SPLIT.read_text(encoding="utf-8"))
+    if split.get("gates_reader") is False:
+        print("FAIL: this split is regression and does not gate a reader", flush=True)
+        return 1
     test_ids = list(split.get("test") or [])
     rows = []
     listed_corrections: list[dict] = []
@@ -190,23 +280,12 @@ def main(argv: list[str] | None = None) -> int:
             path = session / item["file"]
             reading = read_console_cursorstat(Image.open(path))
             got = reading.xy
-            marked_unreadable = item.get("operator_mark") == "unreadable"
+            kind, expected = _classify(item, got, corrections)
             crop_path = None
-            if marked_unreadable:
-                kind = "reader_on_unreadable" if got is not None else "unreadable"
-                expected = None
-            else:
-                expected = effective_xy(item, corrections)
-                expected_xy = (expected[0], expected[1])
-                if got is None:
-                    kind = "miss"
-                elif got == expected_xy:
-                    kind = "read"
-                else:
-                    kind = "wrong"
-                    dest = session / "review_crops" / item["file"]
-                    _save_crop(path, dest)
-                    crop_path = str(dest)
+            if kind == "wrong":
+                dest = session / "review_crops" / item["file"]
+                _save_crop(path, dest)
+                crop_path = str(dest)
             rows.append(
                 {
                     "session": session_id,

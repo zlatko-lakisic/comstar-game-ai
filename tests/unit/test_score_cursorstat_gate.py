@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 
 import pytest
+from PIL import Image
 
 _PATH = Path(__file__).resolve().parents[2] / "scripts" / "score_cursorstat_gate.py"
 _SPEC = importlib.util.spec_from_file_location("score_cursorstat_gate", _PATH)
@@ -55,6 +56,41 @@ def test_correction_refused_when_frame_is_not_on_the_wrong_list(tmp_path: Path):
         )
     assert not (tmp_path / "label_corrections.json").exists()
     assert (tmp_path / "labels.json").read_bytes() == before
+
+
+def test_regression_mode_reports_counts_and_does_not_write_a_report(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+):
+    sessions = tmp_path / "sessions"
+    gate = sessions / "reg"
+    gate.mkdir(parents=True)
+    labels = []
+    for name, xy in (("a.png", [1, 2]), ("b.png", [3, 4]), ("c.png", [5, 6])):
+        Image.new("RGB", (4, 4)).save(gate / name)
+        labels.append({"file": name, "xy": xy, "label_source": "operator"})
+    (gate / "labels.json").write_text(json.dumps(labels), encoding="utf-8")
+    split_path = tmp_path / "split.json"
+    report = tmp_path / "gate_report_v2.json"
+    split_path.write_text(
+        json.dumps({"gates_reader": False, "regression": ["reg"], "test": []}),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(score, "SPLIT", split_path)
+    monkeypatch.setattr(score, "REPORT", report)
+    monkeypatch.setattr(score, "SESSIONS", sessions)
+
+    def fake_read(path: Path):
+        got = {"a.png": (1, 2), "b.png": None, "c.png": (0, 0)}[path.name]
+        return got, None, ""
+
+    monkeypatch.setattr(score, "_read_xy", fake_read)
+    assert score.main(["--regression"]) == 0
+    assert not report.exists()
+    assert not (gate / "review_crops").exists()
+    out = capsys.readouterr().out
+    assert "read=1" in out
+    assert "miss=1" in out
+    assert "wrong=1" in out
 
 
 def test_labels_json_is_left_unchanged(tmp_path: Path):

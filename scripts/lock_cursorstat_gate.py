@@ -19,6 +19,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 SESSIONS = ROOT / "data" / "runtime" / "cursorstat_sessions"
 SPLIT = SESSIONS / "split_v2.json"
+_REGRESSION = ROOT / "docs" / "cursorstat-regression-v2.json"
 
 # 20261003-pass supplied every template except 4. The 4 was cut from
 # 20261003-digits3. Neither session is a test session.
@@ -66,6 +67,13 @@ def _reviewed(row: dict) -> bool:
     return isinstance(xy, list) and len(xy) == 2
 
 
+def _regression_ids() -> set[str]:
+    if not _REGRESSION.is_file():
+        return set()
+    data = json.loads(_REGRESSION.read_text(encoding="utf-8"))
+    return {str(item) for item in data.get("sessions") or []}
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--test", nargs="+", required=True)
@@ -86,6 +94,9 @@ def main(argv: list[str] | None = None) -> int:
             return 2
         if session_id in _TRAIN:
             print(f"FAIL: {session_id} supplied templates and cannot be a test session", flush=True)
+            return 2
+        if session_id in _regression_ids():
+            print(f"FAIL: {session_id} is regression and cannot gate a reader", flush=True)
             return 2
         for row in rows:
             if row.get("operator_mark") == "unreadable":
