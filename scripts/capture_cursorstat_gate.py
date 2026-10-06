@@ -191,10 +191,16 @@ def _console_bands(image) -> tuple[float, float]:
 # brightness: Cilicia 0.30, northern forest 0.29, dark forest 0.31, and
 # the gate20 failure 0.28. Half and double sit clear of that cluster.
 # The map below moved by at most 9.6 on the pairs where it was measured.
+# A single dark side is not "too dark": the gate21 close went 8.8 to 27.8.
 _TOP_OPEN_RATIO = 0.5
 _TOP_CLOSED_RATIO = 2.0
 _TOP_TOO_DARK = 10.0
 _BELOW_HOLD = 12.0
+# Pan refusal, not a toggle. The brightest measured open top is 30.4
+# (gate20) and closed Italy is about 43, so 38 sits between them. A closed
+# picture can still have a wide gap (Italy, about 34), so the gap applies
+# only under that top. The darkest measured closed top is about 26.
+_PAN_OPEN_TOP = 38.0
 
 
 def _toggle_verdict(
@@ -202,12 +208,15 @@ def _toggle_verdict(
 ) -> str:
     """How one backtick changed the console.
 
-    ``too_dark`` and ``ambiguous`` both stop the capture.
+    ``too_dark`` and ``ambiguous`` both stop the capture. Too dark means
+    both sides are at or under 10. One dark side still uses the ratio.
     """
-    if before[0] <= _TOP_TOO_DARK:
+    if before[0] <= _TOP_TOO_DARK and after[0] <= _TOP_TOO_DARK:
         return "too_dark"
     below_change = abs(after[1] - before[1])
     if below_change > _BELOW_HOLD:
+        return "ambiguous"
+    if before[0] <= 0:
         return "ambiguous"
     ratio = after[0] / before[0]
     if ratio < _TOP_OPEN_RATIO:
@@ -217,12 +226,19 @@ def _toggle_verdict(
     return "ambiguous"
 
 
+def _looks_open(top: float, below: float) -> bool:
+    """Whether a single frame is an open console, for refusing a pan key."""
+    if top <= _TOP_TOO_DARK:
+        return True
+    return top < _PAN_OPEN_TOP and (below - top) > _BELOW_HOLD
+
+
 def _sync_console(shell, hwnd: int, want_open: bool, dump: Path | None = None) -> bool:
     """Press backtick and judge the console from the change, not the level.
 
-    A clear change the wrong way gets one more backtick. A top band of
-    10 or less, or any other ambiguous change, saves both frames and
-    stops the capture.
+    A clear change the wrong way gets one more backtick, then the new
+    pair is judged. Both bands at 10 or less, or any other ambiguous
+    change, saves both frames and stops the capture.
     """
     from comstar_game_ai.game_io.campaign.ui_mode import grab_rgb_image
     from comstar_game_ai.game_io.input.game_focus import game_input_session
@@ -334,14 +350,30 @@ def _read_center(shell, hwnd: int, dump: Path | None = None) -> tuple[int, int] 
 
 
 def _pan(shell, hwnd: int, key: str, hold_s: float, dump: Path | None = None) -> bool:
+    """Send a pan key only when the current picture does not look open.
+
+    This does not press backtick. The read already closed the console.
+    """
+    from comstar_game_ai.game_io.campaign.ui_mode import grab_rgb_image
     from comstar_game_ai.game_io.input.game_focus import game_input_session
 
     if shell.input_controller is None:
         return False
-    if not _sync_console(shell, hwnd, False):
-        print(f"FAIL: console still open, pan key {key} not sent", flush=True)
-        return False
     _release_pan_keys(shell)
+    with game_input_session(hwnd):
+        frame = grab_rgb_image(hwnd)
+    if frame is None:
+        raise ConsoleOpenError(f"pan key {key} had no frame")
+    top, below = _console_bands(frame)
+    if _looks_open(top, below):
+        if dump is not None:
+            dump.mkdir(parents=True, exist_ok=True)
+            frame.save(dump / "console_pan_blocked.png")
+        raise ConsoleOpenError(
+            f"console looked open before pan key {key} "
+            f"(top {top:.1f}, below {below:.1f}); "
+            "saved console_pan_blocked.png"
+        )
     _require_focus(shell, hwnd, dump)
     dwell_ms = max(1, int(round(hold_s * 1000)))
     with game_input_session(hwnd):
