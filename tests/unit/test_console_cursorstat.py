@@ -19,6 +19,10 @@ from comstar_game_ai.game_io.campaign.console_cursorstat import (
     _MAP_X_LIMIT,
     _MAP_Y_LIMIT,
     _MIN_DIGIT_RATIO,
+    _accept_numbers,
+    _read_numbers,
+    _row_bits,
+    _six_px_line_tops,
     coordinate_has_unmatched_glyph,
     parse_position_line,
     read_console_cursorstat,
@@ -30,6 +34,13 @@ TRAIN = (
     / "runtime"
     / "cursorstat_sessions"
     / "20261003-pass"
+)
+TRAIN16 = (
+    Path(__file__).resolve().parents[2]
+    / "data"
+    / "runtime"
+    / "cursorstat_sessions"
+    / "20261006-train16x"
 )
 
 # Glyphs on that session's pos lines, read off the image.
@@ -203,3 +214,38 @@ def test_train_session_reads(name: str, expected: tuple[int, int]):
     assert reading.confidence is not None
     assert reading.confidence > _MIN_DIGIT_RATIO
     assert coordinate_has_unmatched_glyph(Image.open(path)) is False
+
+
+def test_train16x_drop_refuses_leading_zero_and_overlap():
+    path = TRAIN16 / "sweep0_00.png"
+    if not path.is_file():
+        pytest.skip(f"missing {path}")
+    gray = Image.open(path).convert("L")
+    tops = _six_px_line_tops(gray)
+    assert tops
+    parsed = _read_numbers(_row_bits(gray, tops[0]))
+    numbers, _confidence, spans = parsed
+    assert len(numbers[0]) > 1 and numbers[0].startswith("0")
+    assert any(
+        spans[index + 1][0] - (spans[index][0] + spans[index][1]) < 0
+        for index in range(len(spans) - 1)
+    )
+    refused = _accept_numbers(_row_bits(gray, tops[0]), parsed)
+    assert refused.xy is None
+    assert refused.confidence is None
+    assert refused.reason.startswith("unexplained ink")
+    assert f"leading zero in {numbers[0]}" in refused.reason
+    assert "glyph gap -1" in refused.reason
+    reading = read_console_cursorstat(Image.open(path))
+    assert reading.xy == (160, 54)
+    assert reading.confidence is not None
+    assert reading.confidence > _MIN_DIGIT_RATIO
+
+
+def test_train16x_intact_leading_one_still_reads():
+    path = TRAIN16 / "sweep0_02.png"
+    if not path.is_file():
+        pytest.skip(f"missing {path}")
+    reading = read_console_cursorstat(Image.open(path))
+    assert reading.xy == (161, 54)
+    assert reading.reason == ""

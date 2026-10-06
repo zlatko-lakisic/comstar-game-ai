@@ -223,6 +223,13 @@ def _accept_numbers(
             confidence=None,
             reason="no position line",
         )
+    # int("060") is 60, so a dropped leading digit that left a zero in
+    # front would clear the map check. Overlapping kept glyphs are the
+    # same failure with the zero sitting on the next digit. Either one
+    # is unexplained ink, which sends the line through the fainter pass.
+    fault = _glyph_fault(numbers, spans)
+    if fault is not None:
+        return ConsoleCursorstat(xy=None, confidence=None, reason=fault)
     xy = (int(numbers[0]), int(numbers[1]))
     if _unexplained_columns(grid, spans):
         return ConsoleCursorstat(
@@ -248,6 +255,21 @@ def _accept_numbers(
             ),
         )
     return ConsoleCursorstat(xy=xy, confidence=confidence, reason="")
+
+
+def _glyph_fault(numbers: list[str], spans: list[tuple[int, int]]) -> str | None:
+    faults: list[str] = []
+    for token in numbers[:2]:
+        if len(token) > 1 and token.startswith("0"):
+            faults.append(f"leading zero in {token}")
+    for (x, tw), (next_x, _next_tw) in zip(spans, spans[1:]):
+        gap = next_x - (x + tw)
+        if gap < 0:
+            faults.append(f"glyph gap {gap}")
+            break
+    if not faults:
+        return None
+    return "unexplained ink; " + "; ".join(faults)
 
 
 def _inside_map(xy: tuple[int, int]) -> bool:
