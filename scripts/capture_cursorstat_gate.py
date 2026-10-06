@@ -67,6 +67,83 @@ def _bind_focus(shell, hwnd: int) -> None:
     shell.focus_game = focus_game
 
 
+class FocusLostError(RuntimeError):
+    """Rome was not the foreground window. Capture stops."""
+
+
+def _process_name(pid: int) -> str:
+    import ctypes
+    from ctypes import wintypes
+
+    kernel = ctypes.WinDLL("kernel32", use_last_error=True)
+    kernel.OpenProcess.argtypes = [wintypes.DWORD, wintypes.BOOL, wintypes.DWORD]
+    kernel.OpenProcess.restype = wintypes.HANDLE
+    kernel.QueryFullProcessImageNameW.argtypes = [
+        wintypes.HANDLE,
+        wintypes.DWORD,
+        wintypes.LPWSTR,
+        ctypes.POINTER(wintypes.DWORD),
+    ]
+    kernel.QueryFullProcessImageNameW.restype = wintypes.BOOL
+    kernel.CloseHandle.argtypes = [wintypes.HANDLE]
+    handle = kernel.OpenProcess(0x1000, False, pid)
+    if not handle:
+        return "unknown"
+    try:
+        size = wintypes.DWORD(32768)
+        buf = ctypes.create_unicode_buffer(size.value)
+        if not kernel.QueryFullProcessImageNameW(handle, 0, buf, ctypes.byref(size)):
+            return "unknown"
+        return Path(buf.value).name
+    finally:
+        kernel.CloseHandle(handle)
+
+
+def _foreground_desc() -> str:
+    import win32gui
+    import win32process
+
+    fg = int(win32gui.GetForegroundWindow() or 0)
+    if not fg:
+        return "no foreground window"
+    title = win32gui.GetWindowText(fg) or ""
+    _thread, pid = win32process.GetWindowThreadProcessId(fg)
+    return f"{title!r} process {_process_name(int(pid))} pid {pid}"
+
+
+def _rome_in_front(hwnd: int) -> bool:
+    import win32gui
+
+    return int(win32gui.GetForegroundWindow() or 0) == int(hwnd)
+
+
+def _save_focus_frame(hwnd: int, dump: Path | None) -> None:
+    from comstar_game_ai.game_io.campaign.ui_mode import grab_rgb_image
+
+    if dump is None:
+        return
+    frame = grab_rgb_image(hwnd)
+    if frame is None:
+        return
+    dump.mkdir(parents=True, exist_ok=True)
+    frame.save(dump / "focus_fail.png")
+
+
+def _require_focus(shell, hwnd: int, dump: Path | None) -> None:
+    """Before a key press. One focus retry, then stop with the frame saved."""
+    if _rome_in_front(hwnd):
+        return
+    print(f"focus lost; foreground {_foreground_desc()}", flush=True)
+    _bind_focus(shell, hwnd)
+    if shell.focus_game() and _rome_in_front(hwnd):
+        return
+    desc = _foreground_desc()
+    _save_focus_frame(hwnd, dump)
+    raise FocusLostError(
+        f"Rome is not in front; foreground {desc}; saved focus_fail.png"
+    )
+
+
 def _sweep_points() -> list[tuple[float, float]]:
     points: list[tuple[float, float]] = []
     x = _MAP_X[0]
@@ -94,6 +171,22 @@ def _release_pan_keys(shell) -> None:
         controller._release_key(key)
 
 
+class ConsoleOpenError(RuntimeError):
+    """The console toggle did not produce an open console. Capture stops."""
+
+
+def _console_bands(image) -> tuple[float, float]:
+    """Mean gray of the console band and of the map just below it."""
+    gray = image.convert("L")
+    px = gray.load()
+
+    def band(y0: int, y1: int) -> float:
+        vals = [px[x, y] for y in range(y0, y1, 3) for x in range(250, 700, 6)]
+        return sum(vals) / len(vals)
+
+    return band(100, 135), band(170, 210)
+
+
 def _console_is_open(image) -> bool:
     """The open console is a dark band darker than the map just below it.
 
@@ -102,15 +195,7 @@ def _console_is_open(image) -> bool:
     Over northern forest the land under the console is only about 17
     levels lighter. A closed map stays at 26 or higher in that band.
     """
-    gray = image.convert("L")
-    px = gray.load()
-
-    def band(y0: int, y1: int) -> float:
-        vals = [px[x, y] for y in range(y0, y1, 3) for x in range(250, 700, 6)]
-        return sum(vals) / len(vals)
-
-    top = band(100, 135)
-    below = band(170, 210)
+    top, below = _console_bands(image)
     # An open console is a dark band (about 10 to 19) over lighter land.
     # Over the northern forest that land is only about 17 levels lighter,
     # so a 20-level gap misses a console that is actually open. A closed
@@ -121,19 +206,39 @@ def _console_is_open(image) -> bool:
     return top < 12 and below - top > 8
 
 
-def _sync_console(shell, hwnd: int, want_open: bool) -> bool:
-    """Toggle until the picture matches. A pan key is not sent if this fails."""
+def _sync_console(shell, hwnd: int, want_open: bool, dump: Path | None = None) -> bool:
+    """Toggle until the picture matches. A failed open stops the capture."""
     from comstar_game_ai.game_io.campaign.ui_mode import grab_rgb_image
     from comstar_game_ai.game_io.input.game_focus import game_input_session
+
+    def fail(before, after) -> None:
+        frame = after if after is not None else before
+        if frame is not None and dump is not None:
+            dump.mkdir(parents=True, exist_ok=True)
+            frame.save(dump / "console_open_fail.png")
+        def text(shot) -> str:
+            if shot is None:
+                return "no frame"
+            top, below = _console_bands(shot)
+            return f"top {top:.1f}, below {below:.1f}"
+        raise ConsoleOpenError(
+            "console did not open "
+            f"(before {text(before)}; after {text(after)}); "
+            "saved console_open_fail.png"
+        )
 
     _release_pan_keys(shell)
     with game_input_session(hwnd):
         frame = grab_rgb_image(hwnd)
     if frame is None:
+        if want_open:
+            fail(None, None)
         return False
     shell.console_open = _console_is_open(frame)
     if shell.console_open == want_open:
         return True
+    _require_focus(shell, hwnd, dump)
+    before = frame
     with game_input_session(hwnd):
         if want_open:
             shell.open_console()
@@ -143,9 +248,15 @@ def _sync_console(shell, hwnd: int, want_open: bool) -> bool:
     with game_input_session(hwnd):
         frame = grab_rgb_image(hwnd)
     if frame is None:
+        if want_open:
+            fail(before, None)
         return False
     shell.console_open = _console_is_open(frame)
-    return shell.console_open == want_open
+    if shell.console_open == want_open:
+        return True
+    if want_open:
+        fail(before, frame)
+    return False
 
 
 def _save_abstain(frame, dest: Path | None) -> None:
@@ -168,7 +279,7 @@ def _read_center(shell, hwnd: int, dump: Path | None = None) -> tuple[int, int] 
         return None
     for attempt in range(3):
         _release_pan_keys(shell)
-        if not _sync_console(shell, hwnd, True):
+        if not _sync_console(shell, hwnd, True, dump):
             print("FAIL: console did not open for the cross center", flush=True)
             return None
         with game_input_session(hwnd):
@@ -176,6 +287,7 @@ def _read_center(shell, hwnd: int, dump: Path | None = None) -> tuple[int, int] 
                 print("FAIL: mouse move to cross center", flush=True)
                 return None
             time.sleep(0.5)
+            _require_focus(shell, hwnd, dump)
             if not shell.send_command("show_cursorstat", open_console=True):
                 print("FAIL: show_cursorstat at cross center", flush=True)
                 return None
@@ -192,7 +304,7 @@ def _read_center(shell, hwnd: int, dump: Path | None = None) -> tuple[int, int] 
         if frame is None or reading is None:
             print("FAIL: no frame at cross center", flush=True)
             return None
-        if not _sync_console(shell, hwnd, False):
+        if not _sync_console(shell, hwnd, False, dump):
             print("FAIL: console stayed open after the cross center read", flush=True)
             return None
         if reading.xy is not None:
@@ -205,7 +317,7 @@ def _read_center(shell, hwnd: int, dump: Path | None = None) -> tuple[int, int] 
     return None
 
 
-def _pan(shell, hwnd: int, key: str, hold_s: float) -> bool:
+def _pan(shell, hwnd: int, key: str, hold_s: float, dump: Path | None = None) -> bool:
     from comstar_game_ai.game_io.input.game_focus import game_input_session
 
     if shell.input_controller is None:
@@ -214,6 +326,7 @@ def _pan(shell, hwnd: int, key: str, hold_s: float) -> bool:
         print(f"FAIL: console still open, pan key {key} not sent", flush=True)
         return False
     _release_pan_keys(shell)
+    _require_focus(shell, hwnd, dump)
     dwell_ms = max(1, int(round(hold_s * 1000)))
     with game_input_session(hwnd):
         return bool(shell.input_controller.tap_key(key, dwell_ms=dwell_ms, hwnd=hwnd))
@@ -269,7 +382,7 @@ def _seek(
             f"key={decision.key} hold={hold:.2f}s",
             flush=True,
         )
-        if not _pan(shell, hwnd, decision.key, hold):
+        if not _pan(shell, hwnd, decision.key, hold, dump):
             print(f"FAIL: pan {decision.key}", flush=True)
             return None, trace
         time.sleep(_SETTLE_S)
@@ -342,7 +455,7 @@ def _grab(shell, hwnd: int, client: tuple[float, float], dest: Path) -> bool:
     if screen is None or shell.input_controller is None:
         print(f"FAIL: could not aim {dest.name}", flush=True)
         return False
-    if not _sync_console(shell, hwnd, True):
+    if not _sync_console(shell, hwnd, True, dest.parent):
         print(f"FAIL: console did not open for {dest.name}", flush=True)
         return False
     with game_input_session(hwnd):
@@ -350,6 +463,7 @@ def _grab(shell, hwnd: int, client: tuple[float, float], dest: Path) -> bool:
             print(f"FAIL: mouse move {dest.name}", flush=True)
             return False
         time.sleep(0.5)
+        _require_focus(shell, hwnd, dest.parent)
         if not shell.send_command("show_cursorstat", open_console=True):
             print(f"FAIL: show_cursorstat {dest.name}", flush=True)
             return False
@@ -361,7 +475,7 @@ def _grab(shell, hwnd: int, client: tuple[float, float], dest: Path) -> bool:
                 continue
             if "glyph height" not in (read_console_cursorstat(frame).reason or ""):
                 break
-    if not _sync_console(shell, hwnd, False):
+    if not _sync_console(shell, hwnd, False, dest.parent):
         print(f"FAIL: console stayed open after {dest.name}", flush=True)
         return False
     if frame is None:
@@ -432,36 +546,44 @@ def main(argv: list[str] | None = None) -> int:
     approaches: list[dict[str, object]] = []
     missed: list[list[int]] = []
     ok = True
-    for sweep, target in enumerate(_TARGETS):
-        found, trace = _seek(shell, game.hwnd, target, out)
-        approaches.append(
-            {
-                "target": [target[0], target[1]],
-                "center": list(found) if found is not None else None,
-                "steps": trace,
-            }
-        )
-        if found is None:
-            missed.append([target[0], target[1]])
-            continue
-        for index, client in enumerate(points):
-            name = f"sweep{sweep}_{index:02d}.png"
-            dest = out / name
-            if not _grab(shell, game.hwnd, client, dest):
-                ok = False
-                break
-            labels.append(
+    stop_code = 0
+    try:
+        for sweep, target in enumerate(_TARGETS):
+            found, trace = _seek(shell, game.hwnd, target, out)
+            approaches.append(
                 {
-                    "file": name,
-                    "client": [client[0], client[1]],
                     "target": [target[0], target[1]],
-                    "xy": None,
-                    "label_source": "unlabeled",
+                    "center": list(found) if found is not None else None,
+                    "steps": trace,
                 }
             )
-            time.sleep(0.25)
-        if not ok:
-            break
+            if found is None:
+                missed.append([target[0], target[1]])
+                continue
+            for index, client in enumerate(points):
+                name = f"sweep{sweep}_{index:02d}.png"
+                dest = out / name
+                if not _grab(shell, game.hwnd, client, dest):
+                    ok = False
+                    break
+                labels.append(
+                    {
+                        "file": name,
+                        "client": [client[0], client[1]],
+                        "target": [target[0], target[1]],
+                        "xy": None,
+                        "label_source": "unlabeled",
+                    }
+                )
+                time.sleep(0.25)
+            if not ok:
+                break
+    except ConsoleOpenError as exc:
+        stop_code = 4
+        print(f"FAIL: {exc}; capture stopped", flush=True)
+    except FocusLostError as exc:
+        stop_code = 5
+        print(f"FAIL: {exc}; capture stopped", flush=True)
 
     (out / "labels.json").write_text(json.dumps(labels, indent=2), encoding="utf-8")
     (out / "approach.json").write_text(json.dumps(approaches, indent=2), encoding="utf-8")
@@ -469,6 +591,8 @@ def main(argv: list[str] | None = None) -> int:
         f"session {out} frames={len(labels)} labeled=0 missed={missed}",
         flush=True,
     )
+    if stop_code:
+        return stop_code
     if not ok:
         return 1
     if missed:
