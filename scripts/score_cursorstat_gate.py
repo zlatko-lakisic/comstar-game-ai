@@ -1,14 +1,14 @@
-"""Score the locked v2 cursorstat test sessions once.
+"""Score the locked v3 cursorstat test sessions once.
 
-Does not open split.json or gate_report.json from the first gate.
-If the v2 split is missing, or a frame is unlabeled, this exits
-without writing a report.
+Does not open split.json, gate_report.json, split_v2.json, or
+gate_report_v2.json. If the v3 split is missing, or a frame is
+unlabeled, this exits without writing a report.
 
 A frame marked unreadable is not a miss. When the reader still returns
 a coordinate, that frame is listed on its own and is not a wrong read.
 
 A wrong read is not counted until its crop has been written. The first
-pass prints those crop paths and does not write gate_report_v2.json.
+pass prints those crop paths and does not write gate_report_v3.json.
 Fix the label and run again, or pass --seal after the label is right.
 
 A label fix is a row in label_corrections.json. labels.json is not
@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -34,12 +35,34 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
 SESSIONS = ROOT / "data" / "runtime" / "cursorstat_sessions"
-SPLIT = SESSIONS / "split_v2.json"
-REPORT = SESSIONS / "gate_report_v2.json"
+SPLIT = SESSIONS / "split_v3.json"
+REPORT = SESSIONS / "gate_report_v3.json"
+# The sealed failure and its regression split stay where they are.
+_REGRESSION_SPLIT = SESSIONS / "split_v2.json"
+_REGRESSION_REPORT = SESSIONS / "gate_report_v2.json"
 
 # Same box as scripts/label_cursorstat_gate.py. PIL's bottom is exclusive.
 _CROP = (20, 80, 780, 151)
 _SCALE = 3
+_FRAME_INDEX = re.compile(r"_(\d+)\.png$")
+_EVEN_ONLY = frozenset(
+    {
+        "20261006-gate19",
+        "20261006-gate20",
+        "20261006-gate21",
+        "20261006-gate22",
+        "20261006-gate23",
+        "20261006-gate24",
+    }
+)
+
+
+def _in_test_set(session_id: str, row: dict) -> bool:
+    """Odd frames of the 20261006 gates stay out of the test set."""
+    if session_id not in _EVEN_ONLY:
+        return True
+    match = _FRAME_INDEX.search(str(row.get("file", "")))
+    return match is not None and int(match.group(1)) % 2 == 0
 
 
 def _reviewed(item: dict) -> bool:
@@ -173,7 +196,11 @@ def run_regression(split: dict, sessions: Path, report: Path) -> int:
         if not labels_path.is_file():
             print(f"FAIL: missing {labels_path}", flush=True)
             return 2
-        labels = json.loads(labels_path.read_text(encoding="utf-8"))
+        labels = [
+            item
+            for item in json.loads(labels_path.read_text(encoding="utf-8"))
+            if _in_test_set(session_id, item)
+        ]
         if any(not _reviewed(item) for item in labels):
             print(f"FAIL: {session_id} still has unlabeled frames", flush=True)
             return 2
@@ -232,13 +259,13 @@ def main(argv: list[str] | None = None) -> int:
     )
 
     if args.regression:
-        if not SPLIT.is_file():
-            print(f"FAIL: missing {SPLIT}. Gate not opened.", flush=True)
+        if not _REGRESSION_SPLIT.is_file():
+            print(f"FAIL: missing {_REGRESSION_SPLIT}. Gate not opened.", flush=True)
             return 2
         return run_regression(
-            json.loads(SPLIT.read_text(encoding="utf-8")),
+            json.loads(_REGRESSION_SPLIT.read_text(encoding="utf-8")),
             SESSIONS,
-            REPORT,
+            _REGRESSION_REPORT,
         )
 
     if REPORT.is_file():
@@ -260,7 +287,11 @@ def main(argv: list[str] | None = None) -> int:
         if not session.is_dir() or not labels_path.is_file():
             print(f"FAIL: test session {session_id} is not on disk. Gate not opened.", flush=True)
             return 2
-        labels = json.loads(labels_path.read_text(encoding="utf-8"))
+        labels = [
+            item
+            for item in json.loads(labels_path.read_text(encoding="utf-8"))
+            if _in_test_set(session_id, item)
+        ]
         if any(not _reviewed(item) for item in labels):
             print(f"FAIL: {session_id} still has unlabeled frames. Gate not opened.", flush=True)
             return 2

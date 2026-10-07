@@ -13,18 +13,38 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 SESSIONS = ROOT / "data" / "runtime" / "cursorstat_sessions"
-SPLIT = SESSIONS / "split_v2.json"
+SPLIT = SESSIONS / "split_v3.json"
 _REGRESSION = ROOT / "docs" / "cursorstat-regression-v2.json"
 
 # 20261003-pass supplied every template except 4. The 4 was cut from
 # 20261003-digits3. Neither session is a test session.
 _TRAIN = ("20261003-pass", "20261003-digits3")
 _ADJACENT = (100, 84, 141, 44)
+_FRAME_INDEX = re.compile(r"_(\d+)\.png$")
+# Same even-frame subset as scripts/label_cursorstat_gate.py.
+_EVEN_ONLY = frozenset(
+    {
+        "20261006-gate19",
+        "20261006-gate20",
+        "20261006-gate21",
+        "20261006-gate22",
+        "20261006-gate23",
+        "20261006-gate24",
+    }
+)
+
+
+def _in_test_set(session_id: str, row: dict) -> bool:
+    if session_id not in _EVEN_ONLY:
+        return True
+    match = _FRAME_INDEX.search(str(row.get("file", "")))
+    return match is not None and int(match.group(1)) % 2 == 0
 
 
 def _missing(labels: list[tuple[int, int]]) -> list[str]:
@@ -89,7 +109,8 @@ def main(argv: list[str] | None = None) -> int:
             print(f"FAIL: missing {path}", flush=True)
             return 2
         rows = json.loads(path.read_text(encoding="utf-8"))
-        if any(not _reviewed(row) for row in rows):
+        test_rows = [row for row in rows if _in_test_set(session_id, row)]
+        if any(not _reviewed(row) for row in test_rows):
             print(f"FAIL: {session_id} still has unlabeled frames", flush=True)
             return 2
         if session_id in _TRAIN:
@@ -98,7 +119,7 @@ def main(argv: list[str] | None = None) -> int:
         if session_id in _regression_ids():
             print(f"FAIL: {session_id} is regression and cannot gate a reader", flush=True)
             return 2
-        for row in rows:
+        for row in test_rows:
             if row.get("operator_mark") == "unreadable":
                 continue
             labels.append((int(row["xy"][0]), int(row["xy"][1])))

@@ -75,8 +75,8 @@ def test_regression_mode_reports_counts_and_does_not_write_a_report(
         json.dumps({"gates_reader": False, "regression": ["reg"], "test": []}),
         encoding="utf-8",
     )
-    monkeypatch.setattr(score, "SPLIT", split_path)
-    monkeypatch.setattr(score, "REPORT", report)
+    monkeypatch.setattr(score, "_REGRESSION_SPLIT", split_path)
+    monkeypatch.setattr(score, "_REGRESSION_REPORT", report)
     monkeypatch.setattr(score, "SESSIONS", sessions)
 
     def fake_read(path: Path):
