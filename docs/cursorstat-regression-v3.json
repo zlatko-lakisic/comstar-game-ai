@@ -1,0 +1,15 @@
+{
+  "role": "regression",
+  "gates_reader": false,
+  "sessions": [
+    "20261006-gate19",
+    "20261006-gate20",
+    "20261006-gate21",
+    "20261006-gate22",
+    "20261006-gate23",
+    "20261006-gate24"
+  ],
+  "report": "data/runtime/cursorstat_sessions/gate_report_v3.json",
+  "reader": "510274238a21fdac8b76b067524bbdec5d235eb6",
+  "notes": "Sealed failure. Even frames only (indices 00, 02, ... 42). These sessions do not gate a reader. Do not cut templates from them."
+}
