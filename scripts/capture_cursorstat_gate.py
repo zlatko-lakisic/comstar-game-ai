@@ -190,11 +190,15 @@ def _console_bands(image) -> tuple[float, float]:
 # Every measured opening leaves the top band at about 0.3 of its closed
 # brightness: Cilicia 0.30, northern forest 0.29, dark forest 0.31, and
 # the gate20 failure 0.28. Half and double sit clear of that cluster.
-# The map below moved by at most 9.6 on the pairs where it was measured.
+# The open console also darkens the map below, by about the same
+# fraction: Cilicia 0.89, northern forest 0.92, gate20 0.91, gate22 0.89.
+# 0.8 to 1.25 stays outside that cluster. The pan check still uses a gap.
 # A single dark side is not "too dark": the gate21 close went 8.8 to 27.8.
 _TOP_OPEN_RATIO = 0.5
 _TOP_CLOSED_RATIO = 2.0
 _TOP_TOO_DARK = 10.0
+_BELOW_RATIO_LOW = 0.8
+_BELOW_RATIO_HIGH = 1.25
 _BELOW_HOLD = 12.0
 # Pan refusal, not a toggle. The brightest measured open top is 30.4
 # (gate20) and closed Italy is about 43, so 38 sits between them. A closed
@@ -213,8 +217,10 @@ def _toggle_verdict(
     """
     if before[0] <= _TOP_TOO_DARK and after[0] <= _TOP_TOO_DARK:
         return "too_dark"
-    below_change = abs(after[1] - before[1])
-    if below_change > _BELOW_HOLD:
+    if before[1] <= 0:
+        return "ambiguous"
+    below_ratio = after[1] / before[1]
+    if below_ratio < _BELOW_RATIO_LOW or below_ratio > _BELOW_RATIO_HIGH:
         return "ambiguous"
     if before[0] <= 0:
         return "ambiguous"
