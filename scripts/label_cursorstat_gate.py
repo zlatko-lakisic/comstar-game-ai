@@ -6,6 +6,10 @@ coordinate, a confidence, or the seek target.
 
     python scripts/label_cursorstat_gate.py --session 20261003-gate17
 
+The 20261006 gate19 through gate24 sessions, and 20261008-gate25 and
+gate26, show only the even frames (00, 02, ... 42). Odd frames stay
+unlabeled and are not part of the test set.
+
 Type two integers, or the word unreadable, and press Enter. Alt-Left
 goes back one frame. Progress is written after every frame.
 """
@@ -28,6 +32,28 @@ SESSIONS = ROOT / "data" / "runtime" / "cursorstat_sessions"
 _CROP = (20, 80, 780, 151)
 _SCALE = 3
 _PAIR = re.compile(r"^(\d+)\s+(\d+)$")
+_FRAME_INDEX = re.compile(r"_(\d+)\.png$")
+# One cross is 44 frames. The operator labels the even indices only.
+_EVEN_ONLY = frozenset(
+    {
+        "20261006-gate19",
+        "20261006-gate20",
+        "20261006-gate21",
+        "20261006-gate22",
+        "20261006-gate23",
+        "20261006-gate24",
+        "20261008-gate25",
+        "20261008-gate26",
+    }
+)
+
+
+def in_test_set(session_id: str, row: dict) -> bool:
+    """Odd frames of the 20261006 gates are kept out of the test set."""
+    if session_id not in _EVEN_ONLY:
+        return True
+    match = _FRAME_INDEX.search(str(row.get("file", "")))
+    return match is not None and int(match.group(1)) % 2 == 0
 
 
 def _crop(path: Path) -> Image.Image:
@@ -85,8 +111,12 @@ def main(argv: list[str] | None = None) -> int:
         print(f"FAIL: missing {labels_path}", flush=True)
         return 1
     rows = _load(labels_path)
+    shown = [row for row in rows if in_test_set(args.session, row)]
+    if not shown:
+        print(f"FAIL: {args.session} has no frames to label", flush=True)
+        return 1
     index = 0
-    for i, row in enumerate(rows):
+    for i, row in enumerate(shown):
         if row.get("label_source") != "operator":
             index = i
             break
@@ -117,12 +147,12 @@ def main(argv: list[str] | None = None) -> int:
     err.pack(padx=12, pady=(0, 8))
 
     def show() -> None:
-        row = rows[index]
+        row = shown[index]
         frame = session / row["file"]
         photo = ImageTk.PhotoImage(_crop(frame))
         photo_holder["photo"] = photo
         picture.configure(image=photo)
-        status.set(f"{index + 1} / {len(rows)}")
+        status.set(f"{index + 1} / {len(shown)}")
         error.set("")
         entry.delete(0, tk.END)
         entry.insert(0, _entry_text(row))
@@ -130,19 +160,19 @@ def main(argv: list[str] | None = None) -> int:
         entry.icursor(tk.END)
 
     def commit(text: str) -> None:
-        problem = _apply(rows[index], text)
+        problem = _apply(shown[index], text)
         if problem:
             error.set(problem)
             return
         _save(labels_path, rows)
-        if index + 1 < len(rows):
+        if index + 1 < len(shown):
             nonlocal_advance(1)
         else:
             error.set("Last frame saved")
 
     def nonlocal_advance(step: int) -> None:
         nonlocal index
-        index = min(len(rows) - 1, max(0, index + step))
+        index = min(len(shown) - 1, max(0, index + step))
         show()
 
     def on_return(_event: object) -> str:
