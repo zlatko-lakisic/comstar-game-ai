@@ -37,6 +37,7 @@ _EVEN_ONLY = frozenset(
         "20261006-gate22",
         "20261006-gate23",
         "20261006-gate24",
+        "20261008-gate25",
     }
 )
 
@@ -124,13 +125,14 @@ def _arm(index: int) -> str | None:
 
 
 def _step_ok(arm: str, previous: list[int], current: list[int]) -> bool:
+    """Hold or a step of 1 or 2 along the arm. A reversal or a larger step fails."""
     if arm == "horizontal":
-        return current[0] - previous[0] in (1, 2)
-    return previous[1] - current[1] in (1, 2)
+        return current[0] - previous[0] in (0, 1, 2)
+    return previous[1] - current[1] in (0, 1, 2)
 
 
 def geometry_breaks(session_id: str, rows: list[dict], corrections: list[dict]) -> list[dict]:
-    """Even-frame labels that do not step with the arm. No reader."""
+    """Even-frame labels that reverse or jump more than 2. No reader."""
     grouped: dict[tuple[str, str], list[tuple[int, str, list[int]]]] = {}
     for row in rows:
         match = _SWEEP_FRAME.match(str(row.get("file", "")))

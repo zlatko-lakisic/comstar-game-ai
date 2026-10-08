@@ -226,6 +226,22 @@ def test_arm_geometry_flags_a_step_the_neighbors_do_not_share():
         [{"frame": "sweep0_00.png", "new_xy": [94, 53]}],
     )
     assert fixed == []
+    held = [
+        {"file": "sweep0_00.png", "xy": [10, 5], "label_source": "operator"},
+        {"file": "sweep0_02.png", "xy": [10, 5], "label_source": "operator"},
+        {"file": "sweep0_04.png", "xy": [12, 5], "label_source": "operator"},
+    ]
+    assert lock.geometry_breaks("session", held, []) == []
+    reversal = [
+        {"file": "sweep0_24.png", "xy": [10, 18], "label_source": "operator"},
+        {"file": "sweep0_26.png", "xy": [10, 19], "label_source": "operator"},
+        {"file": "sweep0_28.png", "xy": [10, 17], "label_source": "operator"},
+    ]
+    backs = lock.geometry_breaks("session", reversal, [])
+    assert [item["frame"] for item in backs] == ["sweep0_26.png"]
+    assert backs[0]["step"] == 1
+    assert backs[0]["previous"]["xy"] == [10, 18]
+    assert backs[0]["next"]["xy"] == [10, 17]
 
 
 def test_lock_requires_every_place_and_the_adjacent_numbers():

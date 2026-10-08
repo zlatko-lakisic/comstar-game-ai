@@ -7,5 +7,5 @@
   ],
   "report": "data/runtime/cursorstat_sessions/gate_report_v2.json",
   "reader": "5e52384db61e4c3c76e727a23f6a83ff7ca62f36",
-  "notes": "Sealed failure. Re-read only to check a leading-1 fix. These sessions do not gate a reader. Do not cut templates from them."
+  "notes": "Sealed failure. Re-read only to check a leading-1 fix. These sessions do not gate a reader. Do not cut templates from them. Review and arm geometry: 20261003-gate17/sweep2_00.png is 94, 102. The sealed report was not edited."
 }
