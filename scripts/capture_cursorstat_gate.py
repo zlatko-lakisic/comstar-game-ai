@@ -175,42 +175,67 @@ class ConsoleOpenError(RuntimeError):
     """The console toggle did not produce an open console. Capture stops."""
 
 
-def _console_bands(image) -> tuple[float, float]:
-    """Mean gray of the console band and of the map just below it."""
-    gray = image.convert("L")
-    px = gray.load()
-
-    def band(y0: int, y1: int) -> float:
-        vals = [px[x, y] for y in range(y0, y1, 3) for x in range(250, 700, 6)]
-        return sum(vals) / len(vals)
-
-    return band(100, 135), band(170, 210)
-
-
-# Every measured opening leaves the top band at about 0.3 of its closed
-# brightness: Cilicia 0.30, northern forest 0.29, dark forest 0.31, and
-# the gate20 failure 0.28. Half and double sit clear of that cluster.
-# The open console also darkens the map below, by about the same
-# fraction: Cilicia 0.89, northern forest 0.92, gate20 0.91, gate22 0.89.
-# 0.8 to 1.25 stays outside that cluster. The pan check still uses a gap.
-# A single dark side is not "too dark": the gate21 close went 8.8 to 27.8.
+# The console bottom edge is the step from row 175 to 176 on every saved
+# open frame. Open is a median step of 10 or more. Closed is a median step
+# of 3 or less with the map under the edge at least gray 15. Anything else
+# cannot be judged. The ratio rule is a second opinion, and its map band
+# starts at row 180 so it sits under that edge.
+_EDGE_ROW = 175
+_EDGE_X0 = 250
+_EDGE_X1 = 1050
+_EDGE_OPEN = 10
+_EDGE_CLOSED = 3
+_EDGE_LAND_MIN = 15
+_BELOW_START = 180
 _TOP_OPEN_RATIO = 0.5
 _TOP_CLOSED_RATIO = 2.0
 _TOP_TOO_DARK = 10.0
 _BELOW_RATIO_LOW = 0.8
 _BELOW_RATIO_HIGH = 1.25
-_BELOW_HOLD = 12.0
-# Pan refusal, not a toggle. The brightest measured open top is 30.4
-# (gate20) and closed Italy is about 43, so 38 sits between them. A closed
-# picture can still have a wide gap (Italy, about 34), so the gap applies
-# only under that top. The darkest measured closed top is about 26.
-_PAN_OPEN_TOP = 38.0
+
+
+def _median(values: list[int]) -> int:
+    ordered = sorted(values)
+    return ordered[len(ordered) // 2]
+
+
+def _edge_measure(image) -> tuple[int, int]:
+    """Median step across the fixed edge, and median gray of the row below it."""
+    gray = image.convert("L")
+    px = gray.load()
+    y = _EDGE_ROW
+    steps = [px[x, y + 1] - px[x, y] for x in range(_EDGE_X0, _EDGE_X1)]
+    land = [px[x, y + 1] for x in range(_EDGE_X0, _EDGE_X1)]
+    return _median(steps), _median(land)
+
+
+def _edge_state(image) -> str:
+    """``open``, ``closed``, or ``unjudged`` from the bottom edge alone."""
+    step, land = _edge_measure(image)
+    if step >= _EDGE_OPEN:
+        return "open"
+    if step <= _EDGE_CLOSED and land >= _EDGE_LAND_MIN:
+        return "closed"
+    return "unjudged"
+
+
+def _console_bands(image, edge_row: int = _EDGE_ROW) -> tuple[float, float]:
+    """Mean gray of the console band and of the map under the edge."""
+    gray = image.convert("L")
+    px = gray.load()
+    start = max(_BELOW_START, edge_row + 1)
+
+    def band(y0: int, y1: int) -> float:
+        vals = [px[x, y] for y in range(y0, y1, 3) for x in range(250, 700, 6)]
+        return sum(vals) / len(vals)
+
+    return band(100, 135), band(start, start + 40)
 
 
 def _toggle_verdict(
     before: tuple[float, float], after: tuple[float, float]
 ) -> str:
-    """How one backtick changed the console.
+    """How one backtick changed the console, from the brightness ratio.
 
     ``too_dark`` and ``ambiguous`` both stop the capture. Too dark means
     both sides are at or under 10. One dark side still uses the ratio.
@@ -232,28 +257,27 @@ def _toggle_verdict(
     return "ambiguous"
 
 
-def _looks_open(top: float, below: float) -> bool:
-    """Whether a single frame is an open console, for refusing a pan key."""
-    if top <= _TOP_TOO_DARK:
-        return True
-    return top < _PAN_OPEN_TOP and (below - top) > _BELOW_HOLD
-
-
 def _sync_console(shell, hwnd: int, want_open: bool, dump: Path | None = None) -> bool:
-    """Press backtick and judge the console from the change, not the level.
+    """Press backtick and judge the console from the edge, then the ratio.
 
-    A clear change the wrong way gets one more backtick, then the new
-    pair is judged. Both bands at 10 or less, or any other ambiguous
-    change, saves both frames and stops the capture.
+    The edge is the primary check. The ratio is a second opinion on the
+    same pair. An edge that cannot be judged, or an edge and a ratio that
+    disagree, saves both frames and stops. A clear wrong state gets one
+    more backtick, then the new pair is judged.
     """
     from comstar_game_ai.game_io.campaign.ui_mode import grab_rgb_image
     from comstar_game_ai.game_io.input.game_focus import game_input_session
 
-    def bands_text(image) -> str:
+    def describe(image) -> str:
         if image is None:
             return "no frame"
+        state = _edge_state(image)
+        step, land = _edge_measure(image)
         top, below = _console_bands(image)
-        return f"top {top:.1f}, below {below:.1f}"
+        return (
+            f"{state} edge {_EDGE_ROW}/{_EDGE_ROW + 1} step {step} land {land}; "
+            f"top {top:.1f}, map {below:.1f}"
+        )
 
     def stop(before_image, after_image, reason: str) -> None:
         if dump is not None:
@@ -263,8 +287,8 @@ def _sync_console(shell, hwnd: int, want_open: bool, dump: Path | None = None) -
             if after_image is not None:
                 after_image.save(dump / "console_toggle_after.png")
         raise ConsoleOpenError(
-            f"{reason} (before {bands_text(before_image)}; "
-            f"after {bands_text(after_image)}); "
+            f"{reason} (before {describe(before_image)}; "
+            f"after {describe(after_image)}); "
             "saved console_toggle_before.png and console_toggle_after.png"
         )
 
@@ -284,13 +308,18 @@ def _sync_console(shell, hwnd: int, want_open: bool, dump: Path | None = None) -
             after = grab_rgb_image(hwnd)
         if after is None:
             stop(before, None, "console toggle had no frame after the backtick")
-        verdict = _toggle_verdict(_console_bands(before), _console_bands(after))
-        if verdict == "too_dark":
-            stop(before, after, "console band was too dark to judge")
-        if verdict == "ambiguous":
-            stop(before, after, "console toggle was ambiguous")
-        shell.console_open = verdict == "open"
-        if verdict == wanted:
+        edge = _edge_state(after)
+        ratio = _toggle_verdict(_console_bands(before), _console_bands(after))
+        if edge == "unjudged":
+            stop(before, after, "console edge could not be judged")
+        if ratio != edge:
+            stop(
+                before,
+                after,
+                f"console edge and the ratio disagreed (edge {edge}, ratio {ratio})",
+            )
+        shell.console_open = edge == "open"
+        if edge == wanted:
             return True
         pair = (before, after)
         before = after
@@ -370,14 +399,15 @@ def _pan(shell, hwnd: int, key: str, hold_s: float, dump: Path | None = None) ->
         frame = grab_rgb_image(hwnd)
     if frame is None:
         raise ConsoleOpenError(f"pan key {key} had no frame")
-    top, below = _console_bands(frame)
-    if _looks_open(top, below):
+    state = _edge_state(frame)
+    if state != "closed":
         if dump is not None:
             dump.mkdir(parents=True, exist_ok=True)
             frame.save(dump / "console_pan_blocked.png")
+        step, land = _edge_measure(frame)
         raise ConsoleOpenError(
-            f"console looked open before pan key {key} "
-            f"(top {top:.1f}, below {below:.1f}); "
+            f"console was {state} before pan key {key} "
+            f"(edge {_EDGE_ROW}/{_EDGE_ROW + 1} step {step} land {land}); "
             "saved console_pan_blocked.png"
         )
     _require_focus(shell, hwnd, dump)
