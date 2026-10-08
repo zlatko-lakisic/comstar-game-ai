@@ -363,6 +363,39 @@ class HardcodedCampaignDriver:
             )
         return self._combat
 
+    def _map_fit_runtime(self):
+        cached = getattr(self, "_fit_runtime", None)
+        if cached is None:
+            from comstar_game_ai.game_io.campaign.map_fit_runtime import load_fit_runtime
+
+            cached = load_fit_runtime()
+            self._fit_runtime = cached
+        return cached
+
+    def _read_cursor_map(self) -> tuple[int, int] | None:
+        """Open the console, read ``show_cursorstat``, and close it again."""
+        shell = self.actuator.shell
+        hwnd = self._resolve_hwnd()
+        if shell is None or hwnd is None:
+            return None
+        from PIL import Image
+
+        from comstar_game_ai.game_io.campaign.console_cursorstat import (
+            read_console_cursorstat,
+        )
+        from comstar_game_ai.game_io.campaign.ui_mode import grab_rgb_image
+
+        if not shell.send_command("show_cursorstat", open_console=True):
+            return None
+        time.sleep(0.55)
+        frame = grab_rgb_image(hwnd)
+        shell.close_console()
+        if frame is None:
+            return None
+        if not isinstance(frame, Image.Image):
+            frame = Image.fromarray(frame)
+        return read_console_cursorstat(frame).xy
+
     def march_director(self) -> MarchDirector | None:
         """Mouse march helper bound to the live window, or None in a dry run."""
         hwnd = self._resolve_hwnd()
@@ -379,6 +412,8 @@ class HardcodedCampaignDriver:
             self._march = MarchDirector(
                 hwnd=hwnd,
                 controller=controller,
+                map_fit=self._map_fit_runtime(),
+                read_map=self._read_cursor_map,
                 on_heartbeat=self.on_heartbeat,
                 lists_rows=rows,
                 locate_target=locate,
@@ -544,6 +579,7 @@ class HardcodedCampaignDriver:
         # after a false glyph on local green land with stale from_xy.
         if (
             outcome.projection_consistent
+            and outcome.outcome_confirmed
             and outcome.step_to is not None
             and order.character_name
         ):
@@ -551,7 +587,9 @@ class HardcodedCampaignDriver:
 
             nx, ny = outcome.step_to
             cmd = f"move_character {order.character_name} {nx:.0f},{ny:.0f}"
-            if record_own_move(self.belief, cmd, turn=self.state.turn):
+            if record_own_move(
+                self.belief, cmd, turn=self.state.turn, confirmed=True
+            ):
                 self._save_belief()
         return True
 
@@ -1121,6 +1159,7 @@ class HardcodedCampaignDriver:
         total: int = 0,
     ) -> bool:
         """Clear modals, observe, optional move, End Turn only on open map."""
+        self._map_fit_runtime().note("end_of_turn")
         self._refresh_turn_from_message_log()
         turn = self._align_turn_clock()
         if on_progress:
