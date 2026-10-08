@@ -65,7 +65,11 @@ def test_recording_a_move_updates_the_character_and_its_army():
     store = _store_with_flavius()
 
     entry = record_own_move(
-        store, "move_character Flavius Julius 90,82", turn=1, now=1_700_000_000.0
+        store,
+        "move_character Flavius Julius 90,82",
+        turn=1,
+        now=1_700_000_000.0,
+        confirmed=True,
     )
 
     assert entry is not None
@@ -84,6 +88,16 @@ def test_recording_a_move_updates_the_character_and_its_army():
     assert army is not None
     assert (army.x, army.y) == (90.0, 82.0)
     assert army.provenance == OWN_ORDER_PROVENANCE
+
+
+def test_an_unconfirmed_move_leaves_belief_unchanged():
+    store = _store_with_flavius()
+
+    assert record_own_move(store, "move_character Flavius Julius 90,82") is None
+    character = store.get_character_entity("flavius_julius")
+    assert character is not None
+    assert (character.x, character.y) == (89.0, 82.0)
+    assert store.history == []
 
 
 def test_an_unknown_character_is_not_invented():
@@ -109,7 +123,9 @@ def test_the_brief_sees_the_new_position():
     )
 
     store = _store_with_flavius()
-    record_own_move(store, "move_character Flavius Julius 91,83", turn=2)
+    record_own_move(
+        store, "move_character Flavius Julius 91,83", turn=2, confirmed=True
+    )
 
     brief = build_observable_brief(
         ObservableContext(phase="campaign", turn=2, player_faction="julii", summary=""),

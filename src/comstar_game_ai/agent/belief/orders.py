@@ -141,14 +141,20 @@ def record_own_move(
     *,
     turn: int | None = None,
     now: float | None = None,
+    confirmed: bool = False,
 ) -> dict[str, Any] | None:
-    """Update the character (and any army that follows them) after a successful move.
+    """Update the character (and any army that follows them) after a confirmed move.
+
+    ``confirmed`` is false until the march outcome check says the army moved.
+    An unconfirmed call leaves the store unchanged.
 
     Returns the history entry that was appended, or None when the command is not
     a move or the character is not in the store. Never invents a character: if
     we somehow ordered a move for someone belief does not know, that is a bug in
     the planner, not a fact to invent here.
     """
+    if not confirmed:
+        return None
     parsed = parse_move_character(command)
     if parsed is None:
         return None

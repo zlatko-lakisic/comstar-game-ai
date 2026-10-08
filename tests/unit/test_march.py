@@ -306,7 +306,7 @@ def test_march_falls_back_to_geometry_when_vision_misses(capsys):
 
 
 def test_projection_path_frames_calibrates_and_right_clicks(capsys):
-    """Near target: army_anchor after locate → glyph → right-click (no radar jump)."""
+    """No published homography: the march refuses and does not click."""
     frame = Image.new("RGB", (640, 360), (30, 40, 20))
     baseline, boots = 7, 9
     handle = {"v": baseline}
@@ -372,19 +372,13 @@ def test_projection_path_frames_calibrates_and_right_clicks(capsys):
         target_label="Segesta",
     )
 
-    assert outcome.ordered
-    assert outcome.button == "right"
-    assert outcome.calib_mode == "army_anchor"
-    assert outcome.projection_consistent
-    assert outcome.click_norm is not None
-    assert outcome.click_norm[0] < 0.50  # west of Flavius
-    assert outcome.click_norm[0] > 0.25  # not overshot into the gulf
-    assert outcome.click_norm[1] < 0.58  # above army HUD
-    assert not radar_clicks, "near target must not radar-jump"
-    assert clicks
+    assert not outcome.ordered
+    assert outcome.reason == "fit_invalid"
+    assert not outcome.outcome_confirmed
+    assert not radar_clicks
+    assert not clicks
     out = capsys.readouterr().out
-    assert "army_anchor" in out
-    assert "button=right" in out
+    assert "fit_invalid" in out
 
 
 def test_wrong_lists_row_skipped_when_frustum_mismatches():
@@ -512,12 +506,12 @@ def test_projection_forces_far_when_dest_outside_viewport(capsys):
         character_name="Flavius Julius",
         target_label="far-settlement",
     )
-    assert radar_clicks, "must radar-frame when army-anchor misses viewport"
+    assert not outcome.ordered
+    assert outcome.reason == "fit_invalid"
+    assert not radar_clicks
+    assert not clicks
     out = capsys.readouterr().out
-    assert "radar framing" in out or "MARCH frame:" in out
-    if outcome.ordered:
-        assert outcome.projection_consistent
-        assert outcome.calib_mode in {"frustum", "dest_anchor", "dest_anchor_retry"}
+    assert "fit_invalid" in out
 
 
 def test_issue_click_omits_step_when_not_projection_consistent():
@@ -553,3 +547,131 @@ def test_issue_click_omits_step_when_not_projection_consistent():
     assert outcome.ordered
     assert outcome.step_to is None
     assert not outcome.projection_consistent
+
+
+def _linear_fit():
+    from comstar_game_ai.game_io.campaign.map_fit_runtime import MapFitRuntime
+    from comstar_game_ai.game_io.campaign.map_homography import fit_homography
+    from comstar_game_ai.game_io.campaign.map_projection import MapClientSample
+
+    samples = [
+        MapClientSample(client_xy=(x, y), map_xy=(x * 100.0, y * 100.0))
+        for x in (0.2, 0.5, 0.8)
+        for y in (0.2, 0.5)
+    ]
+    fitted = fit_homography(samples, width=1280, height=720)
+    assert fitted is not None
+    return MapFitRuntime(
+        homography=fitted,
+        tolerance=3.0,
+        grid=(),
+        min_points=4,
+        valid=True,
+    )
+
+
+def _closed_loop_director(*, read_map, cursor_role, confirm_moved, clicks):
+    frame = Image.new("RGB", (640, 360), (30, 40, 20))
+
+    class FakeController:
+        def move_mouse(self, x: int, y: int) -> None:
+            return None
+
+        def right_click(self, x: int, y: int, dwell_ms: int = 0, settle_ms: int = 0) -> None:
+            clicks.append((x, y))
+
+        def click(self, x: int, y: int, dwell_ms: int = 0, settle_ms: int = 0) -> None:
+            raise AssertionError("destination must be right-click")
+
+    director = MarchDirector(
+        hwnd=1,
+        controller=FakeController(),
+        capture=lambda: frame,
+        cursor_handle=lambda: 7,
+        to_screen=lambda x, y: (int(x * 1000), int(y * 1000)),
+        sleep=lambda _s: None,
+        hover_dwell_s=0.0,
+        order_settle_s=0.0,
+        window_size=lambda: (1000, 1000),
+        use_map_projection=True,
+        allow_legacy_geometry=False,
+        require_canonical_pose=False,
+        map_fit=_linear_fit(),
+        read_map=read_map,
+        cursor_role=cursor_role,
+        confirm_moved=confirm_moved,
+    )
+    director.acquire_ordered_stack = (  # type: ignore[method-assign]
+        lambda **kwargs: (
+            StackSelection(unit_cards=5, safe_to_attack=True),
+            (0.30, 0.455),
+            "frustum",
+            (50.0, 50.0),
+        )
+    )
+    return director
+
+
+def test_closed_loop_clicks_only_after_the_read_matches_and_the_army_moves():
+    clicks: list[tuple[int, int]] = []
+    director = _closed_loop_director(
+        read_map=lambda: (50, 50),
+        cursor_role=lambda _baseline: "move",
+        confirm_moved=lambda: True,
+        clicks=clicks,
+    )
+    outcome = director.march(
+        from_x=20,
+        from_y=20,
+        to_x=50,
+        to_y=50,
+        character_name="Flavius Julius",
+        target_label="ground",
+    )
+    assert outcome.ordered
+    assert outcome.outcome_confirmed
+    assert outcome.calib_mode == "homography"
+    assert clicks
+
+
+def test_closed_loop_bad_target_does_not_click():
+    clicks: list[tuple[int, int]] = []
+    director = _closed_loop_director(
+        read_map=lambda: (0, 0),
+        cursor_role=lambda _baseline: "move",
+        confirm_moved=lambda: True,
+        clicks=clicks,
+    )
+    outcome = director.march(
+        from_x=20,
+        from_y=20,
+        to_x=50,
+        to_y=50,
+        character_name="Flavius Julius",
+        target_label="ground",
+    )
+    assert not outcome.ordered
+    assert outcome.reason == "not_converged"
+    assert not outcome.outcome_confirmed
+    assert not clicks
+
+
+def test_closed_loop_ambiguous_glyph_does_not_click():
+    clicks: list[tuple[int, int]] = []
+    director = _closed_loop_director(
+        read_map=lambda: (50, 50),
+        cursor_role=lambda _baseline: "ambiguous",
+        confirm_moved=lambda: True,
+        clicks=clicks,
+    )
+    outcome = director.march(
+        from_x=20,
+        from_y=20,
+        to_x=50,
+        to_y=50,
+        character_name="Flavius Julius",
+        target_label="ground",
+    )
+    assert not outcome.ordered
+    assert outcome.reason == "glyph_ambiguous"
+    assert not clicks

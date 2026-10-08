@@ -10,8 +10,8 @@ Primary path (default):
    project → glyph → right-click. Else far path: radar-frame toward dest, re-calibrate
 4. Belief ``own_order`` steps only when ``projection_consistent``
 
-``show_cursorstat`` calibration is preferred when machine-readable; Remastered
-currently logs nothing usable, so radar-frustum / dest-anchor fills in.
+The console pane is readable. The logs stay empty. The live path uses the
+stored homography from the calibration report. With no valid fit it does not run.
 
 Legacy assumed-centre ``destination_norm`` probes remain behind
 ``allow_legacy_geometry`` (default off). Left-click on a nameplate selects the
@@ -119,6 +119,8 @@ class MarchOutcome:
     projection_consistent: bool = False
     #: True when live_from_xy is safe to write into belief (frustum-verified select).
     belief_refresh_ok: bool = False
+    #: True only after the post-click outcome check. Belief stays unchanged until then.
+    outcome_confirmed: bool = False
 
 
 @dataclass
@@ -158,6 +160,16 @@ class MarchDirector:
     use_vision_besiege: bool = False
     allow_region_pan: bool = False
     belief: BeliefStore | None = None
+    #: Stored homography. None loads the published report, which is invalid until step 2.
+    map_fit: object | None = None
+    #: ``show_cursorstat`` read. None grabs whatever is already on the frame.
+    read_map: Callable[[], tuple[int, int] | None] | None = None
+    #: Return ``move``, ``sword``, ``none``, or ``ambiguous``. None uses the handles below.
+    cursor_role: Callable[[int], str] | None = None
+    move_cursor_handle: int | None = None
+    sword_cursor_handle: int | None = None
+    #: Post-click check. None compares the radar frustum before and after.
+    confirm_moved: Callable[[], bool] | None = None
     last_reason: str = field(default="", init=False)
     _combat: CombatDirector | None = field(default=None, init=False, repr=False)
     _pose: CameraPoseDirector | None = field(default=None, init=False, repr=False)
@@ -218,6 +230,9 @@ class MarchDirector:
         result = self._pose_director().ensure_canonical(
             from_xy=centre_xy, already_located=already_located
         )
+        self._note_fit("camera_move")
+        self._note_fit("zoom")
+        self._note_fit("recenter")
         if not result.ok:
             detail = ",".join(result.failed_checks) or result.reason
             measured = result.measured
@@ -766,6 +781,204 @@ class MarchDirector:
             belief_refresh_ok=belief_refresh_ok,
         )
 
+    def _note_fit(self, trigger: str) -> None:
+        fit = self.map_fit
+        note = getattr(fit, "note", None)
+        if callable(note):
+            note(trigger)
+
+    def _keep_fit(self, fit: object) -> bool:
+        """One-point check before a march. A miss or a UI read tries the next spare."""
+        grid = tuple(getattr(fit, "grid", ()) or ())
+        if not grid:
+            return bool(getattr(fit, "valid", False))
+        trigger = str(getattr(fit, "pending_trigger", "") or "pre_march")
+        client = grid[0]
+        read = None
+        for spare in grid:
+            if not self._hover(spare):
+                continue
+            read = self._read_map_xy()
+            client = spare
+            if read is not None:
+                break
+        decision = fit.one_point(client_xy=client, read_xy=read, trigger=trigger)
+        if decision == "keep":
+            return True
+        fit.valid = False
+        fit.log.append(
+            {"event": "refit", "decision": "invalid", "reason": "probe_outside"}
+        )
+        return False
+
+    def _current_fit(self):
+        if self.map_fit is not None:
+            return self.map_fit
+        from comstar_game_ai.game_io.campaign.map_fit_runtime import load_fit_runtime
+
+        self.map_fit = load_fit_runtime()
+        return self.map_fit
+
+    def _read_map_xy(self) -> tuple[int, int] | None:
+        if self.read_map is not None:
+            return self.read_map()
+        frame = self._grab()
+        if frame is None:
+            return None
+        from comstar_game_ai.game_io.campaign.console_cursorstat import (
+            read_console_cursorstat,
+        )
+
+        return read_console_cursorstat(frame).xy
+
+    def _role(self, baseline: int) -> str:
+        if self.cursor_role is not None:
+            return self.cursor_role(baseline)
+        current = self.cursor_handle()
+        if current == 0 or current == baseline:
+            return "none"
+        if self.move_cursor_handle is not None and current == self.move_cursor_handle:
+            return "move"
+        if self.sword_cursor_handle is not None and current == self.sword_cursor_handle:
+            return "sword"
+        return "ambiguous"
+
+    def _march_closed_loop(
+        self,
+        *,
+        from_x: float,
+        from_y: float,
+        to_x: float,
+        to_y: float,
+        lists_row: tuple[float, float] | None,
+        character_name: str,
+        target_label: str,
+        selection: StackSelection,
+        baseline: int,
+        live_from_xy: tuple[float, float] | None = None,
+        belief_refresh_ok: bool = False,
+    ) -> MarchOutcome:
+        """Aim with the homography, read the console, correct at most three times."""
+        del lists_row, target_label
+        fit = self._current_fit()
+        homography = None if fit is None else fit.homography
+        tolerance = 3.0 if fit is None or fit.tolerance is None else float(fit.tolerance)
+        if homography is None:
+            return self._refuse(
+                "fit_invalid",
+                selection.unit_cards,
+                live_from_xy=live_from_xy,
+                belief_refresh_ok=belief_refresh_ok,
+            )
+        target = (float(to_x), float(to_y))
+        client = homography.map_to_client(target)
+        if client is None:
+            return self._refuse(
+                "off_screen",
+                selection.unit_cards,
+                live_from_xy=live_from_xy,
+                belief_refresh_ok=belief_refresh_ok,
+            )
+        for _attempt in range(3):
+            if not self._hover(client):
+                return self._refuse(
+                    "hover_failed",
+                    selection.unit_cards,
+                    live_from_xy=live_from_xy,
+                    belief_refresh_ok=belief_refresh_ok,
+                )
+            read = self._read_map_xy()
+            if read is None:
+                continue
+            error = math.hypot(read[0] - target[0], read[1] - target[1])
+            if error > tolerance:
+                predicted = homography.client_to_map(client)
+                if predicted is None:
+                    break
+                corrected = (
+                    target[0] - (read[0] - predicted[0]),
+                    target[1] - (read[1] - predicted[1]),
+                )
+                nxt = homography.map_to_client(corrected)
+                if nxt is None:
+                    break
+                client = nxt
+                continue
+            role = self._role(baseline)
+            if role != "move":
+                return self._refuse(
+                    f"glyph_{role}",
+                    selection.unit_cards,
+                    live_from_xy=live_from_xy,
+                    belief_refresh_ok=belief_refresh_ok,
+                )
+            before = self._measure_frustum_centre()
+            self._issue_click(
+                click=client,
+                from_x=from_x,
+                from_y=from_y,
+                to_x=to_x,
+                to_y=to_y,
+                unit_cards=selection.unit_cards,
+                character_name=character_name,
+                cursor_changed=True,
+                vision_used=False,
+                calib_mode="homography",
+                live_from_xy=live_from_xy,
+                projection_consistent=False,
+                belief_refresh_ok=belief_refresh_ok,
+            )
+            confirmed = (
+                self.confirm_moved()
+                if self.confirm_moved is not None
+                else self._frustum_advanced(before, target)
+            )
+            if not confirmed:
+                return MarchOutcome(
+                    ordered=False,
+                    reason="outcome_unconfirmed",
+                    unit_cards=selection.unit_cards,
+                    click_norm=client,
+                    live_from_xy=live_from_xy,
+                    belief_refresh_ok=belief_refresh_ok,
+                )
+            step = self.one_tile_step(
+                from_x=from_x, from_y=from_y, to_x=to_x, to_y=to_y
+            )
+            return MarchOutcome(
+                ordered=True,
+                reason="ordered",
+                unit_cards=selection.unit_cards,
+                click_norm=client,
+                step_to=step,
+                cursor_changed=True,
+                button="right",
+                calib_mode="homography",
+                live_from_xy=live_from_xy,
+                projection_consistent=True,
+                belief_refresh_ok=belief_refresh_ok,
+                outcome_confirmed=True,
+            )
+        return self._refuse(
+            "not_converged",
+            selection.unit_cards,
+            live_from_xy=live_from_xy,
+            belief_refresh_ok=belief_refresh_ok,
+        )
+
+    def _frustum_advanced(
+        self,
+        before: tuple[float, float] | None,
+        target: tuple[float, float],
+    ) -> bool:
+        """True when the radar centre moved toward the target after the click."""
+        after = self._measure_frustum_centre()
+        if before is None or after is None:
+            return False
+        before_gap = math.hypot(before[0] - target[0], before[1] - target[1])
+        after_gap = math.hypot(after[0] - target[0], after[1] - target[1])
+        return after_gap + 0.5 < before_gap
+
     def _march_via_projection(
         self,
         *,
@@ -1245,6 +1458,9 @@ class MarchDirector:
         belief_refresh_ok = False
 
         if self.use_map_projection:
+            fit = self._current_fit()
+            if fit is None or not fit.valid:
+                return self._refuse("fit_invalid")
             # Scale may be derived from the frustum after pose reset; only refuse
             # here when projection is on and we will skip the pose path entirely.
             sequence = str(
@@ -1366,7 +1582,15 @@ class MarchDirector:
             )
 
         if self.use_map_projection:
-            outcome = self._march_via_projection(
+            self._note_fit("selection_change")
+            if not self._keep_fit(fit):
+                return self._refuse(
+                    "fit_invalid",
+                    selection.unit_cards,
+                    live_from_xy=live_from_xy,
+                    belief_refresh_ok=belief_refresh_ok,
+                )
+            outcome = self._march_closed_loop(
                 from_x=from_x,
                 from_y=from_y,
                 to_x=to_x,
