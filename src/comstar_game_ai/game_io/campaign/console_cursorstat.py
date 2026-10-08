@@ -43,6 +43,10 @@ _LINE_H = 6
 # digit was not in the minimum.
 _MIN_DIGIT_RATIO = 0.60
 _MIN_CLASS_MARGIN = 0.10
+# Every correct read on the train sessions and both regression sets
+# starts its first x glyph at column 76 or 77. A later start is a
+# dropped leading digit. Checked at every ink cutoff.
+_FIRST_X_GLYPH_MAX = 77
 # map_regions.tga is 255×156. A settlement pixel is (x, height-1-y),
 # so a live coordinate is inside x < 255 and y < 156. Measured from
 # that file. The radar box (200, 150) is smaller than the map.
@@ -259,6 +263,8 @@ def _accept_numbers(
 
 def _glyph_fault(numbers: list[str], spans: list[tuple[int, int]]) -> str | None:
     faults: list[str] = []
+    if spans and spans[0][0] > _FIRST_X_GLYPH_MAX:
+        faults.append("missing leading digit")
     for token in numbers[:2]:
         if len(token) > 1 and token.startswith("0"):
             faults.append(f"leading zero in {token}")

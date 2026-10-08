@@ -27,6 +27,7 @@ _REGRESSION = ROOT / "docs" / "cursorstat-regression-v2.json"
 _TRAIN = ("20261003-pass", "20261003-digits3")
 _ADJACENT = (100, 84, 141, 44)
 _FRAME_INDEX = re.compile(r"_(\d+)\.png$")
+_SWEEP_FRAME = re.compile(r"^(sweep\d+)_(\d+)\.png$")
 # Same even-frame subset as scripts/label_cursorstat_gate.py.
 _EVEN_ONLY = frozenset(
     {
@@ -87,6 +88,88 @@ def _reviewed(row: dict) -> bool:
     return isinstance(xy, list) and len(xy) == 2
 
 
+def _effective_xy(row: dict, corrections: list[dict]) -> list[int] | None:
+    """Latest correction for this frame, otherwise the operator label."""
+    if row.get("operator_mark") == "unreadable":
+        return None
+    for entry in reversed(corrections):
+        if entry.get("frame") == row.get("file"):
+            xy = entry["new_xy"]
+            return [int(xy[0]), int(xy[1])]
+    xy = row.get("xy")
+    if not (isinstance(xy, list) and len(xy) == 2):
+        return None
+    return [int(xy[0]), int(xy[1])]
+
+
+def _load_corrections(session_id: str) -> list[dict]:
+    path = SESSIONS / session_id / "label_corrections.json"
+    if not path.is_file():
+        return []
+    data = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(data, list):
+        raise ValueError(f"{path} is not a list")
+    return data
+
+
+def _arm(index: int) -> str | None:
+    """Even frames only. Horizontal x rises; vertical y falls."""
+    if index % 2:
+        return None
+    if 0 <= index <= 22:
+        return "horizontal"
+    if 24 <= index <= 42:
+        return "vertical"
+    return None
+
+
+def _step_ok(arm: str, previous: list[int], current: list[int]) -> bool:
+    if arm == "horizontal":
+        return current[0] - previous[0] in (1, 2)
+    return previous[1] - current[1] in (1, 2)
+
+
+def geometry_breaks(session_id: str, rows: list[dict], corrections: list[dict]) -> list[dict]:
+    """Even-frame labels that do not step with the arm. No reader."""
+    grouped: dict[tuple[str, str], list[tuple[int, str, list[int]]]] = {}
+    for row in rows:
+        match = _SWEEP_FRAME.match(str(row.get("file", "")))
+        if match is None:
+            continue
+        index = int(match.group(2))
+        arm = _arm(index)
+        if arm is None:
+            continue
+        xy = _effective_xy(row, corrections)
+        if xy is None:
+            continue
+        grouped.setdefault((match.group(1), arm), []).append((index, str(row["file"]), xy))
+    breaks: list[dict] = []
+    for (sweep, arm), frames in grouped.items():
+        frames.sort()
+        for position, (index, name, xy) in enumerate(frames):
+            if position == 0:
+                continue
+            previous = frames[position - 1]
+            if _step_ok(arm, previous[2], xy):
+                continue
+            nxt = frames[position + 1] if position + 1 < len(frames) else None
+            step = xy[0] - previous[2][0] if arm == "horizontal" else xy[1] - previous[2][1]
+            breaks.append(
+                {
+                    "session": session_id,
+                    "sweep": sweep,
+                    "arm": arm,
+                    "frame": name,
+                    "xy": xy,
+                    "step": step,
+                    "previous": {"file": previous[1], "xy": previous[2]},
+                    "next": None if nxt is None else {"file": nxt[1], "xy": nxt[2]},
+                }
+            )
+    return breaks
+
+
 def _regression_ids() -> set[str]:
     if not _REGRESSION.is_file():
         return set()
@@ -97,12 +180,18 @@ def _regression_ids() -> set[str]:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--test", nargs="+", required=True)
+    parser.add_argument(
+        "--geometry",
+        action="store_true",
+        help="List even-frame labels that break the arm step, and do not lock",
+    )
     args = parser.parse_args(argv)
 
-    if SPLIT.is_file():
+    if SPLIT.is_file() and not args.geometry:
         print(f"FAIL: {SPLIT} already exists; the split stays shut", flush=True)
         return 1
     labels: list[tuple[int, int]] = []
+    breaks: list[dict] = []
     for session_id in args.test:
         path = SESSIONS / session_id / "labels.json"
         if not path.is_file():
@@ -113,6 +202,10 @@ def main(argv: list[str] | None = None) -> int:
         if any(not _reviewed(row) for row in test_rows):
             print(f"FAIL: {session_id} still has unlabeled frames", flush=True)
             return 2
+        corrections = _load_corrections(session_id)
+        breaks.extend(geometry_breaks(session_id, test_rows, corrections))
+        if args.geometry:
+            continue
         if session_id in _TRAIN:
             print(f"FAIL: {session_id} supplied templates and cannot be a test session", flush=True)
             return 2
@@ -122,7 +215,26 @@ def main(argv: list[str] | None = None) -> int:
         for row in test_rows:
             if row.get("operator_mark") == "unreadable":
                 continue
-            labels.append((int(row["xy"][0]), int(row["xy"][1])))
+            xy = _effective_xy(row, corrections)
+            if xy is None:
+                continue
+            labels.append((xy[0], xy[1]))
+    if breaks:
+        print("FAIL: arm geometry needs review before the lock:", flush=True)
+        for item in breaks:
+            nxt = item["next"]
+            nxt_text = "none" if nxt is None else f"{nxt['file']} {nxt['xy'][0]}, {nxt['xy'][1]}"
+            prev = item["previous"]
+            print(
+                f"  {item['session']} {item['sweep']} {item['arm']} {item['frame']} "
+                f"{item['xy'][0]}, {item['xy'][1]} step {item['step']} "
+                f"between {prev['file']} {prev['xy'][0]}, {prev['xy'][1]} and {nxt_text}",
+                flush=True,
+            )
+        return 4
+    if args.geometry:
+        print(f"geometry ok sessions={list(args.test)}", flush=True)
+        return 0
     missing = _missing(labels)
     if missing:
         print("FAIL: test set is short of the required reads:", flush=True)

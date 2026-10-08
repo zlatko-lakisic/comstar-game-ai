@@ -20,6 +20,7 @@ from comstar_game_ai.game_io.campaign.console_cursorstat import (
     _MAP_Y_LIMIT,
     _MIN_DIGIT_RATIO,
     _accept_numbers,
+    _glyph_fault,
     _read_numbers,
     _row_bits,
     _six_px_line_tops,
@@ -193,6 +194,40 @@ def _lock_module():
     return module
 
 
+def test_arm_geometry_flags_a_step_the_neighbors_do_not_share():
+    lock = _lock_module()
+    rows = [
+        {"file": "sweep0_00.png", "xy": [10, 5], "label_source": "operator"},
+        {"file": "sweep0_02.png", "xy": [11, 5], "label_source": "operator"},
+        {"file": "sweep0_04.png", "xy": [15, 5], "label_source": "operator"},
+        {"file": "sweep0_24.png", "xy": [10, 20], "label_source": "operator"},
+        {"file": "sweep0_26.png", "xy": [10, 18], "label_source": "operator"},
+        {"file": "sweep0_28.png", "xy": [10, 17], "label_source": "operator"},
+    ]
+    breaks = lock.geometry_breaks("session", rows, [])
+    assert [item["frame"] for item in breaks] == ["sweep0_04.png"]
+    assert breaks[0]["previous"]["xy"] == [11, 5]
+    assert breaks[0]["next"] is None
+    assert breaks[0]["step"] == 4
+    steady = [
+        {"file": "sweep0_00.png", "xy": [93, 53], "label_source": "operator"},
+        {"file": "sweep0_02.png", "xy": [94, 53], "label_source": "operator"},
+        {"file": "sweep0_04.png", "xy": [95, 53], "label_source": "operator"},
+    ]
+    assert lock.geometry_breaks("session", steady, []) == []
+    jumped = [
+        {"file": "sweep0_00.png", "xy": [91, 53], "label_source": "operator"},
+        {"file": "sweep0_02.png", "xy": [95, 53], "label_source": "operator"},
+        {"file": "sweep0_04.png", "xy": [96, 53], "label_source": "operator"},
+    ]
+    fixed = lock.geometry_breaks(
+        "session",
+        jumped,
+        [{"frame": "sweep0_00.png", "new_xy": [94, 53]}],
+    )
+    assert fixed == []
+
+
 def test_lock_requires_every_place_and_the_adjacent_numbers():
     missing = _lock_module()._missing([(88, 83)])
     assert "adjacent number 100" in missing
@@ -214,6 +249,15 @@ def test_train_session_reads(name: str, expected: tuple[int, int]):
     assert reading.confidence is not None
     assert reading.confidence > _MIN_DIGIT_RATIO
     assert coordinate_has_unmatched_glyph(Image.open(path)) is False
+
+
+def test_first_glyph_later_than_77_is_a_missing_leading_digit():
+    assert _glyph_fault(["4", "42"], [(80, 3), (86, 3), (90, 3)]) == (
+        "unexplained ink; missing leading digit"
+    )
+    assert _glyph_fault(["44", "42"], [(76, 3), (80, 3), (86, 3), (90, 3)]) is None
+    assert _glyph_fault(["44", "42"], [(77, 3), (81, 3), (87, 3), (91, 3)]) is None
+    assert _glyph_fault(["4", "42"], [(75, 3), (80, 3), (84, 3)]) is None
 
 
 def test_train16x_drop_refuses_leading_zero_and_overlap():
